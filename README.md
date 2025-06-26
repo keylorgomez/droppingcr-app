@@ -24,7 +24,7 @@ droppingcr-app/
 
 ## 🚀 Requisitos
 - Node.js **v20.x** o superior  
-  Verificá con: `node -v`
+  Verificá en la terminal con: `node -v`
 - MongoDB Atlas (configurar archivo `.env` en `/api`)
 
 ## ⚙️ Instalación
@@ -36,30 +36,38 @@ cd droppingcr-app
 ```
 
 2. Instalar dependencias (Ejecutar los siguientes comandos):
-- npm install               # para instalar concurrently en la raíz
-- cd api && npm install     # dependencias del backend
-- cd ../frontend && npm install  # dependencias del frontend
-- cd ..                     # volver a la raíz
+```bash
+ npm install               # para instalar concurrently en la raíz
+ cd api && npm install     # dependencias del backend
+ cd ../frontend && npm install  # dependencias del frontend
+ cd ..                     # volver a la raíz
+```
 
-3. Crear archivo `.env` dentro de `/api` con la URI de MongoDB.
+1. Crear archivo `.env` dentro de `/api` con la URI de MongoDB.
 - Dentro de la carpeta /api, crear un archivo llamado .env con esta estructura (solicitar usuario, contraseña y nombre del Cluster):
 ```env
 MONGO_URI=mongodb+srv://<usuario>:<contraseña>@<cluster>.mongodb.net/tienda?retryWrites=true&w=majority&appName=TuCluster
 PORT=5000
 ```
 
-4. Levantar frontend y backend con un solo comando:
-- cd droppingcr-app
-- npm run dev
+1. Levantar frontend y backend con un solo comando:
+```bash
+cd droppingcr-app
+npm run dev
+```
 
-5. Scripts útiles (opcionales):
+1. Scripts útiles (opcionales):
 # Levantar solo el backend
+```bash
 cd api
 npm run dev
+```
 
 # Levantar solo el frontend
+```bash
 cd frontend
 npm run dev
+```
 
 
 ## NOTAS:
