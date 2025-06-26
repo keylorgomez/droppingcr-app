@@ -43,27 +43,27 @@ cd droppingcr-app
  cd ..                     # volver a la raíz
 ```
 
-1. Crear archivo `.env` dentro de `/api` con la URI de MongoDB.
+3. Crear archivo `.env` dentro de `/api` con la URI de MongoDB.
 - Dentro de la carpeta /api, crear un archivo llamado .env con esta estructura (solicitar usuario, contraseña y nombre del Cluster):
 ```env
 MONGO_URI=mongodb+srv://<usuario>:<contraseña>@<cluster>.mongodb.net/tienda?retryWrites=true&w=majority&appName=TuCluster
 PORT=5000
 ```
 
-1. Levantar frontend y backend con un solo comando:
+4. Levantar frontend y backend con un solo comando:
 ```bash
 cd droppingcr-app
 npm run dev
 ```
 
-1. Scripts útiles (opcionales):
-# Levantar solo el backend
+## Scripts útiles (opcionales):
+1. Levantar solo el backend
 ```bash
 cd api
 npm run dev
 ```
 
-# Levantar solo el frontend
+2. Levantar solo el frontend
 ```bash
 cd frontend
 npm run dev
