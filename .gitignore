@@ -42,6 +42,14 @@ build/Release
 node_modules/
 jspm_packages/
 
+# Ignorar archivos sensibles y dependencias del backend (carpeta /api)
+api/.env
+api/node_modules/
+
+frontend/.env
+frontend/node_modules/
+
+
 # Snowpack dependency directory (https://snowpack.dev/)
 web_modules/
 
