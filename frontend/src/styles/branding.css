@@ -1,0 +1,38 @@
+:root {
+  --primary-color: #a06c32;
+  --secondary-color: #3b2615;
+  --accent-color: #2b1c0e;
+  --background-color: #e9c88f;
+  --skin-color: #f3e0bb;
+
+  --bg-main: var(--background-color);
+  --bg-secondary: var(--primary-color);
+  --text-main: var(--accent-color);
+  --text-soft: #6b4e2d;
+  --border-soft: #cfa869;
+
+  --system-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+body {
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  font-family: var(--system-font);
+}
+
+button {
+  background-color: var(--primary-color);
+  color: white;
+  border: 1px solid var(--border-soft);
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.card {
+  background-color: var(--bg-secondary);
+  color: var(--skin-color);
+  border: 1px solid var(--accent-color);
+  border-radius: 12px;
+  padding: 1rem;
+}
