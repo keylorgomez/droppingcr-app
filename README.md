@@ -46,7 +46,7 @@ cd droppingcr-app
 3. Crear archivo `.env` dentro de `/api` con la URI de MongoDB.
 - Dentro de la carpeta /api, crear un archivo llamado .env con esta estructura (solicitar usuario, contraseña y nombre del Cluster):
 ```env
-MONGO_URI=mongodb+srv://<usuario>:<contraseña>@<cluster>.mongodb.net/tienda?retryWrites=true&w=majority&appName=TuCluster
+MONGO_URI=mongodb+srv://<usuario>:<contraseña>@<cluster>.mongodb.net/?retryWrites=true&w=majority&appName=TuCluster
 PORT=5000
 ```
 
