@@ -10,6 +10,8 @@ import {
   DrawerClose,
 } from "@/components/ui/drawer";
 import { Menu } from "lucide-react";
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import { ChevronDown } from 'lucide-react';
 
 export default function Header({ isLoggedIn = true }) {
   const { t: headerTranslate } = useTranslation("headerFlow");
@@ -83,22 +85,50 @@ export default function Header({ isLoggedIn = true }) {
         </button>
 
         {isLoggedIn ? (
-          <button
-            className="text-[#975023] text-2xl hover:scale-110 transition-transform duration-200"
-            title="Perfil"
-          >
-            <FaUserCircle />
-          </button>
-        ) : (
-          <>
-            <button className="config-button-primary">
-              {headerTranslate("login")}
-            </button>
-            <button className="config-button-secondary">
-              {headerTranslate("register")}
-            </button>
-          </>
-        )}
+  <DropdownMenu.Root>
+    <DropdownMenu.Trigger asChild>
+  <button
+    className="text-[#975023] text-2xl hover:scale-110 transition-transform duration-200 relative rounded-xl flex items-center gap-1 focus:outline-none focus:ring-2 focus:ring-[#975023]"
+    title="Perfil"
+  >
+    <FaUserCircle />
+    <ChevronDown className="w-4 h-4" />
+  </button>
+</DropdownMenu.Trigger>
+
+
+    <DropdownMenu.Content
+      sideOffset={8}
+      align="end"
+      className="bg-white rounded-md shadow-lg border border-gray-200 p-2 w-48 z-50"
+    >
+      <DropdownMenu.Item className="px-4 py-2 text-[#975023] text-base hover:bg-[#fdf3e6] cursor-pointer rounded-md focus:outline-none focus:ring-2 focus:ring-[#975023]">
+        Perfil
+      </DropdownMenu.Item>
+      <DropdownMenu.Item className="px-4 py-2 text-[#975023] text-base  hover:bg-[#fdf3e6] cursor-pointer rounded-md focus:outline-none focus:ring-2 focus:ring-[#975023]">
+        Mis compras
+      </DropdownMenu.Item>
+      <DropdownMenu.Item className="px-4 py-2 text-[#975023] text-base  hover:bg-[#fdf3e6] cursor-pointer rounded-md focus:outline-none focus:ring-2 focus:ring-[#975023]">
+        Inventario
+      </DropdownMenu.Item>
+      <DropdownMenu.Item className="px-4 py-2 text-[#975023] text-base  hover:bg-[#fdf3e6] cursor-pointer rounded-md focus:outline-none focus:ring-2 focus:ring-[#975023]">
+        Ventas
+      </DropdownMenu.Item>
+      <DropdownMenu.Item className="px-4 py-2 text-[#975023] text-base  hover:bg-[#fdf3e6] cursor-pointer rounded-md focus:outline-none focus:ring-2 focus:ring-[#975023]">
+        Control de usuarios
+      </DropdownMenu.Item>
+    </DropdownMenu.Content>
+  </DropdownMenu.Root>
+) : (
+  <>
+    <button className="config-button-primary">
+      {headerTranslate("login")}
+    </button>
+    <button className="config-button-secondary">
+      {headerTranslate("register")}
+    </button>
+  </>
+)}
       </div>
     </header>
   );
