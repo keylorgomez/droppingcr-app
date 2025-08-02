@@ -4,5 +4,10 @@
   "register": "Register",
   "home": "Home",
   "payments": "Payments",
-  "shipping": "Shipping"
+  "shipping": "Shipping",
+  "profile": "My profile",
+  "myPurchases": "My purchases",
+  "inventory": "Inventary",
+  "sales": "Sales",
+  "userManagement": "User management"
 }

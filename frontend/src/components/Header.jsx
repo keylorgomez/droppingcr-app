@@ -103,19 +103,19 @@ export default function Header({ isLoggedIn = true }) {
       className="bg-white rounded-md shadow-lg border border-gray-200 p-2 w-48 z-50"
     >
       <DropdownMenu.Item className="px-4 py-2 text-[#975023] text-base hover:bg-[#fdf3e6] cursor-pointer rounded-md focus:outline-none focus:ring-2 focus:ring-[#975023]">
-        Perfil
+        {headerTranslate("profile")}
       </DropdownMenu.Item>
       <DropdownMenu.Item className="px-4 py-2 text-[#975023] text-base  hover:bg-[#fdf3e6] cursor-pointer rounded-md focus:outline-none focus:ring-2 focus:ring-[#975023]">
-        Mis compras
+        {headerTranslate("myPurchases")}
       </DropdownMenu.Item>
       <DropdownMenu.Item className="px-4 py-2 text-[#975023] text-base  hover:bg-[#fdf3e6] cursor-pointer rounded-md focus:outline-none focus:ring-2 focus:ring-[#975023]">
-        Inventario
+        {headerTranslate("inventory")}
       </DropdownMenu.Item>
       <DropdownMenu.Item className="px-4 py-2 text-[#975023] text-base  hover:bg-[#fdf3e6] cursor-pointer rounded-md focus:outline-none focus:ring-2 focus:ring-[#975023]">
-        Ventas
+        {headerTranslate("sales")}
       </DropdownMenu.Item>
       <DropdownMenu.Item className="px-4 py-2 text-[#975023] text-base  hover:bg-[#fdf3e6] cursor-pointer rounded-md focus:outline-none focus:ring-2 focus:ring-[#975023]">
-        Control de usuarios
+        {headerTranslate("userManagement")}
       </DropdownMenu.Item>
     </DropdownMenu.Content>
   </DropdownMenu.Root>
