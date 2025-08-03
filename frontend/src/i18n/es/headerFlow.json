@@ -1,0 +1,13 @@
+{
+  "cart": "Carrito",
+  "login": "Iniciar",
+  "register": "Registro",
+  "home": "Inicio",
+  "payments": "Pagos",
+  "shipping": "Envíos",
+  "profile": "Mi perfil",
+  "myPurchases": "Mis compras",
+  "inventory": "Inventario",
+  "sales": "Ventas",
+  "userManagement": "Control de usuarios"
+}

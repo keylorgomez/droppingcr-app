@@ -1,8 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 :root {
-  --primary-color: #a06c32;
-  --secondary-color: #3b2615;
-  --accent-color: #2b1c0e;
-  --background-color: #e9c88f;
+  --primary-color: #ffefd1;
+  --secondary-color: #975023;
+  --accent-color: #975023;
+  --background-color: #fdf8ee;
   --skin-color: #f3e0bb;
 
   --bg-main: var(--background-color);
@@ -11,28 +14,179 @@
   --text-soft: #6b4e2d;
   --border-soft: #cfa869;
 
-  --system-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-main: 'Poppins', sans-serif;
 }
 
 body {
   background-color: var(--bg-main);
   color: var(--text-main);
-  font-family: var(--system-font);
+  font-family: var(--font-main);
+  font-weight: 400;
 }
 
-button {
-  background-color: var(--primary-color);
-  color: white;
-  border: 1px solid var(--border-soft);
+/* 🔘 Botón primario */
+.config-button-primary {
+  background-color: var(--secondary-color);
+  color: var(--background-color);
   padding: 0.5rem 1rem;
   border-radius: 6px;
   font-weight: 600;
+  font-style: italic;
+  width: 5.5rem;
+  margin: 0.5rem;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25);
+  transition: all 0.3s ease;
 }
 
-.card {
+.config-button-primary:hover {
+  background-color: var(--background-color);
+  color: var(--secondary-color);
+  border: 1.5px solid var(--secondary-color);
+}
+
+/* ⚪ Botón secundario */
+.config-button-secondary {
+  background-color: var(--background-color);
+  color: var(--secondary-color);
+  border: 1.5px solid var(--border-soft);
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 600;
+  font-style: italic;
+  width: 6rem;
+  margin: 0.5rem;
+  box-shadow: 0 2px 6px rgba(151, 80, 35, 0.15); 
+  transition: all 0.3s ease;
+}
+
+.config-button-secondary:hover {
+  background-color: var(--secondary-color);
+  color: var(--background-color);
+  border: 1.5px solid var(--background-color);
+}
+
+/* 📦 Línea divisora */
+.divider {
+  border-top: 1px solid var(--border-soft);
+  margin: 1rem 0;
+  width: 100%;
+}
+
+/* 🧾 Tarjeta reutilizable */
+.register-card {
   background-color: var(--bg-secondary);
-  color: var(--skin-color);
-  border: 1px solid var(--accent-color);
-  border-radius: 12px;
+  color: var(--text-main);
+  border-radius: 0.7rem;
   padding: 1rem;
+  box-shadow: 0 4px 12px rgba(151, 80, 35, 0.2);
+}
+
+/* 🧱 Contenedor genérico de login/register */
+.auth-box {
+  background-color: var(--bg-secondary);
+  padding: 2rem;
+  border-radius: 1rem;
+  box-shadow: 0 8px 20px rgba(151, 80, 35, 0.15);
+  max-width: 400px;
+  margin: 2rem auto;
+}
+
+/* ✍️ Input con estilo propio */
+.form-input {
+  width: 60%;
+  padding: 0.4rem 0.7rem;
+  margin-bottom: 0.8rem;
+  border: 1.5px solid var(--border-soft);
+  border-radius: 6px;
+  font-family: var(--font-main);
+  font-size: 1rem;
+  color: var(--text-main);
+  background-color: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  transition: border-color 0.2s ease;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
+/* 📝 Tipografía */
+.text-highlight {
+  font-style: italic;
+  font-weight: 600;
+}
+
+.text-regular {
+  font-weight: 500;
+  font-style: normal;
+}
+
+
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 3.9%;
+    --primary: 0 0% 9%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 96.1%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45.1%;
+    --accent: 0 0% 96.1%;
+    --accent-foreground: 0 0% 9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 0 0% 3.9%;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --radius: 0.5rem;
+  }
+  .dark {
+    --background: 0 0% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 14.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 0 0% 14.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 0 0% 83.1%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
+}
+
+
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
 }

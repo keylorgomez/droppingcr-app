@@ -2,5 +2,7 @@
   "title": "Login",
   "email": "Email",
   "password": "Password",
-  "submit": "Log in"
+  "submit": "Log in",
+  "register": "Register"
+
 }
