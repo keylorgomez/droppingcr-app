@@ -271,10 +271,10 @@ function ProductContent({ product }: { product: ProductDetail }) {
             ) : (
               <>
                 <motion.button
-                  className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl bg-brand-dark text-white text-sm font-poppins font-medium"
-                  whileHover={{ backgroundColor: "#1a1a1a" }}
-                  whileTap={{ scale: 0.98 }}
-                  transition={{ duration: 0.15 }}
+                  disabled
+                  className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl
+                             bg-gray-100 text-gray-300 text-sm font-poppins font-medium
+                             cursor-not-allowed"
                 >
                   <ShoppingCart size={17} strokeWidth={2} />
                   Añadir al carrito

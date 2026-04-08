@@ -2,10 +2,12 @@ import { Routes, Route } from "react-router-dom";
 import CatalogPage       from "./pages/CatalogPage";
 import ProductDetailPage from "./pages/ProductDetailPage";
 import ProfilePage       from "./pages/ProfilePage";
+import MyOrdersPage      from "./pages/MyOrdersPage";
 import ProductFormPage   from "./pages/admin/ProductFormPage";
 import EditProductPage   from "./pages/admin/EditProductPage";
 import CategoriesPage    from "./pages/admin/CategoriesPage";
 import DebtPage          from "./pages/admin/DebtPage";
+import OrdersPage        from "./pages/admin/OrdersPage";
 import Footer            from "./components/ui/Footer";
 
 export default function App() {
@@ -20,6 +22,8 @@ export default function App() {
           <Route path="/admin/products/:id/edit" element={<EditProductPage />} />
           <Route path="/admin/categories"        element={<CategoriesPage />} />
           <Route path="/admin/deudas"            element={<DebtPage />} />
+          <Route path="/my-orders"               element={<MyOrdersPage />} />
+          <Route path="/admin/pedidos"           element={<OrdersPage />} />
         </Routes>
       </div>
       <Footer />

@@ -281,6 +281,8 @@ export default function DebtPage() {
     navigate("/", { replace: true });
   }
 
+  useEffect(() => { window.scrollTo({ top: 0, behavior: "instant" }); }, []);
+
   const { data: clients = [], isLoading, isError, error } = useQuery({
     queryKey: ["grouped-debts"],
     queryFn:  getGroupedDebts,

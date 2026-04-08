@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { X, User, ShoppingBag, LogOut, LayoutDashboard, Package } from "lucide-react";
+import { X, User, ShoppingBag, LogOut, LayoutDashboard, Package, ClipboardList, CreditCard } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { UserRole } from "../../context/AuthContext";
 
@@ -21,15 +21,17 @@ function getInitials(name: string): string {
 }
 
 const customerLinks = [
-  { label: "Mi perfil",   icon: User,            href: "/profile" },
-  { label: "Mis pedidos", icon: ShoppingBag,     href: null },
+  { label: "Mi perfil",   icon: User,            href: "/profile"    },
+  { label: "Mis pedidos", icon: ShoppingBag,     href: "/my-orders"  },
 ];
 
 const adminLinks = [
-  { label: "Panel Admin",  icon: LayoutDashboard, href: null },
+  { label: "Panel Admin",  icon: LayoutDashboard, href: null                  },
   { label: "Productos",    icon: Package,         href: "/admin/products/new" },
-  { label: "Mi perfil",   icon: User,            href: "/profile" },
-  { label: "Mis pedidos", icon: ShoppingBag,     href: null },
+  { label: "Pedidos",      icon: ClipboardList,   href: "/admin/pedidos"      },
+  { label: "Cobros",       icon: CreditCard,      href: "/admin/deudas"       },
+  { label: "Mi perfil",   icon: User,            href: "/profile"            },
+  { label: "Mis pedidos", icon: ShoppingBag,     href: "/my-orders"          },
 ];
 
 export default function UserSidebar({ open, onClose, user, onLogout }: UserSidebarProps) {
