@@ -2,12 +2,14 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft, Loader2, Plus, Trash2, ShoppingCart, Check, X, AlertTriangle,
+  ArrowLeft, Loader2, Plus, Trash2, ShoppingCart, Check, X, AlertTriangle, PackageX,
 } from "lucide-react";
 import {
-  getProductById, updateProductInventory, deleteVariant, deleteProduct,
+  getProductById, getCategories, updateProductInventory, deleteVariant, deleteProduct,
   type ProductVariant,
 } from "../../services/productService";
+import ImageUpload, { type ImageRow } from "../../components/ui/ImageUpload";
+import MultiSelect from "../../components/ui/MultiSelect";
 import { recordManualSale } from "../../services/salesService";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../components/ui/Toast";
@@ -58,6 +60,75 @@ function Toggle({
         )} />
       </button>
     </div>
+  );
+}
+
+// ── Delete Confirm Modal ───────────────────────────────────────────────────
+
+function DeleteConfirmModal({
+  productName,
+  isPending,
+  onConfirm,
+  onCancel,
+}: {
+  productName: string;
+  isPending: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <>
+      <div
+        className="fixed inset-0 bg-black/40 z-40 backdrop-blur-sm"
+        onClick={onCancel}
+      />
+      <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50
+                      w-full max-w-sm bg-white rounded-2xl shadow-xl overflow-hidden">
+
+        {/* Red top band */}
+        <div className="bg-red-50 px-6 pt-7 pb-5 flex flex-col items-center text-center gap-3">
+          <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center">
+            <PackageX size={26} className="text-red-500" strokeWidth={1.6} />
+          </div>
+          <div>
+            <p className="font-poppins font-semibold text-base text-brand-dark">
+              ¿Eliminar producto?
+            </p>
+            <p className="font-poppins text-sm text-gray-500 mt-1 leading-snug">
+              Vas a eliminar{" "}
+              <span className="font-semibold text-brand-dark">"{productName}"</span>{" "}
+              permanentemente. Esta acción no se puede deshacer.
+            </p>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-3 px-6 py-5">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-poppins
+                       text-gray-500 hover:border-gray-300 hover:text-brand-dark transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={isPending}
+            className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-poppins
+                       font-medium flex items-center justify-center gap-2
+                       hover:bg-red-600 transition-colors disabled:opacity-60"
+          >
+            {isPending
+              ? <Loader2 size={14} className="animate-spin" />
+              : <Trash2 size={14} strokeWidth={2} />
+            }
+            Sí, eliminar
+          </button>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -331,6 +402,11 @@ export default function EditProductPage() {
     enabled:  Boolean(id),
   });
 
+  const { data: allCategories = [] } = useQuery({
+    queryKey: ["categories"],
+    queryFn:  getCategories,
+  });
+
   // Form state
   const [name,          setName]          = useState("");
   const [description,   setDescription]   = useState("");
@@ -339,8 +415,11 @@ export default function EditProductPage() {
   const [discount,      setDiscount]      = useState("0");
   const [isActive,      setIsActive]      = useState(true);
   const [isNew,         setIsNew]         = useState(false);
+  const [categoryIds,   setCategoryIds]   = useState<string[]>([]);
   const [variants,      setVariants]      = useState<VariantRowState[]>([]);
-  const [saleOpen,      setSaleOpen]      = useState(false);
+  const [images,             setImages]             = useState<ImageRow[]>([]);
+  const [saleOpen,           setSaleOpen]           = useState(false);
+  const [deleteConfirmOpen,  setDeleteConfirmOpen]  = useState(false);
 
   // Populate form
   useEffect(() => {
@@ -352,10 +431,23 @@ export default function EditProductPage() {
     setDiscount(String(product.discount_percentage));
     setIsActive(product.is_active);
     setIsNew(product.is_new);
+    setCategoryIds(product.categories.map((c) => c.id));
     setVariants(
       product.variants.map((v) => ({
         _key: newKey(), id: v.id, size: v.size, stock: String(v.stock),
       }))
+    );
+    setImages(
+      [...product.images]
+        .sort((a, b) => {
+          if (a.is_primary !== b.is_primary) return a.is_primary ? -1 : 1;
+          return a.display_order - b.display_order;
+        })
+        .map((img) => ({
+          _key:       newKey(),
+          image_url:  img.image_url,
+          is_primary: img.is_primary,
+        }))
     );
   }, [product]);
 
@@ -412,15 +504,16 @@ export default function EditProductPage() {
   });
 
   function handleDelete() {
-    if (!window.confirm(`¿Eliminar "${product!.name}" permanentemente? Esta acción no se puede deshacer.`)) return;
-    deleteMutProduct.mutate();
+    setDeleteConfirmOpen(true);
   }
 
   function handleSave(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim())                           { showToast("El nombre es requerido.", "error"); return; }
-    if (!pricePurchase || Number(pricePurchase) <= 0) { showToast("Ingresa un precio de compra válido.", "error"); return; }
-    if (!priceSale     || Number(priceSale)     <= 0) { showToast("Ingresa un precio de venta válido.", "error"); return; }
+    if (!name.trim())                                  { showToast("El nombre es requerido.", "error"); return; }
+    if (!pricePurchase || Number(pricePurchase) <= 0)  { showToast("Ingresa un precio de compra válido.", "error"); return; }
+    if (!priceSale     || Number(priceSale)     <= 0)  { showToast("Ingresa un precio de venta válido.", "error"); return; }
+    if (images.length === 0)        { showToast("Agrega al menos una imagen.", "error"); return; }
+    if (categoryIds.length === 0)   { showToast("Selecciona al menos una categoría.", "error"); return; }
     saveMut.mutate({
       name:                name.trim(),
       description:         description.trim() || null,
@@ -429,10 +522,16 @@ export default function EditProductPage() {
       discount_percentage: Number(discount) || 0,
       is_active:           isActive,
       is_new:              isNew,
+      category_ids:        categoryIds,
       variants: variants.map((v) => ({
         id:    v.id,
         size:  v.size.trim(),
         stock: Number(v.stock),
+      })),
+      images: images.map((img, i) => ({
+        image_url:     img.image_url,
+        is_primary:    img.is_primary,
+        display_order: i,
       })),
     });
   }
@@ -470,6 +569,15 @@ export default function EditProductPage() {
             queryClient.invalidateQueries({ queryKey: ["product"] });
             queryClient.invalidateQueries({ queryKey: ["products"] });
           }}
+        />
+      )}
+
+      {deleteConfirmOpen && (
+        <DeleteConfirmModal
+          productName={product!.name}
+          isPending={deleteMutProduct.isPending}
+          onConfirm={() => deleteMutProduct.mutate()}
+          onCancel={() => setDeleteConfirmOpen(false)}
         />
       )}
 
@@ -598,6 +706,16 @@ export default function EditProductPage() {
             />
           </SectionCard>
 
+          {/* ── Categorías ─────────────────────────────────────────── */}
+          <SectionCard title="Categorías">
+            <MultiSelect
+              options={allCategories}
+              selected={categoryIds}
+              onChange={setCategoryIds}
+              placeholder="Selecciona una o más categorías…"
+            />
+          </SectionCard>
+
           {/* ── Tallas y stock ─────────────────────────────────────── */}
           <SectionCard title="Tallas y stock">
 
@@ -665,6 +783,14 @@ export default function EditProductPage() {
             >
               <Plus size={14} /> Agregar talla
             </button>
+          </SectionCard>
+
+          {/* ── Imágenes ───────────────────────────────────────────── */}
+          <SectionCard title="Imágenes">
+            <ImageUpload
+              images={images}
+              onChange={setImages}
+            />
           </SectionCard>
 
           {/* ── Actions ────────────────────────────────────────────── */}

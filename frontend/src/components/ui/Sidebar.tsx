@@ -50,7 +50,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
   function handleNav(href: string) {
     onClose();
     const url = new URL(href, window.location.origin);
-    navigate(url.pathname + url.search);
+    navigate(url.pathname + url.search, { state: { scrollToCatalog: true } });
   }
 
   return (

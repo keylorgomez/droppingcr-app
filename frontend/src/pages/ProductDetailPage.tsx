@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ShoppingCart, Pencil } from "lucide-react";
@@ -94,8 +94,8 @@ function ProductContent({ product }: { product: ProductDetail }) {
   }, {});
   const sizes = Object.keys(stockBySize);
 
-  const whatsappUrl = `https://wa.me/50600000000?text=${encodeURIComponent(
-    `Hola! Me interesa el producto: ${product.name} (${window.location.href})`
+  const whatsappUrl = `https://wa.me/message/C4OQZTVPCA4GC1?text=${encodeURIComponent(
+    `Hola! Me interesa el producto: ${product.name}: (${window.location.href})`
   )}`;
 
   return (
@@ -103,7 +103,7 @@ function ProductContent({ product }: { product: ProductDetail }) {
       {/* Back + admin edit */}
       <div className="flex items-center justify-between mb-8">
         <button
-          onClick={() => navigate("/")}
+          onClick={() => navigate("/", { state: { scrollToCatalog: true } })}
           className="flex items-center gap-1.5 text-sm font-poppins text-gray-400 hover:text-brand-primary transition-colors"
         >
           <ArrowLeft size={15} strokeWidth={2} />
@@ -274,6 +274,8 @@ function ProductContent({ product }: { product: ProductDetail }) {
 export default function ProductDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate  = useNavigate();
+
+  useEffect(() => { window.scrollTo({ top: 0, behavior: "instant" }); }, [slug]);
 
   const { data: product, isLoading, isError } = useQuery({
     queryKey: ["product", slug],

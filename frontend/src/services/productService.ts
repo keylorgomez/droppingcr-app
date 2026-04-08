@@ -90,10 +90,14 @@ export async function getProducts(): Promise<CatalogProduct[]> {
   if (error) throw new Error(error.message);
 
   return (data ?? []).map((p: any) => {
+    // Primary image always first, then rest by display_order
     const images: { image_url: string; is_primary: boolean; display_order: number }[] =
-      [...(p.product_images ?? [])].sort((a, b) => a.display_order - b.display_order);
+      [...(p.product_images ?? [])].sort((a, b) => {
+        if (a.is_primary !== b.is_primary) return a.is_primary ? -1 : 1;
+        return a.display_order - b.display_order;
+      });
 
-    const primaryImage = images.find((i) => i.is_primary) ?? images[0];
+    const primaryImage = images[0];
     const totalStock   = (p.product_variants ?? []).reduce(
       (sum: number, v: { stock: number }) => sum + v.stock, 0
     );
@@ -195,7 +199,9 @@ export interface InventoryUpdate {
   discount_percentage: number;
   is_active:           boolean;
   is_new:              boolean;
+  category_ids: string[];
   variants: { id?: string; size: string; stock: number }[];
+  images:   { image_url: string; is_primary: boolean; display_order: number }[];
 }
 
 export async function updateProductInventory(
@@ -216,6 +222,24 @@ export async function updateProductInventory(
     .eq("id", productId);
 
   if (error) throw new Error(error.message);
+
+  // Sync categories: wipe + re-insert
+  await supabase.from("product_categories").delete().eq("product_id", productId);
+  if (data.category_ids.length) {
+    const { error: catError } = await supabase
+      .from("product_categories")
+      .insert(data.category_ids.map((cid) => ({ product_id: productId, category_id: cid })));
+    if (catError) throw new Error(catError.message);
+  }
+
+  // Sync images: wipe + re-insert
+  await supabase.from("product_images").delete().eq("product_id", productId);
+  if (data.images.length) {
+    const { error: imgError } = await supabase
+      .from("product_images")
+      .insert(data.images.map((img) => ({ ...img, product_id: productId })));
+    if (imgError) throw new Error(imgError.message);
+  }
 
   for (const v of data.variants) {
     if (v.id) {

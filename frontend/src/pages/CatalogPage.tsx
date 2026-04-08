@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useMemo, useEffect } from "react";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ShoppingBag } from "lucide-react";
 import Header from "../components/ui/Header";
@@ -27,6 +27,16 @@ export default function CatalogPage() {
   const { user }         = useAuth();
   const isAdmin          = user?.role === "admin";
   const filter           = searchParams.get("filter") ?? "";
+
+  const location = useLocation();
+
+  useEffect(() => {
+    if ((location.state as any)?.scrollToCatalog) {
+      document.getElementById("catalogo")?.scrollIntoView({ behavior: "smooth" });
+      // Clear the state so a manual refresh doesn't re-trigger the scroll
+      window.history.replaceState({}, "");
+    }
+  }, [location.state]);
 
   const { data: products = [], isLoading, isError } = useQuery({
     queryKey: ["products"],
