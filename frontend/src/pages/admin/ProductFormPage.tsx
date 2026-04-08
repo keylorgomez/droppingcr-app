@@ -356,8 +356,10 @@ export default function ProductFormPage() {
 
   // ── Mutation ───────────────────────────────────────────────────────────
   const mutation = useMutation({
-    mutationFn: (input: ProductInput) =>
-      isEdit ? updateProduct(id!, input) : createProduct(input),
+    mutationFn: async (input: ProductInput): Promise<void> => {
+      if (isEdit) await updateProduct(id!, input);
+      else await createProduct(input);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
       showToast(

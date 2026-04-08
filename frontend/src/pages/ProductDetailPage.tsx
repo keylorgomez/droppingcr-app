@@ -173,7 +173,7 @@ function ProductContent({ product }: { product: ProductDetail }) {
           {/* Category + badges */}
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-[11px] font-semibold uppercase tracking-widest text-brand-accent">
-              {product.category}
+              {product.categories[0]?.name ?? ""}
             </span>
             {product.discount_percentage > 0 && (
               <span className="text-[10px] font-bold uppercase tracking-wider bg-red-50 text-red-500 px-2 py-0.5 rounded-full">
