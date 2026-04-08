@@ -30,7 +30,7 @@ export default function Hero() {
       >
         {/* Label */}
         <span className="text-[11px] font-poppins font-medium tracking-[0.3em] uppercase text-white/60">
-          DROP 005 · GRECIA | CR
+          DROP 008 · GRECIA | CR
         </span>
 
         {/* Slogan */}

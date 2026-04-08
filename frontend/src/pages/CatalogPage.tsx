@@ -109,7 +109,7 @@ export default function CatalogPage() {
     });
   }, [byCategory]);
 
-  // Step 3: apply search + size on top of category filter
+  // Step 3: apply search + size on top of category filter, then sort
   const filtered = useMemo(() => {
     let result = byCategory;
     if (search.trim()) {
@@ -119,7 +119,13 @@ export default function CatalogPage() {
     if (selectedSize) {
       result = result.filter((p) => p.sizes.includes(selectedSize));
     }
-    return result;
+    const rank = (p: typeof result[0]) => {
+      if (p.is_sold_out)             return 3;
+      if (p.is_new)                  return 0;
+      if (p.discount_percentage > 0) return 1;
+      return 2;
+    };
+    return [...result].sort((a, b) => rank(a) - rank(b));
   }, [byCategory, search, selectedSize]);
 
   // Preview count inside the mobile modal
