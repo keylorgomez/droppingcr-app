@@ -10,7 +10,6 @@ import {
   deliveryStatusMeta, SHIPPING_OPTIONS,
   type UserOrder,
 } from "../services/salesService";
-import { supabase } from "../lib/supabaseClient";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -264,7 +263,7 @@ export default function MyOrdersPage() {
           <section>
             <h2 className="font-poppins text-[11px] font-semibold uppercase tracking-widest
                            text-gray-400 mb-3">
-              Entregados
+              Comprados
             </h2>
             <div className="flex flex-col gap-3">
               {completed.map((o) => <OrderCard key={o.id} order={o} />)}
