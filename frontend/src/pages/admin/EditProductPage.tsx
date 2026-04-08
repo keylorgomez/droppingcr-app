@@ -264,7 +264,7 @@ function SaleModal({ productId, priceSale, variants, onClose, onSuccess }: SaleM
                      onChange={(e) => setPriceSold(e.target.value)} className={inputCls} />
               {errors.priceSold && <span className="text-[11px] text-red-500 font-poppins">{errors.priceSold}</span>}
               <span className="text-[11px] text-gray-400 font-poppins">
-                Oficial: ₡{priceSale.toLocaleString("es-CR")}. Modifica si hubo precio especial.
+                Oficial: ₡{priceSale.toLocaleString("en-US")}. Modifica si hubo precio especial.
               </span>
             </div>
 
@@ -328,7 +328,7 @@ function SaleModal({ productId, priceSale, variants, onClose, onSuccess }: SaleM
                   )}
                   {initialPayment && Number(initialPayment) > 0 && (
                     <span className="text-[11px] text-gray-400 font-poppins">
-                      Restará: ₡{Math.max(0, priceNum - Number(initialPayment)).toLocaleString("es-CR")}
+                      Restará: ₡{Math.max(0, priceNum - Number(initialPayment)).toLocaleString("en-US")}
                     </span>
                   )}
                 </div>

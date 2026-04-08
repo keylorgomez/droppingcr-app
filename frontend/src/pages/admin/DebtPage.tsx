@@ -1,11 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft, Loader2, CreditCard, MessageCircle, ChevronDown, ChevronUp, Plus,
+  ArrowLeft, Loader2, CreditCard, MessageCircle,
+  ChevronDown, ChevronUp, Plus, Package, Wallet,
 } from "lucide-react";
 import {
-  getPendingSales, addPayment, type PendingSale,
+  getGroupedDebts, addGeneralPayment,
+  type ClientDebt, type PendingSale,
 } from "../../services/salesService";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../components/ui/Toast";
@@ -14,23 +16,26 @@ import { cn } from "../../lib/utils";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
+function fmt(n: number) {
+  return `₡${n.toLocaleString("en-US")}`;
+}
+
 function formatPhone(raw: string | null): string | null {
   if (!raw) return null;
   const digits = raw.replace(/\D/g, "");
-  return digits.length === 8 ? `+506${digits}` : raw;
+  return digits.length === 8 ? `506${digits}` : digits;
 }
 
-function waLink(phone: string | null, name: string | null, product: string, remaining: number): string {
+function waLink(phone: string | null, name: string | null, remaining: number): string {
   const p = formatPhone(phone) ?? "";
   const msg = encodeURIComponent(
-    `Hola${name ? ` ${name}` : ""}! 👋 Te recordamos que tenés un saldo pendiente de ₡${remaining.toLocaleString("es-CR")} por tu compra de ${product} en Dropping CR. ¡Gracias! 🙌`
+    `Hola${name ? ` ${name}` : ""}! 👋 Te recordamos que tenés un saldo pendiente de ${fmt(remaining)} en Dropping CR. ¡Gracias! 🙌`
   );
-  return `https://wa.me/${p.replace("+", "")}?text=${msg}`;
+  return `https://wa.me/${p}?text=${msg}`;
 }
 
 function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const days = Math.floor(diff / 86400000);
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
   if (days === 0) return "Hoy";
   if (days === 1) return "Ayer";
   return `Hace ${days} días`;
@@ -41,27 +46,20 @@ const inputCls =
   "placeholder:text-gray-300 outline-none focus:border-brand-primary " +
   "focus:ring-1 focus:ring-brand-primary/20 transition";
 
-// ── Abono inline form ──────────────────────────────────────────────────────
+// ── Abono General Form ─────────────────────────────────────────────────────
 
-function AbonoForm({
-  sale,
-  onDone,
-}: {
-  sale: PendingSale;
-  onDone: () => void;
-}) {
+function AbonoGeneralForm({ client, onDone }: { client: ClientDebt; onDone: () => void }) {
   const { showToast } = useToast();
-  const queryClient   = useQueryClient();
+  const queryClient  = useQueryClient();
   const [amount, setAmount] = useState("");
   const [note,   setNote]   = useState("");
   const [error,  setError]  = useState("");
 
   const mutation = useMutation({
-    mutationFn: () =>
-      addPayment(sale.id, sale.sale_price, Number(amount), note.trim() || null),
+    mutationFn: () => addGeneralPayment(client.sales, Number(amount), note.trim() || null),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["pending-sales"] });
-      showToast("Abono registrado.", "success");
+      queryClient.invalidateQueries({ queryKey: ["grouped-debts"] });
+      showToast("Abono registrado y distribuido.", "success");
       onDone();
     },
     onError: (err: Error) => showToast(err.message, "error"),
@@ -69,24 +67,29 @@ function AbonoForm({
 
   function handleSave() {
     const a = Number(amount);
-    if (!amount || a <= 0)          { setError("Ingresa un monto válido."); return; }
-    if (a > sale.remaining)         { setError(`Máximo ₡${sale.remaining.toLocaleString("es-CR")}.`); return; }
+    if (!amount || a <= 0)    { setError("Ingresa un monto válido."); return; }
+    if (a > client.remaining) { setError(`Máximo ${fmt(client.remaining)}.`); return; }
     setError("");
     mutation.mutate();
   }
 
   return (
-    <div className="flex flex-col gap-3 pt-3 border-t border-gray-100 mt-1">
-      <p className="text-[10px] font-poppins text-gray-400 uppercase tracking-widest">
-        Nuevo abono — restante: ₡{sale.remaining.toLocaleString("es-CR")}
-      </p>
+    <div className="flex flex-col gap-3 pt-4 border-t border-gray-100">
+      <div>
+        <p className="text-[10px] font-poppins text-gray-400 uppercase tracking-widest">
+          Abono general — saldo pendiente: {fmt(client.remaining)}
+        </p>
+        <p className="text-[11px] font-poppins text-gray-400 mt-0.5">
+          Se distribuirá entre las ventas más antiguas primero.
+        </p>
+      </div>
 
       <div className="grid grid-cols-[1fr_160px] gap-2">
         <div className="flex flex-col gap-1">
           <input
             type="number"
             min={1}
-            max={sale.remaining}
+            max={client.remaining}
             value={amount}
             onChange={(e) => { setAmount(e.target.value); setError(""); }}
             placeholder="Monto (₡)"
@@ -129,15 +132,47 @@ function AbonoForm({
   );
 }
 
-// ── Sale card ──────────────────────────────────────────────────────────────
+// ── Sale Detail Row ────────────────────────────────────────────────────────
 
-function SaleCard({ sale }: { sale: PendingSale }) {
-  const [showAbono,    setShowAbono]    = useState(false);
-  const [showPayments, setShowPayments] = useState(false);
+function SaleRow({ sale }: { sale: PendingSale }) {
+  const paidPct = Math.min(100, Math.round((sale.total_paid / sale.sale_price) * 100));
 
-  const paidPct   = Math.min(100, Math.round((sale.total_paid / sale.sale_price) * 100));
-  const productStr = `${sale.product_name} (${sale.variant_size})`;
-  const phone      = sale.guest_phone;
+  return (
+    <div className="flex flex-col gap-1.5 py-3 border-t border-gray-50 first:border-0">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="text-xs font-poppins font-medium text-brand-dark">
+            {sale.product_name}
+            <span className="text-gray-400 font-normal ml-1">— {sale.variant_size}</span>
+          </p>
+          <p className="text-[11px] font-poppins text-gray-400">{timeAgo(sale.sold_at)}</p>
+          {sale.note && (
+            <p className="text-[11px] font-poppins text-gray-300 italic">{sale.note}</p>
+          )}
+        </div>
+        <div className="text-right shrink-0">
+          <p className="text-[11px] font-poppins text-gray-400 line-through">{fmt(sale.sale_price)}</p>
+          <p className="text-xs font-poppins font-semibold text-red-500">{fmt(sale.remaining)}</p>
+        </div>
+      </div>
+      <div className="h-1 w-full bg-gray-100 rounded-full overflow-hidden">
+        <div
+          className="h-full bg-emerald-400 rounded-full transition-all duration-500"
+          style={{ width: `${paidPct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ── Client Card ────────────────────────────────────────────────────────────
+
+function ClientCard({ client }: { client: ClientDebt }) {
+  const [showSales, setShowSales] = useState(false);
+  const [showAbono, setShowAbono] = useState(false);
+
+  const paidPct = Math.min(100, Math.round((client.total_paid / client.total_sale) * 100));
+  const name    = client.guest_name ?? "Cliente sin nombre";
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 p-5 flex flex-col gap-4">
@@ -145,36 +180,40 @@ function SaleCard({ sale }: { sale: PendingSale }) {
       {/* Top row */}
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="font-poppins font-semibold text-sm text-brand-dark">
-            {sale.guest_name ?? "Cliente sin nombre"}
+          <p className="font-poppins font-semibold text-sm text-brand-dark">{name}</p>
+          {client.guest_phone && (
+            <p className="font-poppins text-xs text-gray-400 mt-0.5">{client.guest_phone}</p>
+          )}
+          <p className="font-poppins text-[11px] text-gray-300 mt-0.5">
+            {client.sales.length} {client.sales.length === 1 ? "venta pendiente" : "ventas pendientes"}
           </p>
-          <p className="font-poppins text-xs text-gray-400 mt-0.5">{productStr}</p>
         </div>
-        <span className="text-[11px] font-poppins text-gray-400 shrink-0 mt-0.5">
-          {timeAgo(sale.sold_at)}
-        </span>
+        {client.guest_phone && (
+          <a
+            href={waLink(client.guest_phone, client.guest_name, client.remaining)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#25D366]
+                       text-white text-xs font-poppins font-medium hover:bg-[#1da851] transition-colors"
+          >
+            <MessageCircle size={13} strokeWidth={2} />
+            Cobrar por WA
+          </a>
+        )}
       </div>
 
-      {/* Price breakdown */}
+      {/* Price pills */}
       <div className="grid grid-cols-3 gap-2 text-center">
-        <div className="bg-gray-50 rounded-xl py-2.5 px-2">
-          <p className="text-[10px] font-poppins text-gray-400 uppercase tracking-wider mb-0.5">Total</p>
-          <p className="font-poppins font-semibold text-sm text-brand-dark">
-            ₡{sale.sale_price.toLocaleString("es-CR")}
-          </p>
-        </div>
-        <div className="bg-emerald-50 rounded-xl py-2.5 px-2">
-          <p className="text-[10px] font-poppins text-gray-400 uppercase tracking-wider mb-0.5">Pagado</p>
-          <p className="font-poppins font-semibold text-sm text-emerald-600">
-            ₡{sale.total_paid.toLocaleString("es-CR")}
-          </p>
-        </div>
-        <div className="bg-red-50 rounded-xl py-2.5 px-2">
-          <p className="text-[10px] font-poppins text-gray-400 uppercase tracking-wider mb-0.5">Pendiente</p>
-          <p className="font-poppins font-semibold text-sm text-red-500">
-            ₡{sale.remaining.toLocaleString("es-CR")}
-          </p>
-        </div>
+        {[
+          { label: "Total",     value: fmt(client.total_sale), cls: "bg-gray-50 text-brand-dark" },
+          { label: "Abonado",   value: fmt(client.total_paid), cls: "bg-emerald-50 text-emerald-600" },
+          { label: "Pendiente", value: fmt(client.remaining),  cls: "bg-red-50 text-red-500" },
+        ].map(({ label, value, cls }) => (
+          <div key={label} className={`rounded-xl py-2.5 px-2 ${cls.split(" ")[0]}`}>
+            <p className="text-[10px] font-poppins text-gray-400 uppercase tracking-wider mb-0.5">{label}</p>
+            <p className={`font-poppins font-semibold text-sm ${cls.split(" ")[1]}`}>{value}</p>
+          </div>
+        ))}
       </div>
 
       {/* Progress bar */}
@@ -188,67 +227,45 @@ function SaleCard({ sale }: { sale: PendingSale }) {
         <p className="text-[10px] font-poppins text-gray-400 text-right">{paidPct}% pagado</p>
       </div>
 
-      {/* Payment history toggle */}
-      {sale.payments.length > 0 && (
-        <button
-          type="button"
-          onClick={() => setShowPayments((v) => !v)}
-          className="flex items-center gap-1.5 text-xs font-poppins text-gray-400
-                     hover:text-brand-primary transition-colors self-start"
-        >
-          {showPayments ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-          {sale.payments.length} {sale.payments.length === 1 ? "abono registrado" : "abonos registrados"}
-        </button>
-      )}
+      {/* Toggle: sale detail */}
+      <button
+        type="button"
+        onClick={() => { setShowSales((v) => !v); if (showAbono) setShowAbono(false); }}
+        className="flex items-center gap-1.5 text-xs font-poppins text-gray-400
+                   hover:text-brand-primary transition-colors self-start"
+      >
+        {showSales ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+        <Package size={13} strokeWidth={1.8} />
+        {showSales
+          ? "Ocultar artículos"
+          : `Ver ${client.sales.length} ${client.sales.length === 1 ? "artículo" : "artículos"}`}
+      </button>
 
-      {showPayments && (
-        <div className="flex flex-col gap-1.5">
-          {sale.payments.map((p) => (
-            <div key={p.id} className="flex items-center justify-between text-xs font-poppins
-                                       bg-gray-50 rounded-xl px-3 py-2">
-              <span className="text-gray-500">
-                {new Date(p.paid_at).toLocaleDateString("es-CR")}
-                {p.note && <span className="text-gray-400 ml-2">— {p.note}</span>}
-              </span>
-              <span className="font-semibold text-emerald-600">
-                +₡{p.amount.toLocaleString("es-CR")}
-              </span>
-            </div>
+      {showSales && (
+        <div className="rounded-xl border border-gray-100 px-4 -mt-2">
+          {client.sales.map((sale) => (
+            <SaleRow key={sale.id} sale={sale} />
           ))}
         </div>
       )}
 
-      {/* Actions */}
-      <div className="flex gap-2">
-        {phone && (
-          <a
-            href={waLink(phone, sale.guest_name, productStr, sale.remaining)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#25D366] text-white
-                       text-xs font-poppins font-medium hover:bg-[#1da851] transition-colors"
-          >
-            <MessageCircle size={13} strokeWidth={2} />
-            Cobrar por WA
-          </a>
+      {/* Abono button */}
+      <button
+        type="button"
+        onClick={() => { setShowAbono((v) => !v); if (showSales) setShowSales(false); }}
+        className={cn(
+          "flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-poppins font-medium transition-colors self-start",
+          showAbono
+            ? "bg-brand-primary text-white hover:bg-[#7a3e18]"
+            : "border border-gray-200 text-brand-primary hover:border-brand-primary"
         )}
-        <button
-          type="button"
-          onClick={() => setShowAbono((v) => !v)}
-          className={cn(
-            "flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-poppins font-medium transition-colors",
-            showAbono
-              ? "bg-brand-primary text-white hover:bg-[#7a3e18]"
-              : "border border-gray-200 text-brand-primary hover:border-brand-primary"
-          )}
-        >
-          <Plus size={13} strokeWidth={2.5} />
-          Registrar abono
-        </button>
-      </div>
+      >
+        <Plus size={13} strokeWidth={2.5} />
+        Registrar Abono General
+      </button>
 
       {showAbono && (
-        <AbonoForm sale={sale} onDone={() => setShowAbono(false)} />
+        <AbonoGeneralForm client={client} onDone={() => setShowAbono(false)} />
       )}
     </div>
   );
@@ -260,16 +277,18 @@ export default function DebtPage() {
   const navigate = useNavigate();
   const { user, isLoading: authLoading } = useAuth();
 
-  useEffect(() => {
-    if (!authLoading && (!user || user.role !== "admin")) navigate("/", { replace: true });
-  }, [user, authLoading, navigate]);
+  if (!authLoading && (!user || user.role !== "admin")) {
+    navigate("/", { replace: true });
+  }
 
-  const { data: sales = [], isLoading } = useQuery({
-    queryKey: ["pending-sales"],
-    queryFn:  getPendingSales,
+  const { data: clients = [], isLoading, isError, error } = useQuery({
+    queryKey: ["grouped-debts"],
+    queryFn:  getGroupedDebts,
   });
 
-  const totalPendiente = sales.reduce((sum, s) => sum + s.remaining, 0);
+  const grandTotalSale = clients.reduce((sum, c) => sum + c.total_sale, 0);
+  const grandTotalPaid = clients.reduce((sum, c) => sum + c.total_paid, 0);
+  const grandTotal     = clients.reduce((sum, c) => sum + c.remaining, 0);
 
   if (authLoading) return null;
 
@@ -293,37 +312,71 @@ export default function DebtPage() {
           <h1 className="font-poppins font-semibold text-xl text-brand-dark">Cobros Pendientes</h1>
         </div>
         <p className="font-poppins text-xs text-gray-400 mb-8">
-          Ventas a pagos con saldo pendiente de cobro.
+          Agrupado por cliente. Los abonos se distribuyen de la venta más antigua a la más reciente.
         </p>
 
-        {/* Summary */}
-        {!isLoading && sales.length > 0 && (
-          <div className="grid grid-cols-2 gap-3 mb-6">
-            <div className="bg-red-50 rounded-2xl p-4 text-center">
-              <p className="text-[10px] font-poppins text-gray-400 uppercase tracking-wider mb-1">
-                Total pendiente
-              </p>
-              <p className="font-poppins font-bold text-xl text-red-500">
-                ₡{totalPendiente.toLocaleString("es-CR")}
+        {/* ── Grand total banner ─────────────────────────────────── */}
+        {!isLoading && clients.length > 0 && (
+          <div className="bg-brand-dark rounded-2xl p-5 mb-6 flex flex-col gap-4">
+            <div className="flex items-center gap-2">
+              <Wallet size={15} className="text-brand-bg" strokeWidth={1.8} />
+              <p className="font-poppins text-xs text-brand-bg/70 uppercase tracking-widest">
+                Resumen global
               </p>
             </div>
-            <div className="bg-gray-50 rounded-2xl p-4 text-center">
-              <p className="text-[10px] font-poppins text-gray-400 uppercase tracking-wider mb-1">
-                Ventas activas
-              </p>
-              <p className="font-poppins font-bold text-xl text-brand-dark">{sales.length}</p>
+
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div>
+                <p className="text-[10px] font-poppins text-white/50 uppercase tracking-wider mb-0.5">
+                  Deudores
+                </p>
+                <p className="font-poppins font-bold text-2xl text-white">{clients.length}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-poppins text-white/50 uppercase tracking-wider mb-0.5">
+                  Abonado
+                </p>
+                <p className="font-poppins font-bold text-xl text-emerald-400">{fmt(grandTotalPaid)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-poppins text-white/50 uppercase tracking-wider mb-0.5">
+                  Por cobrar
+                </p>
+                <p className="font-poppins font-bold text-xl text-red-400">{fmt(grandTotal)}</p>
+              </div>
             </div>
+
+            {grandTotalSale > 0 && (
+              <div className="flex flex-col gap-1">
+                <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-400 rounded-full transition-all duration-700"
+                    style={{ width: `${Math.round((grandTotalPaid / grandTotalSale) * 100)}%` }}
+                  />
+                </div>
+                <p className="text-[10px] font-poppins text-white/40 text-right">
+                  {Math.round((grandTotalPaid / grandTotalSale) * 100)}% del total cobrado
+                </p>
+              </div>
+            )}
           </div>
         )}
 
-        {/* List */}
+        {/* ── Client list ─────────────────────────────────────────── */}
+        {isError && (
+          <div className="rounded-2xl border border-red-100 bg-red-50 p-4 mb-4">
+            <p className="font-poppins text-sm font-medium text-red-500 mb-0.5">Error al cargar los cobros</p>
+            <p className="font-poppins text-xs text-red-400">{(error as Error)?.message}</p>
+          </div>
+        )}
+
         {isLoading ? (
           <div className="flex flex-col gap-4 animate-pulse">
             {[1, 2, 3].map((i) => (
               <div key={i} className="h-52 bg-gray-100 rounded-2xl" />
             ))}
           </div>
-        ) : sales.length === 0 ? (
+        ) : clients.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-20 text-center">
             <CreditCard size={40} strokeWidth={1.2} className="text-gray-200" />
             <p className="font-poppins font-medium text-sm text-gray-400">
@@ -335,8 +388,8 @@ export default function DebtPage() {
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            {sales.map((sale) => (
-              <SaleCard key={sale.id} sale={sale} />
+            {clients.map((client) => (
+              <ClientCard key={client.key} client={client} />
             ))}
           </div>
         )}

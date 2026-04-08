@@ -149,11 +149,11 @@ export default function ProductCard({
         <div className="mt-1.5">
           {hasDiscount && (
             <p className="text-[11px] text-gray-400 line-through leading-none mb-0.5">
-              ₡{price_sale.toLocaleString("es-CR")}
+              ₡{price_sale.toLocaleString("en-US")}
             </p>
           )}
           <p className={`font-bold leading-none ${hasDiscount ? "text-red-500 text-lg" : "text-base text-brand-dark"}`}>
-            ₡{discountedPrice.toLocaleString("es-CR")}
+            ₡{discountedPrice.toLocaleString("en-US")}
           </p>
         </div>
       </div>
