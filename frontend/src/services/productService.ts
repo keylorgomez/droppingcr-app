@@ -102,8 +102,8 @@ export async function getProducts(): Promise<CatalogProduct[]> {
     const totalStock = (p.product_variants ?? []).reduce(
       (sum: number, v: { stock: number }) => sum + v.stock, 0
     );
-    const sizes = [
-      ...new Set(
+    const sizes: string[] = [
+      ...new Set<string>(
         (p.product_variants ?? [])
           .filter((v: any) => v.stock > 0)
           .map((v: any) => v.size as string)
