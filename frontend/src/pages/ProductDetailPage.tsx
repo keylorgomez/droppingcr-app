@@ -94,9 +94,11 @@ function ProductContent({ product }: { product: ProductDetail }) {
   }, {});
   const sizes = Object.keys(stockBySize);
 
-  const whatsappUrl = `https://wa.me/message/C4OQZTVPCA4GC1?text=${encodeURIComponent(
-    `Hola! Me interesa el producto: ${product.name}: (${window.location.href})`
-  )}`;
+
+const phoneNumber = "50688364879"; 
+const message = `Hola! Me interesa el producto: ${product.name} (${window.location.href})`;
+
+const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
 
   return (
     <div className="max-w-5xl mx-auto px-4 pt-6 pb-16">
