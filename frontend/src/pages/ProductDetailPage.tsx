@@ -1,0 +1,292 @@
+import { useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowLeft, ShoppingCart, Pencil } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { getProductBySlug, type ProductDetail } from "../services/productService";
+import { useAuth } from "../context/AuthContext";
+import Header from "../components/ui/Header";
+
+// ── WhatsApp icon ──────────────────────────────────────────────────────────
+function WhatsAppIcon({ size = 18 }: { size?: number }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor" aria-hidden="true">
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
+      <path d="M12 0C5.373 0 0 5.373 0 12c0 2.125.557 4.126 1.528 5.858L.057 23.428a.75.75 0 0 0 .921.921l5.57-1.471A11.943 11.943 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.907 0-3.698-.511-5.238-1.4l-.374-.22-3.875 1.023 1.023-3.762-.234-.386A9.953 9.953 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z" />
+    </svg>
+  );
+}
+
+// ── Skeleton ───────────────────────────────────────────────────────────────
+function Skeleton({ className }: { className?: string }) {
+  return <div className={`animate-pulse rounded-xl bg-gray-100 ${className}`} />;
+}
+
+function ProductDetailSkeleton() {
+  return (
+    <div className="max-w-5xl mx-auto px-4 pt-6 pb-12">
+      <Skeleton className="w-36 h-4 mb-8" />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+        <div className="flex flex-col gap-3">
+          <Skeleton className="w-full aspect-square rounded-2xl" />
+          <div className="flex gap-2">
+            {[1, 2, 3].map((i) => <Skeleton key={i} className="w-20 h-20 rounded-xl" />)}
+          </div>
+        </div>
+        <div className="flex flex-col gap-4 pt-2">
+          <Skeleton className="w-20 h-3" />
+          <Skeleton className="w-3/4 h-8" />
+          <Skeleton className="w-28 h-7 mt-2" />
+          <div className="flex gap-2 mt-4">
+            {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="w-12 h-10 rounded-lg" />)}
+          </div>
+          <Skeleton className="w-full h-12 mt-4 rounded-xl" />
+          <Skeleton className="w-full h-12 rounded-xl" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Error state ────────────────────────────────────────────────────────────
+function ErrorState({ onBack }: { onBack: () => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4 px-4 text-center">
+      <p className="text-4xl">🤔</p>
+      <h2 className="font-poppins font-semibold italic text-brand-primary text-xl">
+        Producto no encontrado
+      </h2>
+      <p className="text-sm text-gray-400 font-poppins max-w-xs">
+        Este producto no existe o ya no está disponible.
+      </p>
+      <button
+        onClick={onBack}
+        className="mt-2 flex items-center gap-2 text-sm font-poppins text-brand-primary hover:underline"
+      >
+        <ArrowLeft size={15} /> Volver al catálogo
+      </button>
+    </div>
+  );
+}
+
+// ── Product content ────────────────────────────────────────────────────────
+function ProductContent({ product }: { product: ProductDetail }) {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const isAdmin  = user?.role === "admin";
+
+  const sortedImages = [...product.images].sort((a, b) =>
+    b.is_primary === a.is_primary ? 0 : b.is_primary ? 1 : -1
+  );
+
+  const [activeImg, setActiveImg] = useState(0);
+  const [selectedSize, setSelectedSize] = useState<string | null>(null);
+
+  const hasDiscount = product.discount_percentage > 0;
+  const discountedPrice = hasDiscount
+    ? Math.round(product.price_sale * (1 - product.discount_percentage / 100))
+    : product.price_sale;
+
+  // Stock per size
+  const stockBySize = product.variants.reduce<Record<string, number>>((acc, v) => {
+    acc[v.size] = (acc[v.size] ?? 0) + v.stock;
+    return acc;
+  }, {});
+  const sizes = Object.keys(stockBySize);
+
+  const whatsappUrl = `https://wa.me/50600000000?text=${encodeURIComponent(
+    `Hola! Me interesa el producto: ${product.name} (${window.location.href})`
+  )}`;
+
+  return (
+    <div className="max-w-5xl mx-auto px-4 pt-6 pb-16">
+      {/* Back + admin edit */}
+      <div className="flex items-center justify-between mb-8">
+        <button
+          onClick={() => navigate("/")}
+          className="flex items-center gap-1.5 text-sm font-poppins text-gray-400 hover:text-brand-primary transition-colors"
+        >
+          <ArrowLeft size={15} strokeWidth={2} />
+          Volver al catálogo
+        </button>
+
+        {isAdmin && (
+          <button
+            onClick={() => navigate(`/admin/products/${product.id}/edit`)}
+            className="flex items-center gap-1.5 text-xs font-poppins text-brand-primary
+                       border border-brand-primary/30 rounded-xl px-3 py-1.5
+                       hover:bg-brand-primary hover:text-white transition-colors"
+          >
+            <Pencil size={13} strokeWidth={2} />
+            Editar producto
+          </button>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+
+        {/* ── Left: Gallery ─────────────────────────────────────────── */}
+        <div className="flex flex-col gap-3">
+          {/* Main image */}
+          <div className="relative overflow-hidden rounded-2xl aspect-square bg-gray-50 border border-gray-100">
+            <AnimatePresence mode="wait">
+              <motion.img
+                key={sortedImages[activeImg]?.image_url}
+                src={sortedImages[activeImg]?.image_url}
+                alt={product.name}
+                className="w-full h-full object-cover absolute inset-0"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.35, ease: "easeInOut" }}
+              />
+            </AnimatePresence>
+
+            {hasDiscount && (
+              <span className="absolute top-4 left-4 bg-red-500 text-white text-[10px] font-bold tracking-widest uppercase px-2.5 py-1 rounded-full">
+                {product.discount_percentage} OFF
+              </span>
+            )}
+          </div>
+
+          {/* Thumbnails */}
+          {sortedImages.length > 1 && (
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {sortedImages.map((img, i) => (
+                <button
+                  key={img.id}
+                  onClick={() => setActiveImg(i)}
+                  className={`shrink-0 w-[72px] h-[72px] rounded-xl overflow-hidden border-2 transition-all ${
+                    i === activeImg ? "border-brand-primary" : "border-transparent"
+                  }`}
+                >
+                  <img src={img.image_url} alt="" className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ── Right: Details ────────────────────────────────────────── */}
+        <div className="flex flex-col gap-4">
+
+          {/* Category + badges */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[11px] font-semibold uppercase tracking-widest text-brand-accent">
+              {product.category}
+            </span>
+            {product.discount_percentage > 0 && (
+              <span className="text-[10px] font-bold uppercase tracking-wider bg-red-50 text-red-500 px-2 py-0.5 rounded-full">
+                {product.discount_percentage}% descuento
+              </span>
+            )}
+          </div>
+
+          {/* Name */}
+          <h1 className="font-poppins font-semibold italic text-brand-primary text-2xl leading-snug">
+            {product.name}
+          </h1>
+
+          {/* Price */}
+          <div>
+            {hasDiscount && (
+              <p className="text-sm text-gray-400 line-through leading-none mb-1">
+                ₡{product.price_sale.toLocaleString("es-CR")}
+              </p>
+            )}
+            <p className={`font-poppins font-bold leading-none ${
+              hasDiscount ? "text-red-500 text-3xl" : "text-brand-dark text-3xl"
+            }`}>
+              ₡{discountedPrice.toLocaleString("es-CR")}
+            </p>
+          </div>
+
+          {/* Description */}
+          {product.description && (
+            <p className="text-sm text-gray-500 font-poppins leading-relaxed border-t border-gray-100 pt-4">
+              {product.description}
+            </p>
+          )}
+
+          {/* Size selector */}
+          {sizes.length > 0 && (
+            <div className="border-t border-gray-100 pt-4">
+              <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 font-poppins mb-3">
+                Talla
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {sizes.map((size) => {
+                  const inStock = stockBySize[size] > 0;
+                  const active  = selectedSize === size;
+                  return (
+                    <button
+                      key={size}
+                      onClick={() => inStock && setSelectedSize(size)}
+                      disabled={!inStock}
+                      className={`min-w-[44px] h-10 px-3 rounded-lg text-sm font-poppins font-medium border transition-all ${
+                        active
+                          ? "bg-brand-primary text-white border-brand-primary"
+                          : inStock
+                          ? "bg-white text-brand-dark border-gray-200 hover:border-brand-primary hover:text-brand-primary"
+                          : "bg-gray-50 text-gray-300 border-gray-100 line-through cursor-not-allowed"
+                      }`}
+                    >
+                      {size}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Action buttons */}
+          <div className="flex flex-col gap-3 pt-2 mt-auto">
+            <motion.button
+              className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl bg-brand-dark text-white text-sm font-poppins font-medium"
+              whileHover={{ backgroundColor: "#1a1a1a" }}
+              whileTap={{ scale: 0.98 }}
+              transition={{ duration: 0.15 }}
+            >
+              <ShoppingCart size={17} strokeWidth={2} />
+              Añadir al carrito
+            </motion.button>
+
+            <motion.a
+              href={whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl bg-[#25D366] text-white text-sm font-poppins font-medium"
+              whileHover={{ backgroundColor: "#1da851" }}
+              whileTap={{ scale: 0.98 }}
+              transition={{ duration: 0.15 }}
+            >
+              <WhatsAppIcon size={17} />
+              Comprar por WhatsApp
+            </motion.a>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Page ───────────────────────────────────────────────────────────────────
+export default function ProductDetailPage() {
+  const { slug } = useParams<{ slug: string }>();
+  const navigate  = useNavigate();
+
+  const { data: product, isLoading, isError } = useQuery({
+    queryKey: ["product", slug],
+    queryFn:  () => getProductBySlug(slug!),
+    enabled:  !!slug,
+  });
+
+  return (
+    <>
+      <Header />
+      {isLoading && <ProductDetailSkeleton />}
+      {(isError || (!isLoading && !product)) && <ErrorState onBack={() => navigate("/")} />}
+      {product && <ProductContent product={product} />}
+    </>
+  );
+}
