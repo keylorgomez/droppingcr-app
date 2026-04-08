@@ -95,10 +95,16 @@ function ProductContent({ product }: { product: ProductDetail }) {
   const sizes = Object.keys(stockBySize);
 
 
-const phoneNumber = "50688364879"; 
-const message = `Hola! Me interesa el producto: ${product.name} (${window.location.href})`;
+  const isSoldOut = product.variants.every((v) => v.stock === 0);
+  const phoneNumber = "50688364879";
 
-const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+  const whatsappBuyUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(
+    `Hola! Me interesa el producto: ${product.name} (${window.location.href})`
+  )}`;
+
+  const whatsappQuoteUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(
+    `Hola! Quiero cotizar un pedido del producto: ${product.name} (${window.location.href}) — está agotado, ¿pueden hacerlo por encargo?`
+  )}`;
 
   return (
     <div className="max-w-5xl mx-auto px-4 pt-6 pb-16">
@@ -243,28 +249,51 @@ const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(mess
 
           {/* Action buttons */}
           <div className="flex flex-col gap-3 pt-2 mt-auto">
-            <motion.button
-              className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl bg-brand-dark text-white text-sm font-poppins font-medium"
-              whileHover={{ backgroundColor: "#1a1a1a" }}
-              whileTap={{ scale: 0.98 }}
-              transition={{ duration: 0.15 }}
-            >
-              <ShoppingCart size={17} strokeWidth={2} />
-              Añadir al carrito
-            </motion.button>
+            {isSoldOut ? (
+              <>
+                <p className="text-xs font-poppins text-gray-400 text-center">
+                  Este producto está agotado, pero podés consultarnos por encargo.
+                </p>
+                <motion.a
+                  href={whatsappQuoteUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl
+                             bg-[#25D366] text-white text-sm font-poppins font-medium"
+                  whileHover={{ backgroundColor: "#1da851" }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <WhatsAppIcon size={17} />
+                  Cotizar por WhatsApp
+                </motion.a>
+              </>
+            ) : (
+              <>
+                <motion.button
+                  className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl bg-brand-dark text-white text-sm font-poppins font-medium"
+                  whileHover={{ backgroundColor: "#1a1a1a" }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <ShoppingCart size={17} strokeWidth={2} />
+                  Añadir al carrito
+                </motion.button>
 
-            <motion.a
-              href={whatsappUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl bg-[#25D366] text-white text-sm font-poppins font-medium"
-              whileHover={{ backgroundColor: "#1da851" }}
-              whileTap={{ scale: 0.98 }}
-              transition={{ duration: 0.15 }}
-            >
-              <WhatsAppIcon size={17} />
-              Comprar por WhatsApp
-            </motion.a>
+                <motion.a
+                  href={whatsappBuyUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl bg-[#25D366] text-white text-sm font-poppins font-medium"
+                  whileHover={{ backgroundColor: "#1da851" }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <WhatsAppIcon size={17} />
+                  Comprar por WhatsApp
+                </motion.a>
+              </>
+            )}
           </div>
         </div>
       </div>

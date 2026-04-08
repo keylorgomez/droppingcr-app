@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft, Loader2, CreditCard, MessageCircle,
-  ChevronDown, ChevronUp, Plus, Package, Wallet,
+  ChevronDown, ChevronUp, Plus, Package, Wallet, Search, X,
 } from "lucide-react";
 import {
   getGroupedDebts, addGeneralPayment,
@@ -286,6 +286,22 @@ export default function DebtPage() {
     queryFn:  getGroupedDebts,
   });
 
+  const [search, setSearch] = useState("");
+
+  const normalize = (s: string) =>
+    s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+  const filtered = search.trim()
+    ? clients.filter((c) => {
+        const q         = normalize(search.trim());
+        const phoneQ    = q.replace(/\D/g, "");
+        const nameMatch = normalize(c.guest_name ?? "").includes(q);
+        const phoneMatch = phoneQ.length > 0 &&
+                           (c.guest_phone ?? "").replace(/\D/g, "").includes(phoneQ);
+        return nameMatch || phoneMatch;
+      })
+    : clients;
+
   const grandTotalSale = clients.reduce((sum, c) => sum + c.total_sale, 0);
   const grandTotalPaid = clients.reduce((sum, c) => sum + c.total_paid, 0);
   const grandTotal     = clients.reduce((sum, c) => sum + c.remaining, 0);
@@ -362,6 +378,32 @@ export default function DebtPage() {
           </div>
         )}
 
+        {/* ── Search ──────────────────────────────────────────────── */}
+        {!isLoading && clients.length > 0 && (
+          <div className="relative mb-4">
+            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar por nombre o teléfono…"
+              className="w-full rounded-xl border border-gray-200 pl-9 pr-9 py-2.5 text-sm
+                         font-poppins text-brand-dark placeholder:text-gray-300 outline-none
+                         focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20 transition"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300
+                           hover:text-gray-500 transition-colors"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+        )}
+
         {/* ── Client list ─────────────────────────────────────────── */}
         {isError && (
           <div className="rounded-2xl border border-red-100 bg-red-50 p-4 mb-4">
@@ -379,16 +421,26 @@ export default function DebtPage() {
         ) : clients.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-20 text-center">
             <CreditCard size={40} strokeWidth={1.2} className="text-gray-200" />
+            <p className="font-poppins font-medium text-sm text-gray-400">Sin cobros pendientes</p>
+            <p className="font-poppins text-xs text-gray-300">Todas las ventas están al día.</p>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="flex flex-col items-center gap-3 py-16 text-center">
+            <Search size={36} strokeWidth={1.2} className="text-gray-200" />
             <p className="font-poppins font-medium text-sm text-gray-400">
-              Sin cobros pendientes
+              Sin resultados para "{search}"
             </p>
-            <p className="font-poppins text-xs text-gray-300">
-              Todas las ventas están al día.
-            </p>
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              className="text-xs font-poppins text-brand-primary hover:underline"
+            >
+              Limpiar búsqueda
+            </button>
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            {clients.map((client) => (
+            {filtered.map((client) => (
               <ClientCard key={client.key} client={client} />
             ))}
           </div>

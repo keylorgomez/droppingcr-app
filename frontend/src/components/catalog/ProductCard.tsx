@@ -65,14 +65,14 @@ export default function ProductCard({
 
   return (
     <motion.div
-      className={`flex flex-col bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden font-poppins ${
-        is_sold_out ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+      className={`flex flex-col bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden font-poppins cursor-pointer ${
+        is_sold_out ? "opacity-50" : ""
       }`}
-      whileHover={is_sold_out ? {} : { y: -4, boxShadow: "0 8px 24px rgba(0,0,0,0.10)" }}
+      whileHover={{ y: -4, boxShadow: "0 8px 24px rgba(0,0,0,0.10)" }}
       transition={{ type: "spring", stiffness: 320, damping: 24 }}
       onHoverStart={() => setIsHovered(true)}
       onHoverEnd={() => setIsHovered(false)}
-      onClick={is_sold_out ? undefined : onClick}
+      onClick={onClick}
     >
       {/* Image */}
       <div className="relative overflow-hidden aspect-square bg-gray-50">

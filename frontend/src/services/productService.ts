@@ -47,6 +47,7 @@ export interface CatalogProduct {
   images: string[];
   category: string;
   categories: { name: string; slug: string }[];
+  sizes: string[];
   is_new: boolean;
   is_sold_out: boolean;
 }
@@ -81,7 +82,7 @@ export async function getProducts(): Promise<CatalogProduct[]> {
     .select(`
       id, name, slug, price_sale, discount_percentage, is_new,
       product_images ( image_url, is_primary, display_order ),
-      product_variants ( stock ),
+      product_variants ( stock, size ),
       product_categories ( categories ( name, slug ) )
     `)
     .eq("is_active", true)
@@ -98,9 +99,16 @@ export async function getProducts(): Promise<CatalogProduct[]> {
       });
 
     const primaryImage = images[0];
-    const totalStock   = (p.product_variants ?? []).reduce(
+    const totalStock = (p.product_variants ?? []).reduce(
       (sum: number, v: { stock: number }) => sum + v.stock, 0
     );
+    const sizes = [
+      ...new Set(
+        (p.product_variants ?? [])
+          .filter((v: any) => v.stock > 0)
+          .map((v: any) => v.size as string)
+      ),
+    ];
     const productCategories: { name: string; slug: string }[] = (p.product_categories ?? [])
       .map((pc: any) => pc.categories)
       .filter(Boolean)
@@ -116,6 +124,7 @@ export async function getProducts(): Promise<CatalogProduct[]> {
       images:              images.map((i) => i.image_url),
       category:            productCategories[0]?.name ?? "",
       categories:          productCategories,
+      sizes,
       is_new:              p.is_new ?? false,
       is_sold_out:         totalStock === 0,
     };
