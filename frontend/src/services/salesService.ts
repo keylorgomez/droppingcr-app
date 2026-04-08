@@ -11,14 +11,14 @@ export interface SaleInput {
   guest_name:      string | null;
   guest_phone:     string | null;
   status:          "completed" | "pending";
-  initial_payment: number; // first payment amount
+  initial_payment: number;
 }
 
 export interface Payment {
-  id:       string;
-  amount:   number;
-  note:     string | null;
-  paid_at:  string;
+  id:      string;
+  amount:  number;
+  note:    string | null;
+  paid_at: string;
 }
 
 export interface PendingSale {
@@ -35,14 +35,20 @@ export interface PendingSale {
   payments:     Payment[];
 }
 
+// Grouped view: one entry per client (grouped by phone, then name)
+export interface ClientDebt {
+  key:         string;       // grouping key used internally
+  guest_name:  string | null;
+  guest_phone: string | null;
+  sales:       PendingSale[]; // sorted oldest → newest
+  total_sale:  number;        // sum of sale_price across pending sales
+  total_paid:  number;        // sum of all payments
+  remaining:   number;        // total_sale - total_paid
+}
+
 // ── Record manual sale ─────────────────────────────────────────────────────
-// Steps:
-//   1. Insert sale record
-//   2. Decrement stock (atomic RPC)
-//   3. Insert first payment record
 
 export async function recordManualSale(data: SaleInput): Promise<void> {
-  // Fetch cost_price from the product to snapshot it on the sale
   const { data: product, error: productError } = await supabase
     .from("products")
     .select("price_purchase")
@@ -76,7 +82,6 @@ export async function recordManualSale(data: SaleInput): Promise<void> {
 
   if (stockError) throw new Error(stockError.message);
 
-  // Only create a payment record if there's an initial amount
   if (data.initial_payment > 0) {
     const { error: payError } = await supabase.from("payments").insert({
       sale_id: sale.id,
@@ -87,7 +92,7 @@ export async function recordManualSale(data: SaleInput): Promise<void> {
   }
 }
 
-// ── Get pending sales ──────────────────────────────────────────────────────
+// ── Get pending sales (raw) ────────────────────────────────────────────────
 
 export async function getPendingSales(): Promise<PendingSale[]> {
   const { data, error } = await supabase
@@ -98,7 +103,7 @@ export async function getPendingSales(): Promise<PendingSale[]> {
       payments ( id, amount, note, paid_at )
     `)
     .eq("status", "pending")
-    .order("sold_at", { ascending: false });
+    .order("sold_at", { ascending: true }); // oldest first for distribution
 
   if (error) throw new Error(error.message);
 
@@ -125,8 +130,87 @@ export async function getPendingSales(): Promise<PendingSale[]> {
   });
 }
 
-// ── Add payment ────────────────────────────────────────────────────────────
-// Inserts a new payment and marks the sale as completed if fully paid.
+// ── Get grouped debts (one entry per client) ───────────────────────────────
+
+export async function getGroupedDebts(): Promise<ClientDebt[]> {
+  const sales = await getPendingSales();
+
+  const map = new Map<string, ClientDebt>();
+
+  for (const sale of sales) {
+    // Group key: phone (normalised) > name > sale id (unknown client)
+    const key = sale.guest_phone?.replace(/\D/g, "") || sale.guest_name || sale.id;
+
+    if (!map.has(key)) {
+      map.set(key, {
+        key,
+        guest_name:  sale.guest_name,
+        guest_phone: sale.guest_phone,
+        sales:       [],
+        total_sale:  0,
+        total_paid:  0,
+        remaining:   0,
+      });
+    }
+
+    const entry = map.get(key)!;
+    entry.sales.push(sale);
+    entry.total_sale += sale.sale_price;
+    entry.total_paid += sale.total_paid;
+    entry.remaining  += sale.remaining;
+
+    // Use the most complete name/phone available for the group
+    if (!entry.guest_name  && sale.guest_name)  entry.guest_name  = sale.guest_name;
+    if (!entry.guest_phone && sale.guest_phone) entry.guest_phone = sale.guest_phone;
+  }
+
+  // Sort by remaining descending (biggest debt first)
+  return [...map.values()].sort((a, b) => b.remaining - a.remaining);
+}
+
+// ── Add general payment (distributed oldest-first) ─────────────────────────
+// Distributes `amount` across the client's pending sales starting from the
+// oldest. Marks each sale as completed when its remaining hits 0.
+
+export async function addGeneralPayment(
+  sales: PendingSale[],
+  amount: number,
+  note: string | null
+): Promise<void> {
+  // Oldest first (already sorted by getPendingSales, but be explicit)
+  const sorted = [...sales].sort(
+    (a, b) => new Date(a.sold_at).getTime() - new Date(b.sold_at).getTime()
+  );
+
+  let leftover = amount;
+
+  for (const sale of sorted) {
+    if (leftover <= 0) break;
+    if (sale.remaining <= 0) continue;
+
+    const apply = Math.min(leftover, sale.remaining);
+
+    const { error: payError } = await supabase.from("payments").insert({
+      sale_id: sale.id,
+      amount:  apply,
+      note,
+    });
+    if (payError) throw new Error(payError.message);
+
+    const newTotalPaid = sale.total_paid + apply;
+    if (newTotalPaid >= sale.sale_price) {
+      const { error: statusError } = await supabase
+        .from("sales")
+        .update({ status: "completed" })
+        .eq("id", sale.id);
+      if (statusError) throw new Error(statusError.message);
+    }
+
+    leftover -= apply;
+  }
+}
+
+// ── Add single-sale payment (kept for backward compat) ────────────────────
 
 export async function addPayment(
   saleId: string,
@@ -139,19 +223,15 @@ export async function addPayment(
     amount,
     note,
   });
-
   if (payError) throw new Error(payError.message);
 
-  // Sum all payments to check completion
   const { data: payments, error: sumError } = await supabase
     .from("payments")
     .select("amount")
     .eq("sale_id", saleId);
-
   if (sumError) throw new Error(sumError.message);
 
   const totalPaid = (payments ?? []).reduce((sum, p) => sum + p.amount, 0);
-
   if (totalPaid >= priceSold) {
     await supabase.from("sales").update({ status: "completed" }).eq("id", saleId);
   }

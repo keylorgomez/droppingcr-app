@@ -191,13 +191,13 @@ function ProductContent({ product }: { product: ProductDetail }) {
           <div>
             {hasDiscount && (
               <p className="text-sm text-gray-400 line-through leading-none mb-1">
-                ₡{product.price_sale.toLocaleString("es-CR")}
+                ₡{product.price_sale.toLocaleString("en-US")}
               </p>
             )}
             <p className={`font-poppins font-bold leading-none ${
               hasDiscount ? "text-red-500 text-3xl" : "text-brand-dark text-3xl"
             }`}>
-              ₡{discountedPrice.toLocaleString("es-CR")}
+              ₡{discountedPrice.toLocaleString("en-US")}
             </p>
           </div>
 
