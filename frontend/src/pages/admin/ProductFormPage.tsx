@@ -9,7 +9,7 @@ import MultiSelect from "../../components/ui/MultiSelect";
 import {
   getCategories, getProductById,
   createProduct, updateProduct,
-  type Category, type ProductInput,
+  type ProductInput,
 } from "../../services/productService";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../components/ui/Toast";
