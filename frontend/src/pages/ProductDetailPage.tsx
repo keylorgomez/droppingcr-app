@@ -5,6 +5,7 @@ import { ArrowLeft, ShoppingCart, Pencil } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getProductBySlug, type ProductDetail } from "../services/productService";
 import { useAuth } from "../context/AuthContext";
+import { useCart } from "../context/CartContext";
 import { trackViewItem } from "../lib/analytics";
 import Header from "../components/ui/Header";
 
@@ -74,7 +75,11 @@ function ErrorState({ onBack }: { onBack: () => void }) {
 function ProductContent({ product }: { product: ProductDetail }) {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { addItem } = useCart();
   const isAdmin  = user?.role === "admin";
+
+  const [addingToCart,   setAddingToCart]   = useState(false);
+  const [sizeError,      setSizeError]      = useState(false);
 
   const sortedImages = [...product.images].sort((a, b) =>
     b.is_primary === a.is_primary ? 0 : b.is_primary ? 1 : -1
@@ -97,6 +102,31 @@ function ProductContent({ product }: { product: ProductDetail }) {
 
 
   const isSoldOut = product.variants.every((v) => v.stock === 0);
+
+  async function handleAddToCart() {
+    if (!selectedSize) {
+      setSizeError(true);
+      return;
+    }
+    setSizeError(false);
+    const variant = product.variants.find((v) => v.size === selectedSize && v.stock > 0);
+    if (!variant) return;
+    setAddingToCart(true);
+    try {
+      await addItem({
+        variant_id:   variant.id,
+        product_id:   product.id,
+        product_name: product.name,
+        variant_size: selectedSize,
+        image_url:    sortedImages[0]?.image_url ?? "",
+        price:        discountedPrice,
+        slug:         product.slug,
+        stock:        variant.stock,
+      });
+    } finally {
+      setAddingToCart(false);
+    }
+  }
   const phoneNumber = "50688364879";
 
   const whatsappBuyUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(
@@ -220,9 +250,16 @@ function ProductContent({ product }: { product: ProductDetail }) {
           {/* Size selector */}
           {sizes.length > 0 && (
             <div className="border-t border-gray-100 pt-4">
-              <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 font-poppins mb-3">
-                Talla
-              </p>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 font-poppins">
+                  Talla
+                </p>
+                {sizeError && (
+                  <p className="text-[11px] font-poppins text-red-500">
+                    Seleccioná una talla
+                  </p>
+                )}
+              </div>
               <div className="flex flex-wrap gap-2">
                 {sizes.map((size) => {
                   const inStock = stockBySize[size] > 0;
@@ -272,13 +309,16 @@ function ProductContent({ product }: { product: ProductDetail }) {
             ) : (
               <>
                 <motion.button
-                  disabled
+                  onClick={handleAddToCart}
+                  disabled={addingToCart}
                   className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl
-                             bg-gray-100 text-gray-300 text-sm font-poppins font-medium
-                             cursor-not-allowed"
+                             bg-brand-dark text-white text-sm font-poppins font-medium
+                             hover:bg-brand-primary transition-colors
+                             disabled:opacity-60 disabled:cursor-not-allowed"
+                  whileTap={{ scale: 0.98 }}
                 >
                   <ShoppingCart size={17} strokeWidth={2} />
-                  Añadir al carrito
+                  {addingToCart ? "Agregando…" : "Añadir al carrito"}
                 </motion.button>
 
                 <motion.a

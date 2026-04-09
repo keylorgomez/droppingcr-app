@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { Menu, User } from "lucide-react";
+import { Menu, User, ShoppingCart } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { useCart } from "../../context/CartContext";
 import Sidebar from "./Sidebar";
 import UserSidebar from "./UserSidebar";
 import AuthModal from "./AuthModal";
@@ -12,10 +14,12 @@ function getInitials(firstName: string, lastName: string) {
 
 export default function Header() {
   const { user, signOut } = useAuth();
+  const { itemCount }     = useCart();
+  const navigate          = useNavigate();
 
-  const [sidebarOpen, setSidebarOpen]       = useState(false);
+  const [sidebarOpen, setSidebarOpen]         = useState(false);
   const [userSidebarOpen, setUserSidebarOpen] = useState(false);
-  const [authModalOpen, setAuthModalOpen]   = useState(false);
+  const [authModalOpen, setAuthModalOpen]     = useState(false);
 
   function handleUserClick() {
     if (user) {
@@ -57,21 +61,40 @@ export default function Header() {
             </span>
           </a>
 
-          {/* User — right */}
-          <button
-            onClick={handleUserClick}
-            className="absolute right-4 text-brand-dark hover:text-brand-primary transition-colors"
-            aria-label="Cuenta de usuario"
-          >
-            {user ? (
-              <div className="w-8 h-8 rounded-full bg-brand-primary flex items-center justify-center
-                              text-white font-poppins font-semibold text-xs">
-                {getInitials(user.first_name, user.last_name)}
-              </div>
-            ) : (
-              <User size={22} strokeWidth={1.8} />
-            )}
-          </button>
+          {/* Cart + User — right */}
+          <div className="absolute right-4 flex items-center gap-3">
+            {/* Cart icon with badge */}
+            <button
+              onClick={() => navigate("/carrito")}
+              className="relative text-brand-dark hover:text-brand-primary transition-colors"
+              aria-label="Ver carrito"
+            >
+              <ShoppingCart size={22} strokeWidth={1.8} />
+              {itemCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[17px] h-[17px] px-1
+                                 bg-brand-primary text-white text-[10px] font-bold font-poppins
+                                 rounded-full flex items-center justify-center leading-none">
+                  {itemCount > 99 ? "99+" : itemCount}
+                </span>
+              )}
+            </button>
+
+            {/* User avatar / icon */}
+            <button
+              onClick={handleUserClick}
+              className="text-brand-dark hover:text-brand-primary transition-colors"
+              aria-label="Cuenta de usuario"
+            >
+              {user ? (
+                <div className="w-8 h-8 rounded-full bg-brand-primary flex items-center justify-center
+                                text-white font-poppins font-semibold text-xs">
+                  {getInitials(user.first_name, user.last_name)}
+                </div>
+              ) : (
+                <User size={22} strokeWidth={1.8} />
+              )}
+            </button>
+          </div>
 
         </div>
       </header>
