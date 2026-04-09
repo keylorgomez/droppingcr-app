@@ -26,7 +26,7 @@ const customerLinks = [
 ];
 
 const adminLinks = [
-  { label: "Panel Admin",  icon: LayoutDashboard, href: null                  },
+  { label: "Panel Admin",  icon: LayoutDashboard, href: "/admin/dashboard"    },
   { label: "Productos",    icon: Package,         href: "/admin/products/new" },
   { label: "Pedidos",      icon: ClipboardList,   href: "/admin/pedidos"      },
   { label: "Cobros",       icon: CreditCard,      href: "/admin/deudas"       },

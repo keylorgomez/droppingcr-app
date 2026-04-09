@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ShoppingCart, Pencil } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getProductBySlug, type ProductDetail } from "../services/productService";
 import { useAuth } from "../context/AuthContext";
+import { trackViewItem } from "../lib/analytics";
 import Header from "../components/ui/Header";
 
 // ── WhatsApp icon ──────────────────────────────────────────────────────────
@@ -313,6 +314,20 @@ export default function ProductDetailPage() {
     queryFn:  () => getProductBySlug(slug!),
     enabled:  !!slug,
   });
+
+  // Fire view_item once per product load (guard with ref to avoid double-fire in StrictMode)
+  const trackedSlug = useRef<string | null>(null);
+  useEffect(() => {
+    if (product && trackedSlug.current !== product.slug) {
+      trackedSlug.current = product.slug;
+      trackViewItem({
+        id:       product.id,
+        name:     product.name,
+        price:    product.price_sale,
+        category: product.categories[0]?.name,
+      });
+    }
+  }, [product]);
 
   return (
     <>
