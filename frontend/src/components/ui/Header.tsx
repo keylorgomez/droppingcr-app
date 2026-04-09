@@ -81,7 +81,7 @@ export default function Header() {
       <UserSidebar
         open={userSidebarOpen}
         onClose={() => setUserSidebarOpen(false)}
-        user={user ? { name: `${user.first_name} ${user.last_name}`, email: user.email, role: user.role } : null}
+        user={user ? { name: [user.first_name, user.last_name].filter(Boolean).join(" ") || user.email, email: user.email, role: user.role } : null}
         onLogout={async () => { await signOut(); setUserSidebarOpen(false); }}
       />
 

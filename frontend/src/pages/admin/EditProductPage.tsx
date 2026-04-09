@@ -13,9 +13,12 @@ import MultiSelect from "../../components/ui/MultiSelect";
 import {
   recordManualSale,
   DELIVERY_STATUSES,
-  shippingCostFor,
   type ShippingMethod, type DeliveryStatus,
 } from "../../services/salesService";
+import {
+  calculateShipping, getAvailableCarriers, getDefaultCarrier, isGAMCanton,
+  type Carrier,
+} from "../../config/shipping";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../components/ui/Toast";
 import Header from "../../components/ui/Header";
@@ -172,26 +175,29 @@ const CR_CANTONS: Record<string, string[]> = {
   ],
 };
 
-const CR_PROVINCES  = Object.keys(CR_CANTONS);
-const GAM_PROVINCES = new Set(["San José", "Alajuela", "Cartago", "Heredia"]);
+const CR_PROVINCES = Object.keys(CR_CANTONS);
 
 // ── Sale Modal ─────────────────────────────────────────────────────────────
 
 interface SaleModalProps {
-  productId: string;
-  priceSale: number;
-  variants:  ProductVariant[];
-  onClose:   () => void;
-  onSuccess: () => void;
+  productId:           string;
+  priceSale:           number;
+  discountPercentage:  number;
+  variants:            ProductVariant[];
+  onClose:             () => void;
+  onSuccess:           () => void;
 }
 
-function SaleModal({ productId, priceSale, variants, onClose, onSuccess }: SaleModalProps) {
+function SaleModal({ productId, priceSale, discountPercentage, variants, onClose, onSuccess }: SaleModalProps) {
+  const effectivePrice = discountPercentage > 0
+    ? Math.round(priceSale * (1 - discountPercentage / 100))
+    : priceSale;
   const { showToast }     = useToast();
   const availableVariants = variants.filter((v) => v.stock > 0);
 
   const [variantId,      setVariantId]      = useState(availableVariants[0]?.id ?? "");
   const [quantity,       setQuantity]       = useState(1);
-  const [priceSold,      setPriceSold]      = useState(String(priceSale));
+  const [priceSold,      setPriceSold]      = useState(String(effectivePrice));
   const [guestName,      setGuestName]      = useState("");
   const [guestPhone,     setGuestPhone]     = useState("");
   const [isPagos,        setIsPagos]        = useState(false);
@@ -208,24 +214,21 @@ function SaleModal({ productId, priceSale, variants, onClose, onSuccess }: SaleM
   const [district,      setDistrict]      = useState("");
   const [carrierChoice, setCarrierChoice] = useState<"mensajero" | "correos">("mensajero");
 
-  const selectedVariant = availableVariants.find((v) => v.id === variantId);
-  const priceNum        = Number(priceSold) || 0;
-  const isGAM           = GAM_PROVINCES.has(province);
-  const isCartago       = province === "Cartago";
+  const selectedVariant  = availableVariants.find((v) => v.id === variantId);
+  const priceNum         = Number(priceSold) || 0;
+  const cantonIsGAM      = canton ? isGAMCanton(canton) : false;
+  const availableCarriers: Carrier[] = canton ? getAvailableCarriers(canton) : [];
 
-  // Derive ShippingMethod from UI selections
-  const shippingMethod: ShippingMethod =
-    deliveryType === "personal"
-      ? "personal_grecia"
-      : carrierChoice === "mensajero"
-        ? (isCartago ? "mensajero_cartago" : "mensajero_sjo")
-        : isGAM
-          ? "correos_gam"
-          : "correos_fuera_gam";
+  // Derive ShippingMethod + cost from canton-based logic
+  const { method: shippingMethod, cost: shippingCost }: { method: ShippingMethod; cost: number } =
+    deliveryType === "personal" || canton === "Grecia"
+      ? { method: "personal_grecia", cost: 0 }
+      : canton
+        ? calculateShipping(province, canton, carrierChoice)
+        : { method: "personal_grecia", cost: 0 };
 
-  const shippingCost = shippingCostFor(shippingMethod);
   const totalNum     = priceNum + shippingCost;
-  const showTracking = deliveryType === "envio" && carrierChoice === "correos";
+  const showTracking = deliveryType === "envio" && carrierChoice === "correos" && canton !== "Grecia";
 
   const mutation = useMutation({
     mutationFn: recordManualSale,
@@ -337,7 +340,10 @@ function SaleModal({ productId, priceSale, variants, onClose, onSuccess }: SaleM
                      onChange={(e) => setPriceSold(e.target.value)} className={inputCls} />
               {errors.priceSold && <span className="text-[11px] text-red-500 font-poppins">{errors.priceSold}</span>}
               <span className="text-[11px] text-gray-400 font-poppins">
-                Oficial: ₡{priceSale.toLocaleString("en-US")}. Modifica si hubo precio especial.
+                {discountPercentage > 0
+                  ? `Con ${discountPercentage}% descuento: ₡${effectivePrice.toLocaleString("en-US")} (original ₡${priceSale.toLocaleString("en-US")})`
+                  : `Oficial: ₡${priceSale.toLocaleString("en-US")}. Modifica si hubo precio especial.`
+                }
               </span>
             </div>
 
@@ -393,9 +399,7 @@ function SaleModal({ productId, priceSale, variants, onClose, onSuccess }: SaleM
                         setProvince(e.target.value);
                         setCanton("");
                         setDistrict("");
-                        // Non-GAM → force correos
-                        if (!GAM_PROVINCES.has(e.target.value)) setCarrierChoice("correos");
-                        else setCarrierChoice("mensajero");
+                        setCarrierChoice("mensajero"); // canton will override on selection
                       }}
                       className={inputCls}
                     >
@@ -417,7 +421,16 @@ function SaleModal({ productId, priceSale, variants, onClose, onSuccess }: SaleM
                       </label>
                       <select
                         value={canton}
-                        onChange={(e) => { setCanton(e.target.value); setDistrict(""); }}
+                        onChange={(e) => {
+                          const c = e.target.value;
+                          setCanton(c);
+                          setDistrict("");
+                          if (c === "Grecia") {
+                            setDeliveryType("personal");
+                          } else if (c) {
+                            setCarrierChoice(getDefaultCarrier(c));
+                          }
+                        }}
                         className={inputCls}
                       >
                         <option value="">Seleccionar cantón…</option>
@@ -444,21 +457,19 @@ function SaleModal({ productId, priceSale, variants, onClose, onSuccess }: SaleM
                     </div>
                   )}
 
-                  {/* Tipo de mensajería — aparece al elegir provincia */}
-                  {province && (
+                  {/* Servicio de envío — aparece al elegir cantón (excepto Grecia) */}
+                  {canton && canton !== "Grecia" && (
                     <div className="flex flex-col gap-2">
                       <label className="text-xs font-medium text-gray-500 font-poppins uppercase tracking-wider">
                         Servicio de envío
                       </label>
 
-                      {isGAM ? (
+                      {cantonIsGAM ? (
                         /* GAM: Mensajero o Correos */
                         <div className="flex flex-col gap-2">
-                          {(["mensajero", "correos"] as const).map((c) => {
-                            const cost = c === "mensajero"
-                              ? (isCartago ? 4000 : 3000)
-                              : 2500;
-                            const label = c === "mensajero" ? "Mensajero" : "Correos CR";
+                          {availableCarriers.map((c) => {
+                            const result = calculateShipping(province, canton, c);
+                            const label  = c === "mensajero" ? "Mensajero privado" : "Correos CR";
                             return (
                               <label
                                 key={c}
@@ -482,17 +493,22 @@ function SaleModal({ productId, priceSale, variants, onClose, onSuccess }: SaleM
                                   <span className="text-sm font-poppins text-brand-dark">{label}</span>
                                 </div>
                                 <span className="text-xs font-poppins font-semibold text-brand-primary">
-                                  ₡{cost.toLocaleString("en-US")}
+                                  ₡{result.cost.toLocaleString("en-US")}
                                 </span>
                               </label>
                             );
                           })}
                         </div>
                       ) : (
-                        /* Fuera GAM: solo Correos */
-                        <div className="flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3 bg-gray-50">
-                          <span className="text-sm font-poppins text-gray-600">Correos CR</span>
-                          <span className="text-xs font-poppins font-semibold text-brand-primary">₡3,000</span>
+                        /* Fuera de GAM: solo Correos, bloqueado */
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3 bg-gray-50">
+                            <span className="text-sm font-poppins text-gray-600">Correos CR</span>
+                            <span className="text-xs font-poppins font-semibold text-brand-primary">₡3,000</span>
+                          </div>
+                          <p className="text-[11px] font-poppins text-gray-400 px-1">
+                            Zona rural — solo disponible Correos CR.
+                          </p>
                         </div>
                       )}
                     </div>
@@ -844,6 +860,7 @@ export default function EditProductPage() {
         <SaleModal
           productId={product.id}
           priceSale={product.price_sale}
+          discountPercentage={product.discount_percentage ?? 0}
           variants={liveVariants}
           onClose={() => setSaleOpen(false)}
           onSuccess={() => {

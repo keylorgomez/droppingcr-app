@@ -31,7 +31,7 @@ async function fetchOrCreateProfile(authUser: User): Promise<UserProfile | null>
     .from("profiles")
     .select("id, first_name, last_name, whatsapp, role")
     .eq("id", authUser.id)
-    .single();
+    .maybeSingle();
 
   // Profile exists — return it
   if (!error && data) {
@@ -90,7 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then(async ({ data: { session } }) => {
         if (session?.user) {
           const profile = await fetchOrCreateProfile(session.user);
-          setUser(profile);
+          if (profile) setUser(profile); // never force user=null for an active session
         }
       })
       .catch(() => {})

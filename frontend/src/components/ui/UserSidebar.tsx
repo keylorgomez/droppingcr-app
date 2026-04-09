@@ -17,7 +17,9 @@ interface UserSidebarProps {
 }
 
 function getInitials(name: string): string {
-  return name.trim().split(" ").slice(0, 2).map((w) => w[0].toUpperCase()).join("");
+  const words = name.trim().split(" ").filter(Boolean);
+  if (!words.length) return "?";
+  return words.slice(0, 2).map((w) => w[0].toUpperCase()).join("");
 }
 
 const customerLinks = [
