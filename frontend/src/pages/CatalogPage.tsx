@@ -389,7 +389,7 @@ export default function CatalogPage() {
         {!isLoading && totalPages > 1 && (
           <div className="flex items-center justify-center gap-2 mt-10">
             <button
-              onClick={() => { scrollToCatalogRef.current = true; setPage((p) => Math.max(1, p - 1)); }}
+              onClick={() => { scrollToCatalogRef.current = true; setPage((p: number) => Math.max(1, p - 1)); }}
               disabled={page === 1}
               className="flex items-center justify-center w-9 h-9 rounded-xl border border-gray-200
                          text-gray-400 hover:border-brand-primary hover:text-brand-primary
@@ -414,7 +414,7 @@ export default function CatalogPage() {
             ))}
 
             <button
-              onClick={() => { scrollToCatalogRef.current = true; setPage((p) => Math.min(totalPages, p + 1)); }}
+              onClick={() => { scrollToCatalogRef.current = true; setPage((p: number) => Math.min(totalPages, p + 1)); }}
               disabled={page === totalPages}
               className="flex items-center justify-center w-9 h-9 rounded-xl border border-gray-200
                          text-gray-400 hover:border-brand-primary hover:text-brand-primary
