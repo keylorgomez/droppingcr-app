@@ -178,12 +178,12 @@ export default function Dashboard() {
               <AreaChart data={areaData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="gVentas" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%"  stopColor="#975023" stopOpacity={0.18} />
-                    <stop offset="95%" stopColor="#975023" stopOpacity={0} />
+                    <stop offset="5%"  stopColor="#16a34a" stopOpacity={0.18} />
+                    <stop offset="95%" stopColor="#16a34a" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="gCostos" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%"  stopColor="#a26720" stopOpacity={0.14} />
-                    <stop offset="95%" stopColor="#a26720" stopOpacity={0} />
+                    <stop offset="5%"  stopColor="#ef4444" stopOpacity={0.14} />
+                    <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
@@ -204,10 +204,10 @@ export default function Dashboard() {
                   wrapperStyle={{ fontFamily: "Poppins", fontSize: 11, paddingTop: 8 }}
                 />
                 <Area type="monotone" dataKey="ventas" name="Ventas"
-                  stroke="#975023" strokeWidth={2}
+                  stroke="#16a34a" strokeWidth={2}
                   fill="url(#gVentas)" dot={false} activeDot={{ r: 4 }} />
                 <Area type="monotone" dataKey="costos" name="Costos"
-                  stroke="#a26720" strokeWidth={2}
+                  stroke="#ef4444" strokeWidth={2}
                   fill="url(#gCostos)" dot={false} activeDot={{ r: 4 }} />
               </AreaChart>
             </ResponsiveContainer>

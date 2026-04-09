@@ -112,7 +112,7 @@ function ProductContent({ product }: { product: ProductDetail }) {
       {/* Back + admin edit */}
       <div className="flex items-center justify-between mb-8">
         <button
-          onClick={() => navigate("/", { state: { scrollToCatalog: true } })}
+          onClick={() => navigate("/", { state: { restoreScroll: true } })}
           className="flex items-center gap-1.5 text-sm font-poppins text-gray-400 hover:text-brand-primary transition-colors"
         >
           <ArrowLeft size={15} strokeWidth={2} />

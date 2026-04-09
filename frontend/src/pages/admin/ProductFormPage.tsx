@@ -440,7 +440,7 @@ export default function ProductFormPage() {
           {/* ── Precios ────────────────────────────────────────────── */}
           <SectionCard title="Precios">
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Precio de compra (₡)" error={errors.pricePurchase}>
+              <Field label="Precio costo (₡)" error={errors.pricePurchase}>
                 <input
                   type="number"
                   min={0}
@@ -451,7 +451,7 @@ export default function ProductFormPage() {
                   className={inputCls}
                 />
               </Field>
-              <Field label="Precio de venta (₡)" error={errors.priceSale}>
+              <Field label="Precio venta (₡)" error={errors.priceSale}>
                 <input
                   type="number"
                   min={0}

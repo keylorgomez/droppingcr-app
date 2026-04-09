@@ -114,7 +114,7 @@ function LoginForm({ onSwitch, onSuccess }: { onSwitch: () => void; onSuccess: (
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <Field label="Correo electrónico" type="email" value={email} onChange={setEmail}
-             placeholder="tucorreo@email.com" autoComplete="email" />
+             placeholder="correo@email.com" autoComplete="email" />
       <PasswordField label="Contraseña" value={password} onChange={setPassword}
                      autoComplete="current-password" />
       {error && <ErrorBanner message={error} />}
@@ -200,7 +200,7 @@ function RegisterForm({ onSwitch, onSuccess }: { onSwitch: () => void; onSuccess
       </div>
 
       <Field label="Correo electrónico" type="email" value={email} onChange={setEmail}
-             placeholder="tucorreo@email.com" autoComplete="email" />
+             placeholder="correo@email.com" autoComplete="email" />
       <PasswordField label="Contraseña"          value={password} onChange={setPassword} autoComplete="new-password" />
       <PasswordField label="Confirmar contraseña" value={confirm}  onChange={setConfirm}  autoComplete="new-password" />
 

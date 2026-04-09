@@ -930,7 +930,7 @@ export default function EditProductPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-medium text-gray-500 font-poppins uppercase tracking-wider">
-                  Precio de compra (₡)
+                  Precio costo (₡)
                 </label>
                 <input
                   type="number"
@@ -944,7 +944,7 @@ export default function EditProductPage() {
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-medium text-gray-500 font-poppins uppercase tracking-wider">
-                  Precio de venta (₡)
+                  Precio venta (₡)
                 </label>
                 <input
                   type="number"

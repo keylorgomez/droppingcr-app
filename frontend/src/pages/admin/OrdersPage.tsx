@@ -359,7 +359,7 @@ function OrderModal({ sale, onClose }: { sale: AdminSale; onClose: () => void })
               ? <Loader2 size={14} className="animate-spin" />
               : <Check size={14} strokeWidth={2.5} />
             }
-            Guardar cambios
+            Guardar
           </button>
         </div>
       </motion.div>

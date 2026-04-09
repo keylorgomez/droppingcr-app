@@ -15,7 +15,7 @@ function ReadOnlyField({ label, value }: { label: string; value: string }) {
         {label}
       </label>
       <div className="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-2.5
-                      text-sm font-poppins text-gray-400 select-none">
+                      text-sm font-poppins text-gray-400 select-none truncate">
         {value}
       </div>
     </div>
@@ -149,7 +149,7 @@ export default function ProfilePage() {
         </p>
 
         {/* Read-only section */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
           <ReadOnlyField label="Correo electrónico" value={user.email} />
           <ReadOnlyField label="Rol" value={roleLabel} />
         </div>

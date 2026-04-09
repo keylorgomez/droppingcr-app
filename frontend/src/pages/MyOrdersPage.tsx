@@ -180,9 +180,11 @@ export default function MyOrdersPage() {
   }, [user?.id, user?.whatsapp, queryClient]);
 
   const { data: orders = [], isLoading, isError } = useQuery({
-    queryKey: ["my-orders", user?.id],
-    queryFn:  () => getUserOrders(user!.id),
-    enabled:  !!user?.id,
+    queryKey:       ["my-orders", user?.id],
+    queryFn:        () => getUserOrders(user!.id),
+    enabled:        !!user?.id,
+    staleTime:      0,
+    refetchOnMount: true,
   });
 
   // Redirect unauthenticated users

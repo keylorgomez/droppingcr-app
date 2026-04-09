@@ -1,7 +1,7 @@
 import { useMemo, useEffect, useState, useRef } from "react";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ShoppingBag, Search, X, ChevronDown, Check, SlidersHorizontal } from "lucide-react";
+import { ShoppingBag, Search, X, ChevronDown, Check, SlidersHorizontal, ChevronLeft, ChevronRight } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import Header from "../components/ui/Header";
 import Hero from "../components/ui/Hero";
@@ -9,6 +9,8 @@ import ProductCard from "../components/catalog/ProductCard";
 import { getProducts } from "../services/productService";
 import { useAuth } from "../context/AuthContext";
 import { cn } from "../lib/utils";
+
+const PAGE_SIZE = 12;
 
 function ProductCardSkeleton() {
   return (
@@ -38,6 +40,15 @@ export default function CatalogPage() {
   const [search,       setSearch]       = useState("");
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
 
+  // Initialize page from sessionStorage so it's correct before any effect runs
+  const [page, setPage] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem("catalog_state");
+      if (saved) return JSON.parse(saved).page ?? 1;
+    } catch {}
+    return 1;
+  });
+
   // Desktop dropdown
   const [sizeDropdownOpen, setSizeDropdownOpen] = useState(false);
   const sizeDropdownRef = useRef<HTMLDivElement>(null);
@@ -46,6 +57,27 @@ export default function CatalogPage() {
   const [modalOpen,    setModalOpen]    = useState(false);
   const [pendingSearch, setPendingSearch] = useState("");
   const [pendingSize,   setPendingSize]   = useState<string | null>(null);
+
+  // Track previous values to detect real changes (avoids StrictMode false resets)
+  const prevFilterRef   = useRef(filter);
+  const prevSearchRef   = useRef(search);
+  const prevSizeRef     = useRef(selectedSize);
+
+  // Pending actions after paginated re-renders
+  const pendingScrollRef      = useRef<number | null>(null);
+  const scrollToCatalogRef    = useRef(false);
+
+  // On mount: restore scroll Y from sessionStorage
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem("catalog_state");
+      if (saved) {
+        const { scrollY } = JSON.parse(saved);
+        pendingScrollRef.current = scrollY ?? null;
+        sessionStorage.removeItem("catalog_state");
+      }
+    } catch {}
+  }, []);
 
   // Close desktop dropdown on outside click
   useEffect(() => {
@@ -58,13 +90,24 @@ export default function CatalogPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Reset all filters when sidebar category changes
+  // Reset filters + page only when filter actually changes (not on initial mount)
   useEffect(() => {
+    if (prevFilterRef.current === filter) return;
+    prevFilterRef.current = filter;
     setSearch("");
     setSelectedSize(null);
     setSizeDropdownOpen(false);
     setModalOpen(false);
+    setPage(1);
   }, [filter]);
+
+  // Reset page only when search or size actually change
+  useEffect(() => {
+    if (prevSearchRef.current === search && prevSizeRef.current === selectedSize) return;
+    prevSearchRef.current = search;
+    prevSizeRef.current   = selectedSize;
+    setPage(1);
+  }, [search, selectedSize]);
 
   // Lock body scroll when modal is open
   useEffect(() => {
@@ -73,8 +116,11 @@ export default function CatalogPage() {
   }, [modalOpen]);
 
   useEffect(() => {
-    if ((location.state as any)?.scrollToCatalog) {
-      document.getElementById("catalogo")?.scrollIntoView({ behavior: "smooth" });
+    const state = location.state as any;
+    if (state?.scrollToCatalog || state?.restoreScroll) {
+      if (!pendingScrollRef.current) {
+        document.getElementById("catalogo")?.scrollIntoView({ behavior: "smooth" });
+      }
       window.history.replaceState({}, "");
     }
   }, [location.state]);
@@ -127,6 +173,27 @@ export default function CatalogPage() {
     };
     return [...result].sort((a, b) => rank(a) - rank(b));
   }, [byCategory, search, selectedSize]);
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paginated  = useMemo(
+    () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [filtered, page]
+  );
+
+  // After paginated updates: run pending scroll restore OR scroll-to-catalog
+  useEffect(() => {
+    if (isLoading) return;
+    if (pendingScrollRef.current !== null) {
+      const y = pendingScrollRef.current;
+      pendingScrollRef.current = null;
+      requestAnimationFrame(() => window.scrollTo({ top: y, behavior: "instant" }));
+    } else if (scrollToCatalogRef.current) {
+      scrollToCatalogRef.current = false;
+      requestAnimationFrame(() =>
+        document.getElementById("catalogo")?.scrollIntoView({ behavior: "smooth" })
+      );
+    }
+  }, [paginated, isLoading]);
 
   // Preview count inside the mobile modal
   const previewCount = useMemo(() => {
@@ -296,8 +363,8 @@ export default function CatalogPage() {
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {isLoading
-            ? Array.from({ length: 8 }).map((_, i) => <ProductCardSkeleton key={i} />)
-            : filtered.map((product) => (
+            ? Array.from({ length: PAGE_SIZE }).map((_, i) => <ProductCardSkeleton key={i} />)
+            : paginated.map((product) => (
                 <ProductCard
                   key={product.id}
                   name={product.name}
@@ -308,12 +375,55 @@ export default function CatalogPage() {
                   is_new={product.is_new}
                   discount_percentage={product.discount_percentage}
                   is_sold_out={product.is_sold_out}
-                  onClick={() => navigate(`/product/${product.slug}`)}
+                  onClick={() => {
+                    sessionStorage.setItem("catalog_state", JSON.stringify({ page, scrollY: window.scrollY }));
+                    navigate(`/product/${product.slug}`);
+                  }}
                   onEdit={isAdmin ? () => navigate(`/admin/products/${product.id}/edit`) : undefined}
                 />
               ))
           }
         </div>
+
+        {/* ── Pagination ──────────────────────────────────────────────── */}
+        {!isLoading && totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 mt-10">
+            <button
+              onClick={() => { scrollToCatalogRef.current = true; setPage((p) => Math.max(1, p - 1)); }}
+              disabled={page === 1}
+              className="flex items-center justify-center w-9 h-9 rounded-xl border border-gray-200
+                         text-gray-400 hover:border-brand-primary hover:text-brand-primary
+                         transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <ChevronLeft size={16} />
+            </button>
+
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+              <button
+                key={p}
+                onClick={() => { scrollToCatalogRef.current = true; setPage(p); }}
+                className={cn(
+                  "w-9 h-9 rounded-xl text-sm font-poppins font-medium border transition-all",
+                  p === page
+                    ? "bg-brand-primary border-brand-primary text-white"
+                    : "border-gray-200 text-gray-500 hover:border-brand-primary hover:text-brand-primary bg-white"
+                )}
+              >
+                {p}
+              </button>
+            ))}
+
+            <button
+              onClick={() => { scrollToCatalogRef.current = true; setPage((p) => Math.min(totalPages, p + 1)); }}
+              disabled={page === totalPages}
+              className="flex items-center justify-center w-9 h-9 rounded-xl border border-gray-200
+                         text-gray-400 hover:border-brand-primary hover:text-brand-primary
+                         transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        )}
 
         {!isLoading && !isError && filtered.length === 0 && (
           <div className="flex flex-col items-center gap-4 py-24 text-gray-300">
