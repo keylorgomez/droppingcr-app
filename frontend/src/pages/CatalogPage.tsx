@@ -375,6 +375,7 @@ export default function CatalogPage() {
                   is_new={product.is_new}
                   discount_percentage={product.discount_percentage}
                   is_sold_out={product.is_sold_out}
+                  is_reserved={product.is_reserved}
                   onClick={() => {
                     sessionStorage.setItem("catalog_state", JSON.stringify({ page, scrollY: window.scrollY }));
                     navigate(`/product/${product.slug}`);

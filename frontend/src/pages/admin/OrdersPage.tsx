@@ -40,10 +40,10 @@ const inputCls =
 // ── Tab config ─────────────────────────────────────────────────────────────
 
 const TABS = [
-  { id: "all",       label: "Todos",      statuses: null                          },
-  { id: "pending",   label: "Pendientes", statuses: ["validating", "confirmed"]   },
-  { id: "shipped",   label: "Enviados",   statuses: ["shipped"]                   },
-  { id: "delivered", label: "Entregados", statuses: ["delivered"]                 },
+  { id: "all",       label: "Todos",      statuses: null                                      },
+  { id: "pending",   label: "Pendientes", statuses: ["validating", "confirmed", "apartada"]   },
+  { id: "shipped",   label: "Enviados",   statuses: ["shipped"]                               },
+  { id: "delivered", label: "Entregados", statuses: ["delivered"]                             },
 ] as const;
 
 type TabId = typeof TABS[number]["id"];
@@ -136,7 +136,10 @@ function OrderModal({ sale, onClose }: { sale: AdminSale; onClose: () => void })
       sale.id,
       deliveryStatus,
       trackingNumber.trim() || null,
-      note.trim() || null
+      note.trim() || null,
+      sale.delivery_status,
+      sale.variant_id,
+      sale.quantity
     ),
     onSuccess: () => {
       showToast("Pedido actualizado correctamente.", "success");

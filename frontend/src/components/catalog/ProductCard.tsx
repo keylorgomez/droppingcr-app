@@ -11,6 +11,7 @@ interface ProductCardProps {
   is_new?: boolean;
   discount_percentage?: number;
   is_sold_out?: boolean;
+  is_reserved?: boolean;
   onClick?: () => void;
   onEdit?: () => void;
 }
@@ -24,6 +25,7 @@ export default function ProductCard({
   is_new = false,
   discount_percentage = 0,
   is_sold_out = false,
+  is_reserved = false,
   onClick,
   onEdit,
 }: ProductCardProps) {
@@ -35,7 +37,7 @@ export default function ProductCard({
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    if (isHovered && hasMultipleImages && !is_sold_out) {
+    if (isHovered && hasMultipleImages && !is_sold_out && !is_reserved) {
       intervalRef.current = setInterval(() => {
         setImgIndex((i) => (i + 1) % allImages.length);
       }, 1800);
@@ -44,29 +46,31 @@ export default function ProductCard({
       if (!isHovered) setImgIndex(0);
     }
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [isHovered, hasMultipleImages, allImages.length, is_sold_out]);
+  }, [isHovered, hasMultipleImages, allImages.length, is_sold_out, is_reserved]);
 
   const hasDiscount = discount_percentage > 0;
   const discountedPrice = hasDiscount
     ? Math.round(price_sale * (1 - discount_percentage / 100))
     : price_sale;
 
-  // Left badge: AGOTADO takes priority over NUEVO
-  const leftBadge = is_sold_out
-    ? { text: "AGOTADO", cls: "bg-gray-600 text-white" }
-    : is_new
-      ? { text: "NUEVO", cls: "bg-emerald-500 text-white" }
-      : null;
+  // Left badge: APARTADA > AGOTADO > NUEVO
+  const leftBadge = is_reserved
+    ? { text: "APARTADA", cls: "bg-yellow-400 text-white" }
+    : is_sold_out
+      ? { text: "AGOTADO", cls: "bg-gray-600 text-white" }
+      : is_new
+        ? { text: "NUEVO", cls: "bg-emerald-500 text-white" }
+        : null;
 
-  // Right badge: discount, hidden when sold out
-  const rightBadge = !is_sold_out && hasDiscount
+  // Right badge: discount, hidden when sold out or reserved
+  const rightBadge = !is_sold_out && !is_reserved && hasDiscount
     ? { text: `${discount_percentage}% OFF`, cls: "bg-red-500 text-white" }
     : null;
 
   return (
     <motion.div
       className={`flex flex-col bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden font-poppins cursor-pointer ${
-        is_sold_out ? "opacity-50" : ""
+        is_sold_out || is_reserved ? "opacity-50" : ""
       }`}
       whileHover={{ y: -4, boxShadow: "0 8px 24px rgba(0,0,0,0.10)" }}
       transition={{ type: "spring", stiffness: 320, damping: 24 }}
@@ -90,7 +94,7 @@ export default function ProductCard({
         </AnimatePresence>
 
         {/* Image dots indicator */}
-        {hasMultipleImages && !is_sold_out && (
+        {hasMultipleImages && !is_sold_out && !is_reserved && (
           <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1">
             {allImages.map((_, i) => (
               <span

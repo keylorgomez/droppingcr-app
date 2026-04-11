@@ -15,6 +15,7 @@ export type ShippingMethod = typeof SHIPPING_OPTIONS[number]["value"];
 export const DELIVERY_STATUSES = [
   { value: "validating", label: "Validando",  bgCls: "bg-amber-100  text-amber-700"  },
   { value: "confirmed",  label: "Confirmado", bgCls: "bg-orange-100 text-orange-700" },
+  { value: "apartada",   label: "Apartada",   bgCls: "bg-yellow-100 text-yellow-700" },
   { value: "shipped",    label: "Enviado",    bgCls: "bg-blue-100   text-blue-700"   },
   { value: "delivered",  label: "Entregado",  bgCls: "bg-green-100  text-green-700"  },
   { value: "cancelled",  label: "Cancelado",  bgCls: "bg-red-100    text-red-600"    },
@@ -68,6 +69,8 @@ export interface PendingSale {
   sold_at:         string;
   product_name:    string;
   variant_size:    string;
+  variant_id:      string;
+  delivery_status: string;
   total_paid:      number;
   remaining:       number;   // (sale_price + shipping_cost) − total_paid
   payments:        Payment[];
@@ -140,6 +143,14 @@ export async function recordManualSale(data: SaleInput): Promise<void> {
 
   if (stockError) throw new Error(stockError.message);
 
+  if (data.delivery_status === "apartada") {
+    const { error: reserveErr } = await supabase
+      .from("product_variants")
+      .update({ is_reserved: true })
+      .eq("id", data.variant_id);
+    if (reserveErr) throw new Error(reserveErr.message);
+  }
+
   if (data.initial_payment > 0) {
     const { error: payError } = await supabase.from("payments").insert({
       sale_id: sale.id,
@@ -171,6 +182,7 @@ export async function getPendingSales(): Promise<PendingSale[]> {
     .from("sales")
     .select(`
       id, sale_price, shipping_cost, guest_name, guest_phone, note, sold_at,
+      variant_id, delivery_status,
       product_variants ( size, products ( name ) ),
       payments ( id, amount, note, paid_at )
     `)
@@ -193,10 +205,12 @@ export async function getPendingSales(): Promise<PendingSale[]> {
       guest_phone:  s.guest_phone,
       note:         s.note,
       sold_at:      s.sold_at,
-      product_name: s.product_variants?.products?.name ?? "—",
-      variant_size: s.product_variants?.size ?? "—",
-      total_paid:   totalPaid,
-      remaining:    Math.max(0, totalOwed - totalPaid),
+      product_name:    s.product_variants?.products?.name ?? "—",
+      variant_size:    s.product_variants?.size            ?? "—",
+      variant_id:      s.variant_id                        ?? "",
+      delivery_status: s.delivery_status                   ?? "validating",
+      total_paid:      totalPaid,
+      remaining:       Math.max(0, totalOwed - totalPaid),
       payments:     (s.payments ?? []).sort(
         (a: Payment, b: Payment) =>
           new Date(b.paid_at).getTime() - new Date(a.paid_at).getTime()
@@ -268,11 +282,22 @@ export async function addGeneralPayment(
     const totalOwed    = sale.sale_price + sale.shipping_cost;
 
     if (newTotalPaid >= totalOwed) {
+      const isApartada = sale.delivery_status === "apartada";
+      const updates: Record<string, unknown> = { status: "completed" };
+      if (isApartada) updates.delivery_status = "confirmed";
+
       const { error: statusError } = await supabase
         .from("sales")
-        .update({ status: "completed" })
+        .update(updates)
         .eq("id", sale.id);
       if (statusError) throw new Error(statusError.message);
+
+      if (isApartada && sale.variant_id) {
+        await supabase
+          .from("product_variants")
+          .update({ is_reserved: false })
+          .eq("id", sale.variant_id);
+      }
     }
 
     leftover -= apply;
@@ -302,7 +327,24 @@ export async function addPayment(
 
   const totalPaid = (payments ?? []).reduce((sum, p) => sum + p.amount, 0);
   if (totalPaid >= priceSold) {
-    await supabase.from("sales").update({ status: "completed" }).eq("id", saleId);
+    const { data: saleData } = await supabase
+      .from("sales")
+      .select("delivery_status, variant_id")
+      .eq("id", saleId)
+      .single();
+
+    const isApartada = saleData?.delivery_status === "apartada";
+    const updates: Record<string, unknown> = { status: "completed" };
+    if (isApartada) updates.delivery_status = "confirmed";
+
+    await supabase.from("sales").update(updates).eq("id", saleId);
+
+    if (isApartada && saleData?.variant_id) {
+      await supabase
+        .from("product_variants")
+        .update({ is_reserved: false })
+        .eq("id", saleData.variant_id);
+    }
   }
 }
 
@@ -405,6 +447,8 @@ export interface AdminSale {
   guest_phone:     string | null;
   product_name:    string;
   variant_size:    string;
+  variant_id:      string;
+  quantity:        number;
   image_url:       string;
   total_paid:      number;
 }
@@ -415,7 +459,7 @@ export async function getAllSales(): Promise<AdminSale[]> {
     .select(`
       id, sold_at, sale_price, shipping_cost, shipping_method,
       delivery_status, tracking_number, status, note,
-      guest_name, guest_phone,
+      guest_name, guest_phone, variant_id, quantity,
       product_variants (
         size,
         products (
@@ -452,6 +496,8 @@ export async function getAllSales(): Promise<AdminSale[]> {
       guest_phone:     s.guest_phone     ?? null,
       product_name:    s.product_variants?.products?.name ?? "—",
       variant_size:    s.product_variants?.size           ?? "—",
+      variant_id:      s.variant_id                       ?? "",
+      quantity:        s.quantity                         ?? 1,
       image_url:       images[0]?.image_url               ?? "",
       total_paid:      totalPaid,
     };
@@ -462,11 +508,46 @@ export async function updateSaleAdmin(
   saleId:          string,
   delivery_status: DeliveryStatus,
   tracking_number: string | null,
-  note:            string | null
+  note:            string | null,
+  prevStatus?:     string,
+  variantId?:      string,
+  quantity?:       number
 ): Promise<void> {
   const { error } = await supabase
     .from("sales")
     .update({ delivery_status, tracking_number, note })
     .eq("id", saleId);
   if (error) throw new Error(error.message);
+
+  if (!variantId) return;
+
+  const wasApartada = prevStatus === "apartada";
+
+  if (delivery_status === "apartada") {
+    const { error: reserveErr } = await supabase
+      .from("product_variants")
+      .update({ is_reserved: true })
+      .eq("id", variantId);
+    if (reserveErr) throw new Error(reserveErr.message);
+  } else if (delivery_status === "shipped" || delivery_status === "delivered") {
+    if (wasApartada) {
+      const { error: clearErr } = await supabase
+        .from("product_variants")
+        .update({ is_reserved: false })
+        .eq("id", variantId);
+      if (clearErr) throw new Error(clearErr.message);
+    }
+  } else if (delivery_status === "cancelled" && wasApartada) {
+    const { error: clearErr } = await supabase
+      .from("product_variants")
+      .update({ is_reserved: false })
+      .eq("id", variantId);
+    if (clearErr) throw new Error(clearErr.message);
+
+    const { error: stockErr } = await supabase.rpc("increment_variant_stock", {
+      p_variant_id: variantId,
+      p_amount:     quantity ?? 1,
+    });
+    if (stockErr) throw new Error(stockErr.message);
+  }
 }

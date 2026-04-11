@@ -557,7 +557,11 @@ function SaleModal({ productId, priceSale, discountPercentage, variants, onClose
               </p>
               <select
                 value={deliveryStatus}
-                onChange={(e) => setDeliveryStatus(e.target.value as DeliveryStatus)}
+                onChange={(e) => {
+                  const v = e.target.value as DeliveryStatus;
+                  setDeliveryStatus(v);
+                  if (v === "apartada") setIsPagos(true);
+                }}
                 className={inputCls}
               >
                 {DELIVERY_STATUSES.map((s) => (

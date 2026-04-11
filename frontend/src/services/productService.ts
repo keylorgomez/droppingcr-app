@@ -19,6 +19,7 @@ export interface ProductVariant {
   id: string;
   size: string;
   stock: number;
+  is_reserved: boolean;
 }
 
 export interface ProductDetail {
@@ -50,6 +51,7 @@ export interface CatalogProduct {
   sizes: string[];
   is_new: boolean;
   is_sold_out: boolean;
+  is_reserved: boolean;
 }
 
 export interface ProductInput {
@@ -82,7 +84,7 @@ export async function getProducts(): Promise<CatalogProduct[]> {
     .select(`
       id, name, slug, price_sale, discount_percentage, is_new,
       product_images ( image_url, is_primary, display_order ),
-      product_variants ( stock, size ),
+      product_variants ( stock, size, is_reserved ),
       product_categories ( categories ( name, slug ) )
     `)
     .eq("is_active", true)
@@ -102,6 +104,7 @@ export async function getProducts(): Promise<CatalogProduct[]> {
     const totalStock = (p.product_variants ?? []).reduce(
       (sum: number, v: { stock: number }) => sum + v.stock, 0
     );
+    const anyReserved = (p.product_variants ?? []).some((v: any) => v.is_reserved);
     const sizes: string[] = [
       ...new Set<string>(
         (p.product_variants ?? [])
@@ -127,6 +130,7 @@ export async function getProducts(): Promise<CatalogProduct[]> {
       sizes,
       is_new:              p.is_new ?? false,
       is_sold_out:         totalStock === 0,
+      is_reserved:         totalStock === 0 && anyReserved,
     };
   });
 }
