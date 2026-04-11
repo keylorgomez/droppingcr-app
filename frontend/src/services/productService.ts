@@ -153,7 +153,7 @@ export async function getProductBySlug(slug: string): Promise<ProductDetail> {
       price_purchase, price_sale, discount_percentage,
       is_active, is_new, created_at,
       images: product_images ( id, image_url, is_primary, display_order ),
-      variants: product_variants ( id, size, stock ),
+      variants: product_variants ( id, size, stock, is_reserved ),
       product_categories ( categories ( id, name, slug ) )
     `)
     .eq("slug", slug)
@@ -182,7 +182,7 @@ export async function getProductById(id: string): Promise<ProductDetail> {
       price_purchase, price_sale, discount_percentage,
       is_active, is_new, created_at,
       images: product_images ( id, image_url, is_primary, display_order ),
-      variants: product_variants ( id, size, stock ),
+      variants: product_variants ( id, size, stock, is_reserved ),
       product_categories ( categories ( id, name, slug ) )
     `)
     .eq("id", id)
