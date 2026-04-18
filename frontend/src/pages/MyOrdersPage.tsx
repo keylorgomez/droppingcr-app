@@ -45,7 +45,8 @@ function OrderSkeleton() {
 function OrderCard({ order }: { order: UserOrder }) {
   const total     = order.sale_price + order.shipping_cost;
   const remaining = Math.max(0, total - order.total_paid);
-  const isPending = order.status === "pending";
+  const isPending   = order.status === "pending";
+  const isCompleted = order.status === "completed";
   const progress  = total > 0 ? Math.min(100, (order.total_paid / total) * 100) : 100;
   const status    = deliveryStatusMeta(order.delivery_status);
   const isCorreos = CORREOS_METHODS.has(order.shipping_method);
@@ -103,7 +104,7 @@ function OrderCard({ order }: { order: UserOrder }) {
         </div>
       </div>
 
-      {/* Payment detail — only when pending */}
+      {/* Payment detail — pending: progress bar */}
       {isPending && (
         <div className="px-4 pb-4 flex flex-col gap-2 border-t border-gray-50 pt-3 mx-4 mb-0">
           <div className="flex justify-between text-xs font-poppins">
@@ -113,7 +114,6 @@ function OrderCard({ order }: { order: UserOrder }) {
               <span className="text-gray-300 font-normal"> / ₡{total.toLocaleString("en-US")}</span>
             </span>
           </div>
-          {/* Progress bar */}
           <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
             <div
               className="h-full rounded-full bg-brand-primary transition-all"
@@ -130,6 +130,24 @@ function OrderCard({ order }: { order: UserOrder }) {
               </span>
             )}
           </p>
+        </div>
+      )}
+
+      {/* Payment detail — completed */}
+      {isCompleted && (
+        <div className="px-4 pb-4 border-t border-gray-50 pt-3 mx-4 mb-0">
+          <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[11px] font-poppins text-gray-400">Total pagado</span>
+              <span className="text-sm font-poppins font-semibold text-brand-dark">
+                ₡{total.toLocaleString("en-US")}
+              </span>
+            </div>
+            <span className="flex items-center gap-1.5 text-[11px] font-poppins font-semibold
+                             text-green-600 bg-green-50 px-3 py-1.5 rounded-full">
+              ✓ Pago completado
+            </span>
+          </div>
         </div>
       )}
 

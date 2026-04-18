@@ -67,16 +67,22 @@ export default function CatalogPage() {
   const pendingScrollRef      = useRef<number | null>(null);
   const scrollToCatalogRef    = useRef(false);
 
-  // On mount: restore scroll Y from sessionStorage
+  // On mount: restore scroll Y from sessionStorage, or auto-scroll to catalog on filtered links
   useEffect(() => {
     try {
       const saved = sessionStorage.getItem("catalog_state");
       if (saved) {
+        // Back-navigation: restore exact scroll position
         const { scrollY } = JSON.parse(saved);
         pendingScrollRef.current = scrollY ?? null;
         sessionStorage.removeItem("catalog_state");
+      } else if (filter) {
+        // Fresh link with a filter (e.g. /?filter=descuentos): skip hero, go to products
+        scrollToCatalogRef.current = true;
       }
-    } catch {}
+    } catch {
+      if (filter) scrollToCatalogRef.current = true;
+    }
   }, []);
 
   // Close desktop dropdown on outside click
@@ -377,7 +383,7 @@ export default function CatalogPage() {
                   is_sold_out={product.is_sold_out}
                   is_reserved={product.is_reserved}
                   onClick={() => {
-                    sessionStorage.setItem("catalog_state", JSON.stringify({ page, scrollY: window.scrollY }));
+                    sessionStorage.setItem("catalog_state", JSON.stringify({ page, scrollY: window.scrollY, filter }));
                     navigate(`/product/${product.slug}`);
                   }}
                   onEdit={isAdmin ? () => navigate(`/admin/products/${product.id}/edit`) : undefined}

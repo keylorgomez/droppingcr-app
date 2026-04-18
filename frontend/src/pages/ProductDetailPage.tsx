@@ -142,7 +142,15 @@ function ProductContent({ product }: { product: ProductDetail }) {
       {/* Back + admin edit */}
       <div className="flex items-center justify-between mb-8">
         <button
-          onClick={() => navigate("/", { state: { restoreScroll: true } })}
+          onClick={() => {
+            try {
+              const saved = sessionStorage.getItem("catalog_state");
+              const savedFilter = saved ? (JSON.parse(saved).filter ?? "") : "";
+              navigate(savedFilter ? `/?filter=${savedFilter}` : "/", { state: { restoreScroll: true } });
+            } catch {
+              navigate("/", { state: { restoreScroll: true } });
+            }
+          }}
           className="flex items-center gap-1.5 text-sm font-poppins text-gray-400 hover:text-brand-primary transition-colors"
         >
           <ArrowLeft size={15} strokeWidth={2} />

@@ -11,6 +11,7 @@ import CategoriesPage    from "./pages/admin/CategoriesPage";
 import DebtPage          from "./pages/admin/DebtPage";
 import OrdersPage        from "./pages/admin/OrdersPage";
 import Dashboard         from "./pages/admin/Dashboard";
+import PaymentsPage      from "./pages/admin/PaymentsPage";
 import Footer            from "./components/ui/Footer";
 import GATracker         from "./components/GATracker";
 import SplashScreen      from "./components/ui/SplashScreen";
@@ -44,6 +45,7 @@ export default function App() {
                 <Route path="/my-orders"               element={<MyOrdersPage />} />
                 <Route path="/admin/pedidos"           element={<OrdersPage />} />
                 <Route path="/admin/dashboard"         element={<Dashboard />} />
+                <Route path="/admin/movimientos"       element={<PaymentsPage />} />
               </Routes>
             </div>
             <Footer />

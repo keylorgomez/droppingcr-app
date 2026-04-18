@@ -504,6 +504,53 @@ export async function getAllSales(): Promise<AdminSale[]> {
   });
 }
 
+// ── Payment log ───────────────────────────────────────────────────────────
+
+export interface PaymentLog {
+  id:              string;
+  amount:          number;
+  note:            string | null;
+  paid_at:         string;
+  sale_id:         string;
+  guest_name:      string | null;
+  guest_phone:     string | null;
+  product_name:    string;
+  variant_size:    string;
+  delivery_status: string;
+  sale_price:      number;
+  shipping_cost:   number;
+}
+
+export async function getPaymentsLog(): Promise<PaymentLog[]> {
+  const { data, error } = await supabase
+    .from("payments")
+    .select(`
+      id, amount, note, paid_at,
+      sales (
+        id, guest_name, guest_phone, sale_price, shipping_cost, delivery_status,
+        product_variants ( size, products ( name ) )
+      )
+    `)
+    .order("paid_at", { ascending: false });
+
+  if (error) throw new Error(error.message);
+
+  return (data ?? []).map((p: any) => ({
+    id:              p.id,
+    amount:          p.amount,
+    note:            p.note            ?? null,
+    paid_at:         p.paid_at,
+    sale_id:         p.sales?.id       ?? "",
+    guest_name:      p.sales?.guest_name  ?? null,
+    guest_phone:     p.sales?.guest_phone ?? null,
+    product_name:    p.sales?.product_variants?.products?.name ?? "—",
+    variant_size:    p.sales?.product_variants?.size           ?? "—",
+    delivery_status: p.sales?.delivery_status                  ?? "validating",
+    sale_price:      p.sales?.sale_price                       ?? 0,
+    shipping_cost:   p.sales?.shipping_cost                    ?? 0,
+  }));
+}
+
 export async function updateSaleAdmin(
   saleId:          string,
   delivery_status: DeliveryStatus,
