@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, ArrowLeft } from "lucide-react";
+import { Loader2, ArrowLeft, Coins } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
 import { updateProfile } from "../services/profileService";
+import { getMyPayouts, type AdminPayout } from "../services/payoutsService";
 import { useToast } from "../components/ui/Toast";
 import Header from "../components/ui/Header";
 
@@ -72,6 +74,75 @@ function ProfileSkeleton() {
         </div>
       </main>
     </>
+  );
+}
+
+// ── Admin payouts section ──────────────────────────────────────────────────
+
+function AdminPayoutsSection({ userId }: { userId: string }) {
+  const { data: payouts = [], isLoading } = useQuery({
+    queryKey: ["my-payouts", userId],
+    queryFn:  () => getMyPayouts(userId),
+  });
+
+  const total = payouts.reduce((s, p) => s + p.amount, 0);
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Coins size={15} className="text-brand-accent" strokeWidth={1.8} />
+          <span className="text-xs font-poppins font-semibold uppercase tracking-wider text-gray-500">
+            Mis abonos de ganancia
+          </span>
+        </div>
+        {!isLoading && payouts.length > 0 && (
+          <span className="text-sm font-poppins font-bold text-brand-primary">
+            ₡{total.toLocaleString("en-US")}
+          </span>
+        )}
+      </div>
+
+      {isLoading && (
+        <div className="space-y-2">
+          {[1, 2].map((i) => (
+            <div key={i} className="h-12 bg-gray-100 rounded-xl animate-pulse" />
+          ))}
+        </div>
+      )}
+
+      {!isLoading && payouts.length === 0 && (
+        <p className="text-xs font-poppins text-gray-300 text-center py-6">
+          Aún no tienes abonos registrados.
+        </p>
+      )}
+
+      {!isLoading && payouts.length > 0 && (
+        <div className="flex flex-col gap-2">
+          {payouts.map((p: AdminPayout) => (
+            <div
+              key={p.id}
+              className="flex items-center justify-between rounded-xl border border-gray-100
+                         bg-gray-50 px-4 py-2.5 gap-3"
+            >
+              <div className="flex flex-col gap-0.5 min-w-0">
+                <p className="text-xs font-poppins text-gray-400">
+                  {new Date(p.paid_at).toLocaleDateString("es-CR", {
+                    day: "numeric", month: "short", year: "numeric",
+                  })}
+                </p>
+                {p.note && (
+                  <p className="text-[11px] font-poppins text-gray-400 truncate">{p.note}</p>
+                )}
+              </div>
+              <span className="font-poppins font-semibold text-sm text-brand-primary shrink-0">
+                ₡{p.amount.toLocaleString("en-US")}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -208,6 +279,14 @@ export default function ProfilePage() {
             Guardar cambios
           </button>
         </form>
+
+        {/* Admin payouts history */}
+        {user.role === "admin" && (
+          <>
+            <div className="border-t border-gray-100 mt-6 mb-6" />
+            <AdminPayoutsSection userId={user.id} />
+          </>
+        )}
 
       </main>
     </>

@@ -2,7 +2,8 @@ import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery }    from "@tanstack/react-query";
 import {
-  ArrowLeft, Search, X, Receipt, TrendingUp, Users, Calendar,
+  ArrowLeft, Search, X, Receipt, TrendingUp, ArrowDownLeft, ArrowUpRight,
+  Minus, Calendar, Users,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Header from "../../components/ui/Header";
@@ -11,7 +12,16 @@ import {
   getPaymentsLog, deliveryStatusMeta,
   type PaymentLog,
 } from "../../services/salesService";
+import { getAllPayouts, type AdminPayout } from "../../services/payoutsService";
+import { getExpensePaymentsLog, type ExpensePaymentLog } from "../../services/expensesService";
 import { cn } from "../../lib/utils";
+
+// ── Unified movement entry ─────────────────────────────────────────────────
+
+type Movement =
+  | { kind: "in";      data: PaymentLog        }
+  | { kind: "out";     data: AdminPayout       }
+  | { kind: "expense"; data: ExpensePaymentLog };
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -28,6 +38,7 @@ function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString("es-CR", {
     hour: "2-digit", minute: "2-digit",
   });
+
 }
 
 // ── Skeleton ───────────────────────────────────────────────────────────────
@@ -50,38 +61,30 @@ function TableSkeleton() {
 // ── Summary card ───────────────────────────────────────────────────────────
 
 function SummaryCard({
-  icon: Icon,
-  label,
-  value,
-  sub,
-  color = "text-brand-primary",
+  icon: Icon, label, value, sub, textCls = "text-brand-primary", bgCls = "bg-brand-bg",
 }: {
-  icon: React.ElementType;
-  label: string;
-  value: string;
-  sub?: string;
-  color?: string;
+  icon: React.ElementType; label: string; value: string; sub?: string;
+  textCls?: string; bgCls?: string;
 }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4
                     flex items-center gap-4">
-      <div className="w-10 h-10 rounded-xl bg-brand-bg flex items-center justify-center shrink-0">
-        <Icon size={18} strokeWidth={1.8} className={color} />
+      <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", bgCls)}>
+        <Icon size={18} strokeWidth={1.8} className={textCls} />
       </div>
       <div className="min-w-0">
         <p className="text-[10px] font-poppins text-gray-400 uppercase tracking-wider">{label}</p>
-        <p className={cn("font-poppins font-bold text-lg leading-tight", color)}>{value}</p>
+        <p className={cn("font-poppins font-bold text-lg leading-tight", textCls)}>{value}</p>
         {sub && <p className="text-[11px] font-poppins text-gray-400">{sub}</p>}
       </div>
     </div>
   );
 }
 
-// ── Payment row ────────────────────────────────────────────────────────────
+// ── Inflow row ─────────────────────────────────────────────────────────────
 
 function PaymentRow({ log }: { log: PaymentLog }) {
   const status = deliveryStatusMeta(log.delivery_status);
-
   return (
     <motion.tr
       initial={{ opacity: 0 }}
@@ -89,7 +92,6 @@ function PaymentRow({ log }: { log: PaymentLog }) {
       exit={{ opacity: 0 }}
       className="border-b border-gray-50 last:border-b-0 hover:bg-gray-50/60 transition-colors"
     >
-      {/* Fecha */}
       <td className="px-4 py-3 align-top shrink-0">
         <p className="text-xs font-poppins text-brand-dark whitespace-nowrap">
           {formatDate(log.paid_at)}
@@ -98,20 +100,14 @@ function PaymentRow({ log }: { log: PaymentLog }) {
           {formatTime(log.paid_at)}
         </p>
       </td>
-
-      {/* Cliente */}
       <td className="px-4 py-3 align-top min-w-0">
         <p className="text-xs font-poppins font-medium text-brand-dark truncate max-w-[140px]">
           {log.guest_name ?? <span className="text-gray-300 font-normal italic">Sin nombre</span>}
         </p>
         {log.guest_phone && (
-          <p className="text-[10px] font-poppins text-gray-400 mt-0.5">
-            {log.guest_phone}
-          </p>
+          <p className="text-[10px] font-poppins text-gray-400 mt-0.5">{log.guest_phone}</p>
         )}
       </td>
-
-      {/* Producto */}
       <td className="px-4 py-3 align-top min-w-0">
         <p className="text-xs font-poppins italic text-brand-primary font-semibold
                       truncate max-w-[160px] leading-snug">
@@ -122,15 +118,14 @@ function PaymentRow({ log }: { log: PaymentLog }) {
           T.{log.variant_size}
         </span>
       </td>
-
-      {/* Monto */}
       <td className="px-4 py-3 align-top text-right shrink-0">
-        <p className="text-sm font-poppins font-bold text-green-600 whitespace-nowrap">
-          +₡{log.amount.toLocaleString("en-US")}
-        </p>
+        <div className="flex items-center justify-end gap-1">
+          <ArrowDownLeft size={12} className="text-green-500" strokeWidth={2.2} />
+          <p className="text-sm font-poppins font-bold text-green-600 whitespace-nowrap">
+            ₡{log.amount.toLocaleString("en-US")}
+          </p>
+        </div>
       </td>
-
-      {/* Estado pedido */}
       <td className="px-4 py-3 align-top text-center shrink-0">
         <span className={cn(
           "text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full font-poppins whitespace-nowrap",
@@ -139,14 +134,264 @@ function PaymentRow({ log }: { log: PaymentLog }) {
           {status.label}
         </span>
       </td>
-
-      {/* Nota */}
       <td className="px-4 py-3 align-top min-w-0">
         <p className="text-[11px] font-poppins text-gray-400 truncate max-w-[140px]">
           {log.note ?? <span className="text-gray-200 italic">—</span>}
         </p>
       </td>
     </motion.tr>
+  );
+}
+
+// ── Outflow row (payout) ───────────────────────────────────────────────────
+
+function PayoutRow({ payout }: { payout: AdminPayout }) {
+  return (
+    <motion.tr
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="border-b border-gray-50 last:border-b-0 hover:bg-red-50/30 transition-colors"
+    >
+      <td className="px-4 py-3 align-top shrink-0">
+        <p className="text-xs font-poppins text-brand-dark whitespace-nowrap">
+          {formatDate(payout.paid_at)}
+        </p>
+        <p className="text-[10px] font-poppins text-gray-300 mt-0.5">
+          {formatTime(payout.paid_at)}
+        </p>
+      </td>
+      <td className="px-4 py-3 align-top min-w-0">
+        <p className="text-xs font-poppins font-medium text-brand-dark truncate max-w-[140px]">
+          {payout.recipient_name}
+        </p>
+        {payout.creator_name && (
+          <p className="text-[10px] font-poppins text-gray-400 mt-0.5">
+            Por: {payout.creator_name}
+          </p>
+        )}
+      </td>
+      <td className="px-4 py-3 align-top min-w-0">
+        <p className="text-xs font-poppins font-semibold text-gray-500 leading-snug">
+          Distribución de ganancia
+        </p>
+        <span className="inline-block mt-0.5 text-[10px] font-poppins text-red-400
+                         bg-red-50 rounded-full px-2 py-0.5">
+          Admin
+        </span>
+      </td>
+      <td className="px-4 py-3 align-top text-right shrink-0">
+        <div className="flex items-center justify-end gap-1">
+          <ArrowUpRight size={12} className="text-red-400" strokeWidth={2.2} />
+          <p className="text-sm font-poppins font-bold text-red-500 whitespace-nowrap">
+            ₡{payout.amount.toLocaleString("en-US")}
+          </p>
+        </div>
+      </td>
+      <td className="px-4 py-3 align-top text-center shrink-0">
+        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5
+                         rounded-full font-poppins whitespace-nowrap bg-red-100 text-red-600">
+          Salida
+        </span>
+      </td>
+      <td className="px-4 py-3 align-top min-w-0">
+        <p className="text-[11px] font-poppins text-gray-400 truncate max-w-[140px]">
+          {payout.note ?? <span className="text-gray-200 italic">—</span>}
+        </p>
+      </td>
+    </motion.tr>
+  );
+}
+
+// ── Expense payment row ────────────────────────────────────────────────────
+
+function ExpensePaymentRow({ ep }: { ep: ExpensePaymentLog }) {
+  return (
+    <motion.tr
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="border-b border-gray-50 last:border-b-0 hover:bg-orange-50/20 transition-colors"
+    >
+      <td className="px-4 py-3 align-top shrink-0">
+        <p className="text-xs font-poppins text-brand-dark whitespace-nowrap">
+          {formatDate(ep.paid_at)}
+        </p>
+        <p className="text-[10px] font-poppins text-gray-300 mt-0.5">
+          {formatTime(ep.paid_at)}
+        </p>
+      </td>
+      <td className="px-4 py-3 align-top min-w-0">
+        <p className="text-xs font-poppins font-medium text-brand-dark truncate max-w-[140px]">
+          Gasto operativo
+        </p>
+        {ep.creator_name && (
+          <p className="text-[10px] font-poppins text-gray-400 mt-0.5">
+            Por: {ep.creator_name}
+          </p>
+        )}
+      </td>
+      <td className="px-4 py-3 align-top min-w-0">
+        <p className="text-xs font-poppins font-semibold text-gray-600 leading-snug truncate max-w-[160px]">
+          {ep.expense_description}
+        </p>
+        {ep.expense_category && (
+          <span className="inline-block mt-0.5 text-[10px] font-poppins text-orange-500
+                           bg-orange-50 rounded-full px-2 py-0.5">
+            {ep.expense_category}
+          </span>
+        )}
+      </td>
+      <td className="px-4 py-3 align-top text-right shrink-0">
+        <div className="flex items-center justify-end gap-1">
+          <ArrowUpRight size={12} className="text-orange-400" strokeWidth={2.2} />
+          <p className="text-sm font-poppins font-bold text-orange-500 whitespace-nowrap">
+            ₡{ep.amount.toLocaleString("en-US")}
+          </p>
+        </div>
+      </td>
+      <td className="px-4 py-3 align-top text-center shrink-0">
+        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5
+                         rounded-full font-poppins whitespace-nowrap bg-orange-100 text-orange-600">
+          Gasto
+        </span>
+      </td>
+      <td className="px-4 py-3 align-top min-w-0">
+        <p className="text-[11px] font-poppins text-gray-400 truncate max-w-[140px]">
+          {ep.note ?? <span className="text-gray-200 italic">—</span>}
+        </p>
+      </td>
+    </motion.tr>
+  );
+}
+
+// ── Mobile expense payment card ────────────────────────────────────────────
+
+function MobileExpenseCard({ ep }: { ep: ExpensePaymentLog }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0 }}
+      className="px-4 py-3.5 flex gap-3 bg-orange-50/20"
+    >
+      <div className="flex flex-col items-center gap-1 shrink-0 min-w-[80px]">
+        <div className="flex items-center gap-0.5">
+          <ArrowUpRight size={11} className="text-orange-400" strokeWidth={2.2} />
+          <p className="text-sm font-poppins font-bold text-orange-500 whitespace-nowrap">
+            ₡{ep.amount.toLocaleString("en-US")}
+          </p>
+        </div>
+        <p className="text-[10px] font-poppins text-gray-400 text-center leading-tight">
+          {formatDate(ep.paid_at)}
+        </p>
+      </div>
+      <div className="flex flex-col gap-1 flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-xs font-poppins font-semibold text-gray-700 leading-snug line-clamp-2 flex-1">
+            {ep.expense_description}
+          </p>
+          <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider
+                           px-2 py-0.5 rounded-full font-poppins bg-orange-100 text-orange-600">
+            Gasto
+          </span>
+        </div>
+        {ep.expense_category && (
+          <p className="text-[11px] font-poppins text-orange-500">{ep.expense_category}</p>
+        )}
+        {ep.note && (
+          <p className="text-[11px] font-poppins text-gray-400 truncate">{ep.note}</p>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+// ── Mobile card ────────────────────────────────────────────────────────────
+
+function MobilePaymentCard({ log }: { log: PaymentLog }) {
+  const status = deliveryStatusMeta(log.delivery_status);
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0 }}
+      className="px-4 py-3.5 flex gap-3"
+    >
+      <div className="flex flex-col items-center gap-1 shrink-0 min-w-[80px]">
+        <div className="flex items-center gap-0.5">
+          <ArrowDownLeft size={11} className="text-green-500" strokeWidth={2.2} />
+          <p className="text-sm font-poppins font-bold text-green-600 whitespace-nowrap">
+            ₡{log.amount.toLocaleString("en-US")}
+          </p>
+        </div>
+        <p className="text-[10px] font-poppins text-gray-400 text-center leading-tight">
+          {formatDate(log.paid_at)}
+        </p>
+      </div>
+      <div className="flex flex-col gap-1 flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-xs font-poppins font-semibold italic text-brand-primary
+                        leading-snug line-clamp-2 flex-1">
+            {log.product_name}
+            <span className="not-italic font-normal text-gray-400"> · T.{log.variant_size}</span>
+          </p>
+          <span className={cn(
+            "shrink-0 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full font-poppins",
+            status.bgCls
+          )}>
+            {status.label}
+          </span>
+        </div>
+        <p className="text-[11px] font-poppins text-gray-500">
+          {log.guest_name ?? <span className="italic text-gray-300">Sin nombre</span>}
+          {log.guest_phone && <span className="text-gray-400"> · {log.guest_phone}</span>}
+        </p>
+        {log.note && (
+          <p className="text-[11px] font-poppins text-gray-400 truncate">{log.note}</p>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+function MobilePayoutCard({ payout }: { payout: AdminPayout }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0 }}
+      className="px-4 py-3.5 flex gap-3 bg-red-50/30"
+    >
+      <div className="flex flex-col items-center gap-1 shrink-0 min-w-[80px]">
+        <div className="flex items-center gap-0.5">
+          <ArrowUpRight size={11} className="text-red-400" strokeWidth={2.2} />
+          <p className="text-sm font-poppins font-bold text-red-500 whitespace-nowrap">
+            ₡{payout.amount.toLocaleString("en-US")}
+          </p>
+        </div>
+        <p className="text-[10px] font-poppins text-gray-400 text-center leading-tight">
+          {formatDate(payout.paid_at)}
+        </p>
+      </div>
+      <div className="flex flex-col gap-1 flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-xs font-poppins font-semibold text-gray-700 leading-snug flex-1">
+            Distribución de ganancia
+          </p>
+          <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider
+                           px-2 py-0.5 rounded-full font-poppins bg-red-100 text-red-600">
+            Salida
+          </span>
+        </div>
+        <p className="text-[11px] font-poppins text-gray-500">
+          {payout.recipient_name}
+        </p>
+        {payout.note && (
+          <p className="text-[11px] font-poppins text-gray-400 truncate">{payout.note}</p>
+        )}
+      </div>
+    </motion.div>
   );
 }
 
@@ -157,11 +402,25 @@ export default function PaymentsPage() {
   const navigate   = useNavigate();
   const [search, setSearch] = useState("");
 
-  const { data: logs = [], isLoading } = useQuery({
+  const { data: logs    = [], isLoading: loadingLogs    } = useQuery({
     queryKey: ["payments-log"],
     queryFn:  getPaymentsLog,
     staleTime: 30_000,
   });
+
+  const { data: payouts = [], isLoading: loadingPayouts } = useQuery({
+    queryKey: ["admin-payouts"],
+    queryFn:  getAllPayouts,
+    staleTime: 30_000,
+  });
+
+  const { data: expensePayments = [], isLoading: loadingExpenses } = useQuery({
+    queryKey: ["expense-payments-log"],
+    queryFn:  getExpensePaymentsLog,
+    staleTime: 30_000,
+  });
+
+  const isLoading = loadingLogs || loadingPayouts || loadingExpenses;
 
   // Guard: solo admin
   if (user && user.role !== "admin") {
@@ -169,29 +428,85 @@ export default function PaymentsPage() {
     return null;
   }
 
-  const filtered = useMemo(() => {
-    if (!search.trim()) return logs;
-    const q = normalize(search.trim());
-    return logs.filter((l) =>
-      normalize(l.guest_name  ?? "").includes(q) ||
-      normalize(l.guest_phone ?? "").includes(q) ||
-      normalize(l.product_name).includes(q) ||
-      normalize(l.note        ?? "").includes(q)
+  // ── Merge and sort ───────────────────────────────────────────────────────
+  const movements: Movement[] = useMemo(() => {
+    const ins:  Movement[] = logs.map((d)            => ({ kind: "in"      as const, data: d }));
+    const outs: Movement[] = payouts.map((d)         => ({ kind: "out"     as const, data: d }));
+    const exps: Movement[] = expensePayments.map((d) => ({ kind: "expense" as const, data: d }));
+    return [...ins, ...outs, ...exps].sort(
+      (a, b) => new Date(b.data.paid_at).getTime() - new Date(a.data.paid_at).getTime()
     );
-  }, [logs, search]);
+  }, [logs, payouts, expensePayments]);
 
-  // Summary stats
-  const totalCollected = logs.reduce((s, l) => s + l.amount, 0);
-  const uniqueClients  = new Set(
+  // ── Filter ───────────────────────────────────────────────────────────────
+  const filtered = useMemo(() => {
+    if (!search.trim()) return movements;
+    const q = normalize(search.trim());
+    return movements.filter((m) => {
+      if (m.kind === "in") {
+        const l = m.data;
+        return (
+          normalize(l.guest_name   ?? "").includes(q) ||
+          normalize(l.guest_phone  ?? "").includes(q) ||
+          normalize(l.product_name     ).includes(q) ||
+          normalize(l.note         ?? "").includes(q)
+        );
+      } else if (m.kind === "out") {
+        const p = m.data;
+        return (
+          normalize(p.recipient_name   ).includes(q) ||
+          normalize(p.note         ?? "").includes(q) ||
+          normalize(p.creator_name ?? "").includes(q)
+        );
+      } else {
+        const e = m.data;
+        return (
+          normalize(e.expense_description         ).includes(q) ||
+          normalize(e.expense_category        ?? "").includes(q) ||
+          normalize(e.note                    ?? "").includes(q)
+        );
+      }
+    });
+  }, [movements, search]);
+
+  // ── Summary stats ────────────────────────────────────────────────────────
+  const totalIn  = logs.reduce((s, l) => s + l.amount, 0);
+  const totalOut = payouts.reduce((s, p) => s + p.amount, 0)
+                 + expensePayments.reduce((s, e) => s + e.amount, 0);
+
+  const uniqueClients = new Set(
     logs.map((l) => l.guest_phone ?? l.guest_name ?? l.sale_id)
   ).size;
 
-  const now       = new Date();
+  const now            = new Date();
+  const currentMonth   = now.getMonth();
+  const currentYear    = now.getFullYear();
+  const monthLabel     = now.toLocaleDateString("es-CR", { month: "long", year: "numeric" });
+
   const thisMonth = logs.filter((l) => {
     const d = new Date(l.paid_at);
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
   });
-  const thisMonthTotal = thisMonth.reduce((s, l) => s + l.amount, 0);
+  const thisMonthIn = thisMonth.reduce((s, l) => s + l.amount, 0);
+
+  const thisMonthPayouts = payouts.filter((p) => {
+    const d = new Date(p.paid_at);
+    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+  });
+  const thisMonthExpenses = expensePayments.filter((e) => {
+    const d = new Date(e.paid_at);
+    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+  });
+  const thisMonthOut = thisMonthPayouts.reduce((s, p) => s + p.amount, 0)
+                     + thisMonthExpenses.reduce((s, e) => s + e.amount, 0);
+
+  // ── Footer totals ────────────────────────────────────────────────────────
+  const filteredIn  = filtered
+    .filter((m) => m.kind === "in")
+    .reduce((s, m) => s + m.data.amount, 0);
+  const filteredOut = filtered
+    .filter((m) => m.kind !== "in")
+    .reduce((s, m) => s + m.data.amount, 0);
 
   return (
     <>
@@ -215,32 +530,79 @@ export default function PaymentsPage() {
             </h1>
           </div>
           <p className="font-poppins text-xs text-gray-400 mt-1">
-            Historial de todos los abonos y pagos recibidos
+            Historial de entradas y salidas de dinero
           </p>
         </div>
 
         {/* Summary cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
           <SummaryCard
-            icon={TrendingUp}
-            label="Total recaudado"
-            value={`₡${totalCollected.toLocaleString("en-US")}`}
-            sub={`${logs.length} movimientos`}
-            color="text-green-600"
+            icon={ArrowDownLeft}
+            label="Ingresos totales"
+            value={`₡${totalIn.toLocaleString("en-US")}`}
+            sub={`${logs.length} pagos recibidos`}
+            textCls="text-green-600"
+            bgCls="bg-green-50"
           />
           <SummaryCard
-            icon={Calendar}
-            label="Este mes"
-            value={`₡${thisMonthTotal.toLocaleString("en-US")}`}
-            sub={`${thisMonth.length} movimientos`}
-            color="text-brand-primary"
+            icon={ArrowUpRight}
+            label="Salidas totales"
+            value={`₡${totalOut.toLocaleString("en-US")}`}
+            sub={`${payouts.length} abono${payouts.length !== 1 ? "s" : ""} a admins`}
+            textCls="text-red-500"
+            bgCls="bg-red-50"
           />
           <SummaryCard
-            icon={Users}
-            label="Clientes únicos"
-            value={String(uniqueClients)}
-            sub="con al menos un pago"
+            icon={totalIn - totalOut >= 0 ? TrendingUp : Minus}
+            label="Balance neto"
+            value={`₡${(totalIn - totalOut).toLocaleString("en-US")}`}
+            sub="Ingresos − salidas"
+            textCls={totalIn - totalOut >= 0 ? "text-brand-primary" : "text-red-500"}
+            bgCls={totalIn - totalOut >= 0 ? "bg-brand-bg" : "bg-red-50"}
           />
+        </div>
+
+        {/* Monthly cards */}
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-2 px-0.5">
+            <Calendar size={13} strokeWidth={1.8} className="text-brand-accent" />
+            <span className="text-[11px] font-poppins font-semibold uppercase tracking-widest text-gray-400 capitalize">
+              {monthLabel}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {/* Monthly ingresos */}
+            <div className="rounded-2xl border border-green-100 bg-green-50 px-5 py-4 flex flex-col gap-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-poppins font-semibold uppercase tracking-wider text-green-600/70">
+                  Ingresos del mes
+                </span>
+                <ArrowDownLeft size={15} strokeWidth={2} className="text-green-500" />
+              </div>
+              <p className="text-2xl font-poppins font-bold text-green-700 leading-none mt-1">
+                ₡{thisMonthIn.toLocaleString("en-US")}
+              </p>
+              <p className="text-[11px] font-poppins text-green-600/60 mt-0.5">
+                {thisMonth.length} {thisMonth.length === 1 ? "pago recibido" : "pagos recibidos"}
+              </p>
+            </div>
+
+            {/* Monthly salidas */}
+            <div className="rounded-2xl border border-red-100 bg-red-50 px-5 py-4 flex flex-col gap-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-poppins font-semibold uppercase tracking-wider text-red-500/70">
+                  Salidas del mes
+                </span>
+                <ArrowUpRight size={15} strokeWidth={2} className="text-red-400" />
+              </div>
+              <p className="text-2xl font-poppins font-bold text-red-600 leading-none mt-1">
+                ₡{thisMonthOut.toLocaleString("en-US")}
+              </p>
+              <p className="text-[11px] font-poppins text-red-500/60 mt-0.5">
+                {thisMonthPayouts.length} {thisMonthPayouts.length === 1 ? "abono registrado" : "abonos registrados"}
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Search */}
@@ -283,7 +645,7 @@ export default function PaymentsPage() {
               <table className="hidden md:table w-full table-auto">
                 <thead>
                   <tr className="border-b border-gray-100 bg-gray-50/70">
-                    {["Fecha", "Cliente", "Producto", "Monto", "Estado", "Nota"].map((h, i) => (
+                    {["Fecha", "Persona", "Detalle", "Monto", "Tipo", "Nota"].map((h, i) => (
                       <th
                         key={h}
                         className={cn(
@@ -298,9 +660,13 @@ export default function PaymentsPage() {
                 </thead>
                 <tbody>
                   <AnimatePresence>
-                    {filtered.map((log) => (
-                      <PaymentRow key={log.id} log={log} />
-                    ))}
+                    {filtered.map((m) =>
+                      m.kind === "in"
+                        ? <PaymentRow      key={`in-${m.data.id}`}  log={m.data}    />
+                        : m.kind === "out"
+                        ? <PayoutRow       key={`out-${m.data.id}`} payout={m.data} />
+                        : <ExpensePaymentRow key={`exp-${m.data.id}`} ep={m.data}   />
+                    )}
                   </AnimatePresence>
                 </tbody>
               </table>
@@ -308,76 +674,43 @@ export default function PaymentsPage() {
               {/* Mobile cards */}
               <div className="md:hidden flex flex-col divide-y divide-gray-50">
                 <AnimatePresence>
-                  {filtered.map((log) => (
-                    <MobilePaymentCard key={log.id} log={log} />
-                  ))}
+                  {filtered.map((m) =>
+                    m.kind === "in"
+                      ? <MobilePaymentCard key={`in-${m.data.id}`}   log={m.data}    />
+                      : m.kind === "out"
+                      ? <MobilePayoutCard  key={`out-${m.data.id}`}  payout={m.data} />
+                      : <MobileExpenseCard key={`exp-${m.data.id}`}  ep={m.data}     />
+                  )}
                 </AnimatePresence>
               </div>
             </>
           )}
 
-          {/* Footer count */}
+          {/* Footer */}
           {!isLoading && filtered.length > 0 && (
-            <div className="px-4 py-3 border-t border-gray-50 flex items-center justify-between">
+            <div className="px-4 py-3 border-t border-gray-50 flex items-center justify-between flex-wrap gap-2">
               <p className="text-[11px] font-poppins text-gray-400">
                 {filtered.length} {filtered.length === 1 ? "movimiento" : "movimientos"}
-                {search && ` · filtrado de ${logs.length}`}
+                {search && ` · filtrado de ${movements.length}`}
               </p>
-              <p className="text-[11px] font-poppins font-semibold text-green-600">
-                Total filtrado: ₡{filtered.reduce((s, l) => s + l.amount, 0).toLocaleString("en-US")}
-              </p>
+              <div className="flex items-center gap-4">
+                {filteredIn > 0 && (
+                  <span className="text-[11px] font-poppins font-semibold text-green-600 flex items-center gap-1">
+                    <ArrowDownLeft size={11} strokeWidth={2.2} />
+                    ₡{filteredIn.toLocaleString("en-US")}
+                  </span>
+                )}
+                {filteredOut > 0 && (
+                  <span className="text-[11px] font-poppins font-semibold text-red-500 flex items-center gap-1">
+                    <ArrowUpRight size={11} strokeWidth={2.2} />
+                    ₡{filteredOut.toLocaleString("en-US")}
+                  </span>
+                )}
+              </div>
             </div>
           )}
         </div>
       </main>
     </>
-  );
-}
-
-// ── Mobile card ────────────────────────────────────────────────────────────
-
-function MobilePaymentCard({ log }: { log: PaymentLog }) {
-  const status = deliveryStatusMeta(log.delivery_status);
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0 }}
-      className="px-4 py-3.5 flex gap-3"
-    >
-      {/* Left: amount + date */}
-      <div className="flex flex-col items-center gap-1 shrink-0 min-w-[72px]">
-        <p className="text-sm font-poppins font-bold text-green-600 whitespace-nowrap">
-          +₡{log.amount.toLocaleString("en-US")}
-        </p>
-        <p className="text-[10px] font-poppins text-gray-400 text-center leading-tight">
-          {formatDate(log.paid_at)}
-        </p>
-      </div>
-
-      {/* Right: info */}
-      <div className="flex flex-col gap-1 flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-2">
-          <p className="text-xs font-poppins font-semibold italic text-brand-primary
-                        leading-snug line-clamp-2 flex-1">
-            {log.product_name}
-            <span className="not-italic font-normal text-gray-400"> · T.{log.variant_size}</span>
-          </p>
-          <span className={cn(
-            "shrink-0 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full font-poppins",
-            status.bgCls
-          )}>
-            {status.label}
-          </span>
-        </div>
-        <p className="text-[11px] font-poppins text-gray-500">
-          {log.guest_name ?? <span className="italic text-gray-300">Sin nombre</span>}
-          {log.guest_phone && <span className="text-gray-400"> · {log.guest_phone}</span>}
-        </p>
-        {log.note && (
-          <p className="text-[11px] font-poppins text-gray-400 truncate">{log.note}</p>
-        )}
-      </div>
-    </motion.div>
   );
 }

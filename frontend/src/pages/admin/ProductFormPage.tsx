@@ -37,10 +37,23 @@ const newKey = () => String(++keyCounter);
 
 // ── Section card ───────────────────────────────────────────────────────────
 
-function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
+function SectionCard({
+  title, children, id, hasError = false,
+}: {
+  title: string; children: React.ReactNode; id?: string; hasError?: boolean;
+}) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-6 flex flex-col gap-4">
-      <h2 className="font-poppins font-semibold text-sm text-brand-dark uppercase tracking-wider">
+    <div
+      id={id}
+      className={cn(
+        "bg-white rounded-2xl border p-6 flex flex-col gap-4 scroll-mt-24 transition-colors",
+        hasError ? "border-red-300" : "border-gray-100"
+      )}
+    >
+      <h2 className={cn(
+        "font-poppins font-semibold text-sm uppercase tracking-wider",
+        hasError ? "text-red-500" : "text-brand-dark"
+      )}>
         {title}
       </h2>
       {children}
@@ -51,27 +64,37 @@ function SectionCard({ title, children }: { title: string; children: React.React
 // ── Field ──────────────────────────────────────────────────────────────────
 
 function Field({
-  label, error, children,
+  id, label, error, children,
 }: {
-  label: string; error?: string; children: React.ReactNode;
+  id?: string; label: string; error?: string; children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-1">
-      <label className="text-xs font-medium text-gray-500 font-poppins uppercase tracking-wider">
+    <div id={id} className="flex flex-col gap-1 scroll-mt-24">
+      <label className={cn(
+        "text-xs font-medium font-poppins uppercase tracking-wider",
+        error ? "text-red-500" : "text-gray-500"
+      )}>
         {label}
       </label>
       {children}
       {error && (
-        <span className="text-[11px] text-red-500 font-poppins">{error}</span>
+        <span className="text-[11px] text-red-500 font-poppins flex items-center gap-1">
+          {error}
+        </span>
       )}
     </div>
   );
 }
 
-const inputCls =
-  "w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-poppins text-brand-dark " +
-  "placeholder:text-gray-300 outline-none focus:border-brand-primary " +
-  "focus:ring-1 focus:ring-brand-primary/20 transition";
+function inputCls(hasError = false) {
+  return cn(
+    "w-full rounded-xl border px-4 py-2.5 text-sm font-poppins text-brand-dark",
+    "placeholder:text-gray-300 outline-none transition",
+    hasError
+      ? "border-red-400 bg-red-50/40 focus:border-red-400 focus:ring-1 focus:ring-red-300/30"
+      : "border-gray-200 focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20"
+  );
+}
 
 // ── Variants section ───────────────────────────────────────────────────────
 
@@ -85,7 +108,7 @@ function VariantsSection({
   error?: string;
 }) {
   function addRow(size = "") {
-    onChange([...rows, { _key: newKey(), size, stock: "0" }]);
+    onChange([...rows, { _key: newKey(), size, stock: "1" }]);
   }
 
   function updateRow(key: string, field: keyof Omit<VariantRow, "_key">, value: string) {
@@ -129,14 +152,14 @@ function VariantsSection({
                 value={row.size}
                 onChange={(e) => updateRow(row._key, "size", e.target.value)}
                 placeholder="Ej: M, XL, Talla Única"
-                className={inputCls}
+                className={inputCls()}
               />
               <input
                 type="number"
                 min={0}
                 value={row.stock}
                 onChange={(e) => updateRow(row._key, "stock", e.target.value)}
-                className={inputCls}
+                className={inputCls()}
               />
               <button
                 type="button"
@@ -246,24 +269,40 @@ export default function ProductFormPage() {
   // ── Validation ─────────────────────────────────────────────────────────
   function validate(): boolean {
     const e: Record<string, string> = {};
-    if (!name.trim())                e.name        = "El nombre es requerido.";
-    if (!slug.trim())                e.slug        = "El slug es requerido.";
-    if (!/^[a-z0-9-]+$/.test(slug)) e.slug        = "Solo letras minúsculas, números y guiones.";
+    if (!name.trim())                e.name          = "El nombre es requerido.";
+    if (!slug.trim())                e.slug          = "El slug es requerido.";
+    if (slug.trim() && !/^[a-z0-9-]+$/.test(slug))
+                                     e.slug          = "Solo letras minúsculas, números y guiones.";
     if (!pricePurchase || Number(pricePurchase) <= 0)
                                      e.pricePurchase = "Ingresa un precio de compra válido.";
     if (!priceSale || Number(priceSale) <= 0)
-                                     e.priceSale   = "Ingresa un precio de venta válido.";
-    if (categoryIds.length === 0)    e.categories  = "Selecciona al menos una categoría.";
-    if (variants.length === 0)       e.variants    = "Agrega al menos una talla.";
+                                     e.priceSale     = "Ingresa un precio de venta válido.";
+    if (categoryIds.length === 0)    e.categories    = "Selecciona al menos una categoría.";
+    if (variants.length === 0)       e.variants      = "Agrega al menos una talla.";
     variants.forEach((v, i) => {
-      if (!v.size.trim()) e[`variant_size_${i}`]   = "La talla es requerida.";
-      if (Number(v.stock) < 0) e[`variant_stock_${i}`] = "Stock no puede ser negativo.";
+      if (!v.size.trim())            e[`variant_size_${i}`]  = "La talla es requerida.";
+      if (Number(v.stock) < 0)       e[`variant_stock_${i}`] = "Stock no puede ser negativo.";
     });
-    if (images.length === 0)         e.images      = "Agrega al menos una imagen.";
-    if (images.length > 0 && !images.some((img) => img.is_primary)) {
-      e.images = "Marca una imagen como principal.";
-    }
+    if (images.length === 0)         e.images = "Agrega al menos una imagen.";
+    if (images.length > 0 && !images.some((img) => img.is_primary))
+                                     e.images = "Marca una imagen como principal.";
+
     setErrors(e);
+
+    // Scroll to the first invalid field
+    const fieldOrder = ["name", "slug", "pricePurchase", "priceSale", "categories", "variants", "images"];
+    const firstKey   = fieldOrder.find((k) =>
+      e[k] !== undefined || Object.keys(e).some((ek) => ek.startsWith(k))
+    );
+    if (firstKey) {
+      requestAnimationFrame(() => {
+        document.getElementById(`field-${firstKey}`)?.scrollIntoView({
+          behavior: "smooth",
+          block:    "center",
+        });
+      });
+    }
+
     return Object.keys(e).length === 0;
   }
 
@@ -358,24 +397,24 @@ export default function ProductFormPage() {
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
 
           {/* ── Información básica ──────────────────────────────────── */}
-          <SectionCard title="Información básica">
-            <Field label="Nombre del producto" error={errors.name}>
+          <SectionCard title="Información básica" hasError={!!(errors.name || errors.slug)}>
+            <Field id="field-name" label="Nombre del producto" error={errors.name}>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => handleNameChange(e.target.value)}
                 placeholder="Ej: Hoodie Dropping Vintage"
-                className={inputCls}
+                className={inputCls(!!errors.name)}
               />
             </Field>
 
-            <Field label="Slug (URL)" error={errors.slug}>
+            <Field id="field-slug" label="Slug (URL)" error={errors.slug}>
               <input
                 type="text"
                 value={slug}
                 onChange={(e) => { setSlugTouched(true); setSlug(e.target.value); }}
                 placeholder="hoodie-dropping-vintage"
-                className={inputCls}
+                className={inputCls(!!errors.slug)}
               />
               <span className="text-[11px] text-gray-400 font-poppins mt-0.5">
                 Generado automáticamente. Solo minúsculas, números y guiones.
@@ -388,7 +427,7 @@ export default function ProductFormPage() {
                 onChange={(e) => setDescription(e.target.value)}
                 rows={3}
                 placeholder="Describe el producto, materiales, fit, etc."
-                className={cn(inputCls, "resize-none")}
+                className={cn(inputCls(), "resize-none")}
               />
             </Field>
 
@@ -438,9 +477,9 @@ export default function ProductFormPage() {
           </SectionCard>
 
           {/* ── Precios ────────────────────────────────────────────── */}
-          <SectionCard title="Precios">
+          <SectionCard title="Precios" hasError={!!(errors.pricePurchase || errors.priceSale)}>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Precio costo (₡)" error={errors.pricePurchase}>
+              <Field id="field-pricePurchase" label="Precio costo (₡)" error={errors.pricePurchase}>
                 <input
                   type="number"
                   min={0}
@@ -448,10 +487,10 @@ export default function ProductFormPage() {
                   value={pricePurchase}
                   onChange={(e) => setPricePurchase(e.target.value)}
                   placeholder="0.00"
-                  className={inputCls}
+                  className={inputCls(!!errors.pricePurchase)}
                 />
               </Field>
-              <Field label="Precio venta (₡)" error={errors.priceSale}>
+              <Field id="field-priceSale" label="Precio venta (₡)" error={errors.priceSale}>
                 <input
                   type="number"
                   min={0}
@@ -459,7 +498,7 @@ export default function ProductFormPage() {
                   value={priceSale}
                   onChange={(e) => setPriceSale(e.target.value)}
                   placeholder="0.00"
-                  className={inputCls}
+                  className={inputCls(!!errors.priceSale)}
                 />
               </Field>
             </div>
@@ -471,13 +510,82 @@ export default function ProductFormPage() {
                 value={discount}
                 onChange={(e) => setDiscount(e.target.value)}
                 placeholder="0"
-                className={inputCls}
+                className={inputCls()}
               />
             </Field>
+
+            {/* ── Margen de ganancia ───────────────────────────────── */}
+            {(() => {
+              const cost        = Number(pricePurchase);
+              const sale        = Number(priceSale);
+              const disc        = Number(discount) || 0;
+              if (!cost || !sale) return null;
+
+              const effectiveSale   = disc > 0 ? Math.round(sale * (1 - disc / 100)) : sale;
+              const profit          = sale - cost;
+              const profitPct       = Math.round((profit / cost) * 100);
+              const effectiveProfit = effectiveSale - cost;
+              const effectivePct    = Math.round((effectiveProfit / cost) * 100);
+              const hasDiscount     = disc > 0;
+
+              const band = (pct: number) =>
+                pct <= 0
+                  ? { label: "Pérdida",   cls: "bg-red-50   border-red-200   text-red-600"   }
+                  : pct <= 15
+                  ? { label: "Bajo",      cls: "bg-amber-50 border-amber-200 text-amber-700" }
+                  : pct <= 40
+                  ? { label: "Bueno",     cls: "bg-green-50 border-green-200 text-green-700" }
+                  : { label: "Excelente", cls: "bg-green-50 border-green-200 text-green-700" };
+
+              const main = band(profitPct);
+              const eff  = band(effectivePct);
+
+              return (
+                <div className={cn(
+                  "rounded-xl border px-4 py-3 flex flex-col gap-2 transition-colors",
+                  main.cls
+                )}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-poppins font-semibold uppercase tracking-wider opacity-70">
+                      Margen de ganancia
+                    </span>
+                    <span className={cn(
+                      "text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full",
+                      main.cls
+                    )}>
+                      {main.label}
+                    </span>
+                  </div>
+
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-poppins font-bold text-xl leading-none">
+                      {profitPct > 0 ? "+" : ""}{profitPct}%
+                    </span>
+                    <span className="font-poppins text-sm font-medium">
+                      ₡{profit.toLocaleString("en-US")} por unidad
+                    </span>
+                  </div>
+
+                  {hasDiscount && (
+                    <div className={cn(
+                      "rounded-lg border px-3 py-2 flex items-center justify-between",
+                      eff.cls
+                    )}>
+                      <span className="text-[11px] font-poppins">
+                        Con {disc}% descuento aplicado:
+                      </span>
+                      <span className="text-[11px] font-poppins font-semibold">
+                        {effectivePct > 0 ? "+" : ""}{effectivePct}% · ₡{effectiveProfit.toLocaleString("en-US")}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </SectionCard>
 
           {/* ── Categorías ─────────────────────────────────────────── */}
-          <SectionCard title="Categorías">
+          <SectionCard title="Categorías" id="field-categories" hasError={!!errors.categories}>
             <div className="flex items-start gap-2">
               <Tag size={15} className="text-brand-accent mt-3 shrink-0" />
               <div className="flex-1 flex flex-col gap-2">
@@ -509,7 +617,7 @@ export default function ProductFormPage() {
           </SectionCard>
 
           {/* ── Variantes ──────────────────────────────────────────── */}
-          <SectionCard title="Tallas y stock">
+          <SectionCard title="Tallas y stock" id="field-variants" hasError={!!errors.variants}>
             <VariantsSection
               rows={variants}
               onChange={setVariants}
@@ -518,7 +626,7 @@ export default function ProductFormPage() {
           </SectionCard>
 
           {/* ── Imágenes ───────────────────────────────────────────── */}
-          <SectionCard title="Imágenes">
+          <SectionCard title="Imágenes" id="field-images" hasError={!!errors.images}>
             <ImageUpload
               images={images}
               onChange={setImages}

@@ -182,13 +182,14 @@ const CR_PROVINCES = Object.keys(CR_CANTONS);
 interface SaleModalProps {
   productId:           string;
   priceSale:           number;
+  pricePurchase:       number;
   discountPercentage:  number;
   variants:            ProductVariant[];
   onClose:             () => void;
   onSuccess:           () => void;
 }
 
-function SaleModal({ productId, priceSale, discountPercentage, variants, onClose, onSuccess }: SaleModalProps) {
+function SaleModal({ productId, priceSale, pricePurchase, discountPercentage, variants, onClose, onSuccess }: SaleModalProps) {
   const effectivePrice = discountPercentage > 0
     ? Math.round(priceSale * (1 - discountPercentage / 100))
     : priceSale;
@@ -346,6 +347,38 @@ function SaleModal({ productId, priceSale, discountPercentage, variants, onClose
                 }
               </span>
             </div>
+
+            {/* ── Margen de ganancia ──────────────────────────────────── */}
+            {(() => {
+              const sold = Number(priceSold);
+              const cost = pricePurchase;
+              if (!sold || !cost) return null;
+
+              const profit    = sold - cost;
+              const marginPct = Math.round((profit / cost) * 100);
+
+              const band =
+                marginPct <= 0  ? { label: "Pérdida",   cls: "bg-red-50   border-red-200   text-red-600"   } :
+                marginPct <= 15 ? { label: "Bajo",      cls: "bg-amber-50 border-amber-200 text-amber-700" } :
+                marginPct <= 40 ? { label: "Bueno",     cls: "bg-green-50 border-green-200 text-green-700" } :
+                                  { label: "Excelente", cls: "bg-green-50 border-green-200 text-green-700" };
+
+              return (
+                <div className={`rounded-xl border px-3 py-2.5 flex items-center justify-between transition-colors ${band.cls}`}>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="font-poppins font-bold text-base leading-none">
+                      {marginPct > 0 ? "+" : ""}{marginPct}%
+                    </span>
+                    <span className="font-poppins text-xs">
+                      ₡{profit.toLocaleString("en-US")} ganancia
+                    </span>
+                  </div>
+                  <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${band.cls}`}>
+                    {band.label}
+                  </span>
+                </div>
+              );
+            })()}
 
             {/* ── Envío ──────────────────────────────────────────────── */}
             <div className="border-t border-gray-100 pt-1 flex flex-col gap-3">
@@ -864,6 +897,7 @@ export default function EditProductPage() {
         <SaleModal
           productId={product.id}
           priceSale={product.price_sale}
+          pricePurchase={product.price_purchase}
           discountPercentage={product.discount_percentage ?? 0}
           variants={liveVariants}
           onClose={() => setSaleOpen(false)}
@@ -992,6 +1026,64 @@ export default function EditProductPage() {
                 className={inputCls}
               />
             </div>
+
+            {/* ── Margen de ganancia ───────────────────────────────── */}
+            {(() => {
+              const cost        = Number(pricePurchase);
+              const sale        = Number(priceSale);
+              const disc        = Number(discount) || 0;
+              if (!cost || !sale) return null;
+
+              const effectiveSale   = disc > 0 ? Math.round(sale * (1 - disc / 100)) : sale;
+              const profit          = sale - cost;
+              const profitPct       = Math.round((profit / cost) * 100);
+              const effectiveProfit = effectiveSale - cost;
+              const effectivePct    = Math.round((effectiveProfit / cost) * 100);
+              const hasDiscount     = disc > 0;
+
+              const band = (pct: number) =>
+                pct <= 0
+                  ? { label: "Pérdida",   cls: "bg-red-50   border-red-200   text-red-600"   }
+                  : pct <= 15
+                  ? { label: "Bajo",      cls: "bg-amber-50 border-amber-200 text-amber-700" }
+                  : pct <= 40
+                  ? { label: "Bueno",     cls: "bg-green-50 border-green-200 text-green-700" }
+                  : { label: "Excelente", cls: "bg-green-50 border-green-200 text-green-700" };
+
+              const main = band(profitPct);
+              const eff  = band(effectivePct);
+
+              return (
+                <div className={`rounded-xl border px-4 py-3 flex flex-col gap-2 transition-colors ${main.cls}`}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-poppins font-semibold uppercase tracking-wider opacity-70">
+                      Margen de ganancia
+                    </span>
+                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${main.cls}`}>
+                      {main.label}
+                    </span>
+                  </div>
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-poppins font-bold text-xl leading-none">
+                      {profitPct > 0 ? "+" : ""}{profitPct}%
+                    </span>
+                    <span className="font-poppins text-sm font-medium">
+                      ₡{profit.toLocaleString("en-US")} por unidad
+                    </span>
+                  </div>
+                  {hasDiscount && (
+                    <div className={`rounded-lg border px-3 py-2 flex items-center justify-between ${eff.cls}`}>
+                      <span className="text-[11px] font-poppins">
+                        Con {disc}% descuento aplicado:
+                      </span>
+                      <span className="text-[11px] font-poppins font-semibold">
+                        {effectivePct > 0 ? "+" : ""}{effectivePct}% · ₡{effectiveProfit.toLocaleString("en-US")}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             <Toggle
               label="Visible en catálogo"

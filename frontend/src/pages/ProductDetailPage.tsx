@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ShoppingCart, Pencil } from "lucide-react";
+import { ArrowLeft, ShoppingCart, Pencil, X, ZoomIn, ChevronLeft, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getProductBySlug, type ProductDetail } from "../services/productService";
 import { useAuth } from "../context/AuthContext";
@@ -71,6 +71,147 @@ function ErrorState({ onBack }: { onBack: () => void }) {
   );
 }
 
+// ── Zoom / Lightbox ────────────────────────────────────────────────────────
+function ZoomModal({
+  images,
+  startIndex,
+  onClose,
+}: {
+  images: { image_url: string }[];
+  startIndex: number;
+  onClose: () => void;
+}) {
+  const [index,  setIndex]  = useState(startIndex);
+  const [zoomed, setZoomed] = useState(false);
+
+  // Close on ESC
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowRight") setIndex((i) => (i + 1) % images.length);
+      if (e.key === "ArrowLeft")  setIndex((i) => (i - 1 + images.length) % images.length);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [images.length, onClose]);
+
+  // Lock body scroll
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, []);
+
+  const prev = useCallback(() => {
+    setZoomed(false);
+    setIndex((i) => (i - 1 + images.length) % images.length);
+  }, [images.length]);
+
+  const next = useCallback(() => {
+    setZoomed(false);
+    setIndex((i) => (i + 1) % images.length);
+  }, [images.length]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      className="fixed inset-0 z-[9999] bg-black/90 flex flex-col"
+      onClick={onClose}
+    >
+      {/* Top bar */}
+      <div
+        className="flex items-center justify-between px-4 py-3 shrink-0"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <span className="text-white/50 text-xs font-poppins">
+          {index + 1} / {images.length}
+        </span>
+        <button
+          onClick={onClose}
+          className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center
+                     justify-center text-white transition-colors"
+        >
+          <X size={18} />
+        </button>
+      </div>
+
+      {/* Image area */}
+      <div
+        className="flex-1 flex items-center justify-center relative overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Prev arrow */}
+        {images.length > 1 && (
+          <button
+            onClick={prev}
+            className="absolute left-2 z-10 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20
+                       flex items-center justify-center text-white transition-colors shrink-0"
+          >
+            <ChevronLeft size={20} />
+          </button>
+        )}
+
+        <AnimatePresence mode="wait">
+          <motion.img
+            key={images[index].image_url}
+            src={images[index].image_url}
+            alt=""
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.96 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setZoomed((z) => !z)}
+            className="max-h-full max-w-full object-contain select-none transition-transform duration-300"
+            style={{
+              transform: zoomed ? "scale(2.4)" : "scale(1)",
+              cursor:    zoomed ? "zoom-out" : "zoom-in",
+            }}
+            draggable={false}
+          />
+        </AnimatePresence>
+
+        {/* Next arrow */}
+        {images.length > 1 && (
+          <button
+            onClick={next}
+            className="absolute right-2 z-10 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20
+                       flex items-center justify-center text-white transition-colors shrink-0"
+          >
+            <ChevronRight size={20} />
+          </button>
+        )}
+      </div>
+
+      {/* Dots */}
+      {images.length > 1 && (
+        <div
+          className="flex justify-center gap-1.5 py-4 shrink-0"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {images.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => { setZoomed(false); setIndex(i); }}
+              className={`rounded-full transition-all duration-300 ${
+                i === index ? "w-4 h-1.5 bg-white" : "w-1.5 h-1.5 bg-white/30 hover:bg-white/60"
+              }`}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Hint */}
+      {!zoomed && (
+        <p className="text-center text-white/30 text-[11px] font-poppins pb-4 shrink-0">
+          Toca la imagen para hacer zoom
+        </p>
+      )}
+    </motion.div>
+  );
+}
+
 // ── Product content ────────────────────────────────────────────────────────
 function ProductContent({ product }: { product: ProductDetail }) {
   const navigate = useNavigate();
@@ -80,6 +221,7 @@ function ProductContent({ product }: { product: ProductDetail }) {
 
   const [addingToCart,   setAddingToCart]   = useState(false);
   const [sizeError,      setSizeError]      = useState(false);
+  const [zoomOpen,       setZoomOpen]       = useState(false);
 
   const sortedImages = [...product.images].sort((a, b) =>
     b.is_primary === a.is_primary ? 0 : b.is_primary ? 1 : -1
@@ -175,7 +317,10 @@ function ProductContent({ product }: { product: ProductDetail }) {
         {/* ── Left: Gallery ─────────────────────────────────────────── */}
         <div className="flex flex-col gap-3">
           {/* Main image */}
-          <div className="relative overflow-hidden rounded-2xl aspect-square bg-gray-50 border border-gray-100">
+          <div
+            className="relative overflow-hidden rounded-2xl aspect-square bg-gray-50 border border-gray-100 cursor-zoom-in"
+            onClick={() => setZoomOpen(true)}
+          >
             <AnimatePresence mode="wait">
               <motion.img
                 key={sortedImages[activeImg]?.image_url}
@@ -194,7 +339,29 @@ function ProductContent({ product }: { product: ProductDetail }) {
                 {product.discount_percentage} OFF
               </span>
             )}
+
+            {/* Zoom hint button */}
+            <button
+              onClick={(e) => { e.stopPropagation(); setZoomOpen(true); }}
+              className="absolute bottom-3 right-3 w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm
+                         shadow-md flex items-center justify-center text-brand-primary
+                         hover:bg-white transition-colors"
+              aria-label="Ver imagen en detalle"
+            >
+              <ZoomIn size={15} strokeWidth={2} />
+            </button>
           </div>
+
+          {/* Lightbox */}
+          <AnimatePresence>
+            {zoomOpen && (
+              <ZoomModal
+                images={sortedImages}
+                startIndex={activeImg}
+                onClose={() => setZoomOpen(false)}
+              />
+            )}
+          </AnimatePresence>
 
           {/* Thumbnails */}
           {sortedImages.length > 1 && (
