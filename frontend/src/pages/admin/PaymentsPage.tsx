@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery }    from "@tanstack/react-query";
 import {
   ArrowLeft, Search, X, Receipt, TrendingUp, ArrowDownLeft, ArrowUpRight,
-  Minus, Calendar, Users,
+  Minus, Calendar,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Header from "../../components/ui/Header";
@@ -474,9 +474,6 @@ export default function PaymentsPage() {
   const totalOut = payouts.reduce((s, p) => s + p.amount, 0)
                  + expensePayments.reduce((s, e) => s + e.amount, 0);
 
-  const uniqueClients = new Set(
-    logs.map((l) => l.guest_phone ?? l.guest_name ?? l.sale_id)
-  ).size;
 
   const now            = new Date();
   const currentMonth   = now.getMonth();
