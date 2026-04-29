@@ -504,6 +504,47 @@ export async function getAllSales(): Promise<AdminSale[]> {
   });
 }
 
+// ── Refund log ────────────────────────────────────────────────────────────
+
+export interface RefundLog {
+  id:           string;
+  sale_id:      string;
+  guest_name:   string | null;
+  guest_phone:  string | null;
+  product_name: string;
+  variant_size: string;
+  amount:       number;
+  reason:       string | null;
+  created_at:   string;
+}
+
+export async function getRefundsLog(): Promise<RefundLog[]> {
+  const { data, error } = await supabase
+    .from("refunds")
+    .select(`
+      id, sale_id, amount, reason, created_at,
+      sales (
+        guest_name, guest_phone,
+        product_variants ( size, products ( name ) )
+      )
+    `)
+    .order("created_at", { ascending: false });
+
+  if (error) throw new Error(error.message);
+
+  return (data ?? []).map((r: any) => ({
+    id:           r.id,
+    sale_id:      r.sale_id,
+    guest_name:   r.sales?.guest_name  ?? null,
+    guest_phone:  r.sales?.guest_phone ?? null,
+    product_name: r.sales?.product_variants?.products?.name ?? "—",
+    variant_size: r.sales?.product_variants?.size           ?? "—",
+    amount:       r.amount,
+    reason:       r.reason ?? null,
+    created_at:   r.created_at,
+  }));
+}
+
 // ── Payment log ───────────────────────────────────────────────────────────
 
 export interface PaymentLog {
@@ -560,15 +601,57 @@ export async function updateSaleAdmin(
   variantId?:      string,
   quantity?:       number
 ): Promise<void> {
+  const isCancelling = delivery_status === "cancelled";
+  const wasApartada  = prevStatus === "apartada";
+
+  // Mark sale status as "cancelled" when delivery_status is cancelled
+  const saleUpdate: Record<string, unknown> = { delivery_status, tracking_number, note };
+  if (isCancelling) saleUpdate.status = "cancelled";
+
   const { error } = await supabase
     .from("sales")
-    .update({ delivery_status, tracking_number, note })
+    .update(saleUpdate)
     .eq("id", saleId);
   if (error) throw new Error(error.message);
 
-  if (!variantId) return;
+  // ── Cancellation side-effects ──────────────────────────────────────────
+  if (isCancelling) {
+    // 1. Always restore stock
+    if (variantId) {
+      if (wasApartada) {
+        await supabase
+          .from("product_variants")
+          .update({ is_reserved: false })
+          .eq("id", variantId);
+      }
+      await supabase.rpc("increment_variant_stock", {
+        p_variant_id: variantId,
+        p_amount:     quantity ?? 1,
+      });
+    }
 
-  const wasApartada = prevStatus === "apartada";
+    // 2. If payments were made, create a refund entry for the total paid
+    const { data: pmts } = await supabase
+      .from("payments")
+      .select("amount")
+      .eq("sale_id", saleId);
+
+    const totalPaid = (pmts ?? []).reduce((s: number, p: any) => s + p.amount, 0);
+
+    if (totalPaid > 0) {
+      const { data: { user } } = await supabase.auth.getUser();
+      await supabase.from("refunds").insert({
+        sale_id:    saleId,
+        amount:     totalPaid,
+        reason:     note?.trim() || "Cancelación de venta",
+        created_by: user?.id ?? null,
+      });
+    }
+    return;
+  }
+
+  // ── Non-cancellation variant side-effects ──────────────────────────────
+  if (!variantId) return;
 
   if (delivery_status === "apartada") {
     const { error: reserveErr } = await supabase
@@ -584,17 +667,5 @@ export async function updateSaleAdmin(
         .eq("id", variantId);
       if (clearErr) throw new Error(clearErr.message);
     }
-  } else if (delivery_status === "cancelled" && wasApartada) {
-    const { error: clearErr } = await supabase
-      .from("product_variants")
-      .update({ is_reserved: false })
-      .eq("id", variantId);
-    if (clearErr) throw new Error(clearErr.message);
-
-    const { error: stockErr } = await supabase.rpc("increment_variant_stock", {
-      p_variant_id: variantId,
-      p_amount:     quantity ?? 1,
-    });
-    if (stockErr) throw new Error(stockErr.message);
   }
 }

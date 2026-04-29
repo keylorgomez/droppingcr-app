@@ -56,7 +56,8 @@ function startOfDayOffset(daysAgo: number): string {
 export async function getDashboardStats(): Promise<DashboardStats> {
   const { data, error } = await supabase
     .from("sales")
-    .select("sale_price, cost_price, shipping_cost, status, payments ( amount )");
+    .select("sale_price, cost_price, shipping_cost, status, payments ( amount )")
+    .neq("status", "cancelled");
 
   if (error) throw new Error(error.message);
 

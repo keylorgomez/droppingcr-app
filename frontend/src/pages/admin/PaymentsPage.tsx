@@ -14,6 +14,7 @@ import {
 } from "../../services/salesService";
 import { getAllPayouts, type AdminPayout } from "../../services/payoutsService";
 import { getExpensePaymentsLog, type ExpensePaymentLog } from "../../services/expensesService";
+import { getRefundsLog, type RefundLog } from "../../services/salesService";
 import { cn } from "../../lib/utils";
 
 // ── Unified movement entry ─────────────────────────────────────────────────
@@ -21,7 +22,8 @@ import { cn } from "../../lib/utils";
 type Movement =
   | { kind: "in";      data: PaymentLog        }
   | { kind: "out";     data: AdminPayout       }
-  | { kind: "expense"; data: ExpensePaymentLog };
+  | { kind: "expense"; data: ExpensePaymentLog }
+  | { kind: "refund";  data: RefundLog         };
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -307,6 +309,108 @@ function MobileExpenseCard({ ep }: { ep: ExpensePaymentLog }) {
   );
 }
 
+// ── Refund row ─────────────────────────────────────────────────────────────
+
+function RefundRow({ refund }: { refund: RefundLog }) {
+  return (
+    <motion.tr
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="border-b border-gray-50 last:border-b-0 hover:bg-blue-50/20 transition-colors"
+    >
+      <td className="px-4 py-3 align-top shrink-0">
+        <p className="text-xs font-poppins text-brand-dark whitespace-nowrap">
+          {formatDate(refund.created_at)}
+        </p>
+        <p className="text-[10px] font-poppins text-gray-300 mt-0.5">
+          {formatTime(refund.created_at)}
+        </p>
+      </td>
+      <td className="px-4 py-3 align-top min-w-0">
+        <p className="text-xs font-poppins font-medium text-brand-dark truncate max-w-[140px]">
+          {refund.guest_name ?? <span className="text-gray-300 italic font-normal">Sin nombre</span>}
+        </p>
+        {refund.guest_phone && (
+          <p className="text-[10px] font-poppins text-gray-400 mt-0.5">{refund.guest_phone}</p>
+        )}
+      </td>
+      <td className="px-4 py-3 align-top min-w-0">
+        <p className="text-xs font-poppins font-semibold italic text-blue-600 leading-snug
+                      truncate max-w-[160px]">
+          {refund.product_name}
+        </p>
+        <span className="inline-block mt-0.5 text-[10px] font-poppins text-blue-400
+                         bg-blue-50 rounded-full px-2 py-0.5">
+          T.{refund.variant_size}
+        </span>
+      </td>
+      <td className="px-4 py-3 align-top text-right shrink-0">
+        <div className="flex items-center justify-end gap-1">
+          <ArrowUpRight size={12} className="text-blue-400" strokeWidth={2.2} />
+          <p className="text-sm font-poppins font-bold text-blue-600 whitespace-nowrap">
+            ₡{refund.amount.toLocaleString("en-US")}
+          </p>
+        </div>
+      </td>
+      <td className="px-4 py-3 align-top text-center shrink-0">
+        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5
+                         rounded-full font-poppins whitespace-nowrap bg-blue-100 text-blue-600">
+          Devolución
+        </span>
+      </td>
+      <td className="px-4 py-3 align-top min-w-0">
+        <p className="text-[11px] font-poppins text-gray-400 truncate max-w-[140px]">
+          {refund.reason ?? <span className="text-gray-200 italic">—</span>}
+        </p>
+      </td>
+    </motion.tr>
+  );
+}
+
+function MobileRefundCard({ refund }: { refund: RefundLog }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0 }}
+      className="px-4 py-3.5 flex gap-3 bg-blue-50/20"
+    >
+      <div className="flex flex-col items-center gap-1 shrink-0 min-w-[80px]">
+        <div className="flex items-center gap-0.5">
+          <ArrowUpRight size={11} className="text-blue-400" strokeWidth={2.2} />
+          <p className="text-sm font-poppins font-bold text-blue-600 whitespace-nowrap">
+            ₡{refund.amount.toLocaleString("en-US")}
+          </p>
+        </div>
+        <p className="text-[10px] font-poppins text-gray-400 text-center leading-tight">
+          {formatDate(refund.created_at)}
+        </p>
+      </div>
+      <div className="flex flex-col gap-1 flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-xs font-poppins font-semibold italic text-blue-600 leading-snug
+                        line-clamp-2 flex-1">
+            {refund.product_name}
+            <span className="not-italic font-normal text-gray-400"> · T.{refund.variant_size}</span>
+          </p>
+          <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider
+                           px-2 py-0.5 rounded-full font-poppins bg-blue-100 text-blue-600">
+            Devolución
+          </span>
+        </div>
+        <p className="text-[11px] font-poppins text-gray-500">
+          {refund.guest_name ?? <span className="italic text-gray-300">Sin nombre</span>}
+          {refund.guest_phone && <span className="text-gray-400"> · {refund.guest_phone}</span>}
+        </p>
+        {refund.reason && (
+          <p className="text-[11px] font-poppins text-gray-400 truncate">{refund.reason}</p>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
 // ── Mobile card ────────────────────────────────────────────────────────────
 
 function MobilePaymentCard({ log }: { log: PaymentLog }) {
@@ -420,7 +524,13 @@ export default function PaymentsPage() {
     staleTime: 30_000,
   });
 
-  const isLoading = loadingLogs || loadingPayouts || loadingExpenses;
+  const { data: refunds = [], isLoading: loadingRefunds } = useQuery({
+    queryKey: ["refunds-log"],
+    queryFn:  getRefundsLog,
+    staleTime: 30_000,
+  });
+
+  const isLoading = loadingLogs || loadingPayouts || loadingExpenses || loadingRefunds;
 
   // Guard: solo admin
   if (user && user.role !== "admin") {
@@ -433,10 +543,16 @@ export default function PaymentsPage() {
     const ins:  Movement[] = logs.map((d)            => ({ kind: "in"      as const, data: d }));
     const outs: Movement[] = payouts.map((d)         => ({ kind: "out"     as const, data: d }));
     const exps: Movement[] = expensePayments.map((d) => ({ kind: "expense" as const, data: d }));
-    return [...ins, ...outs, ...exps].sort(
-      (a, b) => new Date(b.data.paid_at).getTime() - new Date(a.data.paid_at).getTime()
+    const refs: Movement[] = refunds.map((d)         => ({ kind: "refund"  as const, data: d }));
+
+    // Normalise date field: refunds use created_at, others use paid_at
+    const dateOf = (m: Movement) =>
+      m.kind === "refund" ? m.data.created_at : m.data.paid_at;
+
+    return [...ins, ...outs, ...exps, ...refs].sort(
+      (a, b) => new Date(dateOf(b)).getTime() - new Date(dateOf(a)).getTime()
     );
-  }, [logs, payouts, expensePayments]);
+  }, [logs, payouts, expensePayments, refunds]);
 
   // ── Filter ───────────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
@@ -458,12 +574,20 @@ export default function PaymentsPage() {
           normalize(p.note         ?? "").includes(q) ||
           normalize(p.creator_name ?? "").includes(q)
         );
-      } else {
+      } else if (m.kind === "expense") {
         const e = m.data;
         return (
           normalize(e.expense_description         ).includes(q) ||
           normalize(e.expense_category        ?? "").includes(q) ||
           normalize(e.note                    ?? "").includes(q)
+        );
+      } else {
+        const r = m.data;
+        return (
+          normalize(r.guest_name   ?? "").includes(q) ||
+          normalize(r.guest_phone  ?? "").includes(q) ||
+          normalize(r.product_name     ).includes(q) ||
+          normalize(r.reason       ?? "").includes(q)
         );
       }
     });
@@ -472,7 +596,8 @@ export default function PaymentsPage() {
   // ── Summary stats ────────────────────────────────────────────────────────
   const totalIn  = logs.reduce((s, l) => s + l.amount, 0);
   const totalOut = payouts.reduce((s, p) => s + p.amount, 0)
-                 + expensePayments.reduce((s, e) => s + e.amount, 0);
+                 + expensePayments.reduce((s, e) => s + e.amount, 0)
+                 + refunds.reduce((s, r) => s + r.amount, 0);
 
 
   const now            = new Date();
@@ -494,8 +619,13 @@ export default function PaymentsPage() {
     const d = new Date(e.paid_at);
     return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
   });
+  const thisMonthRefunds = refunds.filter((r) => {
+    const d = new Date(r.created_at);
+    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+  });
   const thisMonthOut = thisMonthPayouts.reduce((s, p) => s + p.amount, 0)
-                     + thisMonthExpenses.reduce((s, e) => s + e.amount, 0);
+                     + thisMonthExpenses.reduce((s, e) => s + e.amount, 0)
+                     + thisMonthRefunds.reduce((s, r) => s + r.amount, 0);
 
   // ── Footer totals ────────────────────────────────────────────────────────
   const filteredIn  = filtered
@@ -659,10 +789,12 @@ export default function PaymentsPage() {
                   <AnimatePresence>
                     {filtered.map((m) =>
                       m.kind === "in"
-                        ? <PaymentRow      key={`in-${m.data.id}`}  log={m.data}    />
+                        ? <PaymentRow       key={`in-${m.data.id}`}  log={m.data}    />
                         : m.kind === "out"
-                        ? <PayoutRow       key={`out-${m.data.id}`} payout={m.data} />
-                        : <ExpensePaymentRow key={`exp-${m.data.id}`} ep={m.data}   />
+                        ? <PayoutRow        key={`out-${m.data.id}`} payout={m.data} />
+                        : m.kind === "expense"
+                        ? <ExpensePaymentRow key={`exp-${m.data.id}`} ep={m.data}   />
+                        : <RefundRow        key={`ref-${m.data.id}`} refund={m.data} />
                     )}
                   </AnimatePresence>
                 </tbody>
@@ -673,10 +805,12 @@ export default function PaymentsPage() {
                 <AnimatePresence>
                   {filtered.map((m) =>
                     m.kind === "in"
-                      ? <MobilePaymentCard key={`in-${m.data.id}`}   log={m.data}    />
+                      ? <MobilePaymentCard key={`in-${m.data.id}`}   log={m.data}     />
                       : m.kind === "out"
-                      ? <MobilePayoutCard  key={`out-${m.data.id}`}  payout={m.data} />
-                      : <MobileExpenseCard key={`exp-${m.data.id}`}  ep={m.data}     />
+                      ? <MobilePayoutCard  key={`out-${m.data.id}`}  payout={m.data}  />
+                      : m.kind === "expense"
+                      ? <MobileExpenseCard key={`exp-${m.data.id}`}  ep={m.data}      />
+                      : <MobileRefundCard  key={`ref-${m.data.id}`}  refund={m.data}  />
                   )}
                 </AnimatePresence>
               </div>
