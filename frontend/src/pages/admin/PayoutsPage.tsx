@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Plus, Wallet, TrendingUp, Coins, Loader2, X, ChevronDown } from "lucide-react";
+import { ArrowLeft, Plus, Wallet, TrendingUp, Coins, Loader2, X, ChevronDown, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../components/ui/Toast";
@@ -236,6 +236,155 @@ function AdminBreakdown({ payouts }: { payouts: AdminPayout[] }) {
   );
 }
 
+// ── Distribution tracker ───────────────────────────────────────────────────
+
+function DistributionTracker({
+  netProfit, totalDistributed,
+}: {
+  netProfit:        number;
+  totalDistributed: number;
+}) {
+  const target      = netProfit * 0.6;
+  const fundNegocio = netProfit * 0.4;
+  const progress    = target > 0 ? (totalDistributed / target) * 100 : 0;
+  const remaining   = target - totalDistributed;
+  const exceeded    = totalDistributed > target;
+  const atRisk      = !exceeded && progress >= 80;
+
+  type ColorKey = "green" | "yellow" | "red";
+  const colorKey: ColorKey = exceeded ? "red" : atRisk ? "yellow" : "green";
+
+  const theme: Record<ColorKey, {
+    bg: string; border: string; barCls: string; textCls: string;
+    badgeCls: string; label: string; Icon: React.ElementType;
+    trackCls: string;
+  }> = {
+    green: {
+      bg:       "bg-green-50",
+      border:   "border-green-200",
+      barCls:   "bg-green-500",
+      textCls:  "text-green-700",
+      badgeCls: "bg-green-100 text-green-700",
+      trackCls: "bg-green-100",
+      label:    "Dentro del límite",
+      Icon:     CheckCircle2,
+    },
+    yellow: {
+      bg:       "bg-yellow-50",
+      border:   "border-yellow-200",
+      barCls:   "bg-yellow-400",
+      textCls:  "text-yellow-700",
+      badgeCls: "bg-yellow-100 text-yellow-700",
+      trackCls: "bg-yellow-100",
+      label:    "Cerca del límite",
+      Icon:     AlertTriangle,
+    },
+    red: {
+      bg:       "bg-red-50",
+      border:   "border-red-200",
+      barCls:   "bg-red-500",
+      textCls:  "text-red-700",
+      badgeCls: "bg-red-100 text-red-700",
+      trackCls: "bg-red-100",
+      label:    "Límite superado",
+      Icon:     XCircle,
+    },
+  };
+
+  const t = theme[colorKey];
+
+  return (
+    <div className={`rounded-2xl border ${t.border} ${t.bg} p-5 flex flex-col gap-4`}>
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="font-poppins font-semibold text-sm text-brand-dark">
+            Control de distribución
+          </p>
+          <p className="font-poppins text-xs text-gray-400 mt-0.5">
+            60% distribuible · 40% fondo del negocio
+          </p>
+        </div>
+        <span className={`flex items-center gap-1.5 shrink-0 text-[10px] font-bold uppercase
+                          tracking-wider px-2.5 py-1.5 rounded-full font-poppins ${t.badgeCls}`}>
+          <t.Icon size={11} strokeWidth={2.5} />
+          {t.label}
+        </span>
+      </div>
+
+      {/* 60/40 split */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="bg-white/60 rounded-xl px-3.5 py-3 flex flex-col gap-0.5">
+          <p className="text-[10px] font-poppins font-semibold uppercase tracking-wider text-gray-400">
+            60% distribuible
+          </p>
+          <p className={`text-lg font-poppins font-bold leading-tight ${t.textCls}`}>
+            {fmt(target)}
+          </p>
+          <p className="text-[10px] font-poppins text-gray-400">
+            del total de ganancias
+          </p>
+        </div>
+        <div className="bg-white/60 rounded-xl px-3.5 py-3 flex flex-col gap-0.5">
+          <p className="text-[10px] font-poppins font-semibold uppercase tracking-wider text-gray-400">
+            40% fondo negocio
+          </p>
+          <p className="text-lg font-poppins font-bold text-brand-dark leading-tight">
+            {fmt(fundNegocio)}
+          </p>
+          <p className="text-[10px] font-poppins text-gray-400">
+            reserva del negocio
+          </p>
+        </div>
+      </div>
+
+      {/* Progress bar */}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-poppins text-gray-500">
+            Distribuido: <span className="font-semibold text-brand-dark">
+              {fmt(totalDistributed)}
+            </span>
+          </span>
+          <span className={`text-xs font-poppins font-bold ${t.textCls}`}>
+            {Math.min(progress, 999).toFixed(1)}%
+          </span>
+        </div>
+
+        {/* Track */}
+        <div className={`relative h-3.5 rounded-full overflow-hidden ${t.trackCls}`}>
+          {/* Filled bar */}
+          <div
+            className={`absolute inset-y-0 left-0 rounded-full transition-all duration-700 ${t.barCls}`}
+            style={{ width: `${Math.min(progress, 100)}%` }}
+          />
+          {/* 80% warning marker */}
+          <div
+            className="absolute inset-y-0 w-px bg-white/60"
+            style={{ left: "80%" }}
+          />
+        </div>
+
+        {/* Labels under bar */}
+        <div className="flex items-center justify-between text-[11px] font-poppins">
+          <span className="text-gray-400">
+            Objetivo: {fmt(target)}
+          </span>
+          {exceeded ? (
+            <span className="font-semibold text-red-600">
+              Excedido en {fmt(Math.abs(remaining))}
+            </span>
+          ) : (
+            <span className={`font-semibold ${t.textCls}`}>
+              Disponible: {fmt(remaining)}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Row skeleton ───────────────────────────────────────────────────────────
 
 function RowSkeleton() {
@@ -348,6 +497,16 @@ export default function PayoutsPage() {
             color="blue"
           />
         </div>
+
+        {/* Distribution tracker — show once data is loaded */}
+        {!loadingProfit && !loadingDistributed && netProfit > 0 && (
+          <div className="mb-6">
+            <DistributionTracker
+              netProfit={netProfit}
+              totalDistributed={totalDistributed}
+            />
+          </div>
+        )}
 
         {/* Per-admin breakdown */}
         {payouts.length > 0 && (
