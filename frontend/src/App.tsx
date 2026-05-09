@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import CatalogPage       from "./pages/CatalogPage";
 import ProductDetailPage from "./pages/ProductDetailPage";
@@ -21,6 +21,14 @@ import CartDrawer        from "./components/ui/CartDrawer";
 import { useAuth }       from "./context/AuthContext";
 import { CartProvider }  from "./context/CartContext";
 
+// Redirige al catálogo si el usuario no es admin
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return null;
+  if (!user || user.role !== "admin") return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
+
 export default function App() {
   const { isLoading } = useAuth();
 
@@ -36,20 +44,23 @@ export default function App() {
             <GATracker />
             <div className="flex-1">
               <Routes>
+                {/* Public routes */}
                 <Route path="/"                        element={<CatalogPage />} />
                 <Route path="/product/:slug"           element={<ProductDetailPage />} />
                 <Route path="/carrito"                 element={<CartPage />} />
                 <Route path="/profile"                 element={<ProfilePage />} />
-                <Route path="/admin/products/new"      element={<ProductFormPage />} />
-                <Route path="/admin/products/:id/edit" element={<EditProductPage />} />
-                <Route path="/admin/categories"        element={<CategoriesPage />} />
-                <Route path="/admin/deudas"            element={<DebtPage />} />
                 <Route path="/my-orders"               element={<MyOrdersPage />} />
-                <Route path="/admin/pedidos"           element={<OrdersPage />} />
-                <Route path="/admin/dashboard"         element={<Dashboard />} />
-                <Route path="/admin/movimientos"       element={<PaymentsPage />} />
-                <Route path="/admin/ganancias"         element={<PayoutsPage />} />
-                <Route path="/admin/gastos"            element={<ExpensesPage />} />
+
+                {/* Admin-only routes */}
+                <Route path="/admin/products/new"      element={<AdminRoute><ProductFormPage /></AdminRoute>} />
+                <Route path="/admin/products/:id/edit" element={<AdminRoute><EditProductPage /></AdminRoute>} />
+                <Route path="/admin/categories"        element={<AdminRoute><CategoriesPage /></AdminRoute>} />
+                <Route path="/admin/deudas"            element={<AdminRoute><DebtPage /></AdminRoute>} />
+                <Route path="/admin/pedidos"           element={<AdminRoute><OrdersPage /></AdminRoute>} />
+                <Route path="/admin/dashboard"         element={<AdminRoute><Dashboard /></AdminRoute>} />
+                <Route path="/admin/movimientos"       element={<AdminRoute><PaymentsPage /></AdminRoute>} />
+                <Route path="/admin/ganancias"         element={<AdminRoute><PayoutsPage /></AdminRoute>} />
+                <Route path="/admin/gastos"            element={<AdminRoute><ExpensesPage /></AdminRoute>} />
               </Routes>
             </div>
             <Footer />
