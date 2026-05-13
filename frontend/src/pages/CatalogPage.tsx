@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import Header from "../components/ui/Header";
 import Hero from "../components/ui/Hero";
 import ProductCard from "../components/catalog/ProductCard";
+import WorldCupModal from "../components/WorldCupModal";
 import { getProducts } from "../services/productService";
 import { useAuth } from "../context/AuthContext";
 import { cn } from "../lib/utils";
@@ -244,6 +245,7 @@ export default function CatalogPage() {
 
   return (
     <>
+      <WorldCupModal />
       <Header />
       <Hero />
 
