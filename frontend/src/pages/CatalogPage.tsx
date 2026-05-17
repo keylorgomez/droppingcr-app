@@ -380,6 +380,7 @@ export default function CatalogPage() {
                   image_url={product.image_url}
                   images={product.images}
                   category={product.category}
+                  categories={product.categories}
                   is_new={product.is_new}
                   discount_percentage={product.discount_percentage}
                   is_sold_out={product.is_sold_out}

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { FEATURES } from "../constants/featureFlags";
 
 const SESSION_KEY = "wc26_seen";
 
@@ -11,10 +12,10 @@ export default function WorldCupModal() {
   const [searchParams]        = useSearchParams();
 
   useEffect(() => {
-    // No mostrar si ya está en la colección de fútbol o si ya se vio esta sesión
+    // No mostrar si el flag expiró, si ya está en la colección o si ya se vio esta sesión
     const alreadyOnFutbol = searchParams.get("filter") === "futbol";
     const alreadySeen     = sessionStorage.getItem(SESSION_KEY);
-    if (alreadyOnFutbol || alreadySeen) return;
+    if (!FEATURES.worldCup2026 || alreadyOnFutbol || alreadySeen) return;
 
     const t = setTimeout(() => setOpen(true), 900);
     return () => clearTimeout(t);
@@ -141,8 +142,8 @@ export default function WorldCupModal() {
                 {/* ── Dismiss link ── */}
                 <button
                   onClick={handleClose}
-                  className="w-full text-center mt-3 text-[11px] font-poppins
-                             text-white/25 hover:text-white/50 transition-colors"
+                  className="w-full text-center mt-3 text-[11px] font-poppins font-bold
+                             text-white/60 hover:text-white/90 transition-colors"
                 >
                   Ahora no, mae
                 </button>

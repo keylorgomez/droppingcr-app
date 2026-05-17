@@ -8,6 +8,7 @@ import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 import { trackViewItem } from "../lib/analytics";
 import Header from "../components/ui/Header";
+import { FEATURES } from "../constants/featureFlags";
 
 // ── WhatsApp icon ──────────────────────────────────────────────────────────
 function WhatsAppIcon({ size = 18 }: { size?: number }) {
@@ -230,6 +231,12 @@ function ProductContent({ product }: { product: ProductDetail }) {
   const [activeImg, setActiveImg] = useState(0);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
 
+  const normalize = (s: string) =>
+    s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const isFutbol =
+    FEATURES.worldCup2026 &&
+    product.categories.some((c) => normalize(c.slug) === "futbol");
+
   const hasDiscount = product.discount_percentage > 0;
   const discountedPrice = hasDiscount
     ? Math.round(product.price_sale * (1 - product.discount_percentage / 100))
@@ -383,6 +390,17 @@ function ProductContent({ product }: { product: ProductDetail }) {
 
         {/* ── Right: Details ────────────────────────────────────────── */}
         <div className="flex flex-col gap-4">
+
+          {/* Drop Mundialista badge */}
+          {isFutbol && (
+            <span
+              className="self-start text-[11px] font-poppins font-bold italic
+                         tracking-[0.16em] uppercase text-white px-3 py-1.5 rounded-full shadow-sm"
+              style={{ background: "linear-gradient(to right, #E8302A, #1C4F9C, #2B8C3E)" }}
+            >
+              Drop Mundialista
+            </span>
+          )}
 
           {/* Category + badges */}
           <div className="flex flex-wrap items-center gap-2">
