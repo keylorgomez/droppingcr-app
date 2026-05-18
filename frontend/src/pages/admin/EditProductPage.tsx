@@ -194,19 +194,22 @@ function SaleModal({ productId, priceSale, pricePurchase, discountPercentage, va
     ? Math.round(priceSale * (1 - discountPercentage / 100))
     : priceSale;
   const { showToast }     = useToast();
+  const navigate          = useNavigate();
   const availableVariants = variants.filter((v) => v.stock > 0);
 
-  const [variantId,      setVariantId]      = useState(availableVariants[0]?.id ?? "");
-  const [quantity,       setQuantity]       = useState(1);
-  const [priceSold,      setPriceSold]      = useState(String(effectivePrice));
-  const [guestName,      setGuestName]      = useState("");
-  const [guestPhone,     setGuestPhone]     = useState("");
-  const [isPagos,        setIsPagos]        = useState(false);
-  const [initialPayment, setInitialPayment] = useState("");
-  const [note,           setNote]           = useState("");
-  const [deliveryStatus, setDeliveryStatus] = useState<DeliveryStatus>("validating");
-  const [trackingNumber, setTrackingNumber] = useState("");
-  const [errors,         setErrors]         = useState<Record<string, string>>({});
+  const [variantId,         setVariantId]         = useState(availableVariants[0]?.id ?? "");
+  const [quantity,          setQuantity]          = useState(1);
+  const [priceSold,         setPriceSold]         = useState(String(effectivePrice));
+  const [guestName,         setGuestName]         = useState("");
+  const [guestPhone,        setGuestPhone]        = useState("");
+  const [isPagos,           setIsPagos]           = useState(false);
+  const [initialPayment,    setInitialPayment]    = useState("");
+  const [note,              setNote]              = useState("");
+  const [deliveryStatus,    setDeliveryStatus]    = useState<DeliveryStatus>("validating");
+  const [trackingNumber,    setTrackingNumber]    = useState("");
+  const [errors,            setErrors]            = useState<Record<string, string>>({});
+  const [saleConfirmed,     setSaleConfirmed]     = useState(false);
+  const [confirmedSaleData, setConfirmedSaleData] = useState<{ name: string; phone: string } | null>(null);
 
   // ── Shipping form state ──────────────────────────────────────────────────
   const [deliveryType,  setDeliveryType]  = useState<"personal" | "envio">("personal");
@@ -234,7 +237,11 @@ function SaleModal({ productId, priceSale, pricePurchase, discountPercentage, va
   const mutation = useMutation({
     mutationFn: recordManualSale,
     onSuccess: () => {
-      showToast("Venta registrada correctamente.", "success");
+      setSaleConfirmed(true);
+      setConfirmedSaleData({
+        name:  guestName.trim(),
+        phone: guestPhone.trim(),
+      });
       onSuccess();
     },
     onError: (err: Error) => showToast(err.message, "error"),
@@ -296,7 +303,52 @@ function SaleModal({ productId, priceSale, pricePurchase, discountPercentage, va
           </button>
         </div>
 
-        {availableVariants.length === 0 ? (
+        {saleConfirmed ? (
+          /* ── Sale confirmed: ask if more products ── */
+          <div className="flex flex-col items-center gap-5 px-6 py-8 text-center">
+            <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
+              <Check size={28} className="text-green-600" strokeWidth={2.5} />
+            </div>
+            <div>
+              <p className="font-poppins font-semibold text-base text-brand-dark">
+                ¡Venta registrada!
+              </p>
+              <p className="font-poppins text-sm text-gray-500 mt-1.5 leading-snug">
+                ¿El cliente está comprando más productos en esta misma compra?
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 w-full">
+              <button
+                type="button"
+                onClick={() => {
+                  // Save draft with customer info for OrdersPage
+                  sessionStorage.setItem("order_draft", JSON.stringify({
+                    guest_name:  confirmedSaleData?.name  || null,
+                    guest_phone: confirmedSaleData?.phone || null,
+                  }));
+                  showToast("Venta registrada. Agregá los demás productos.", "success");
+                  navigate("/admin/pedidos?draft=true");
+                }}
+                className="w-full py-2.5 rounded-xl bg-brand-primary text-white text-sm font-poppins
+                           font-medium hover:bg-[#7a3e18] transition-colors"
+              >
+                Sí, agregar más productos
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  showToast("Venta registrada correctamente.", "success");
+                  setSaleConfirmed(false);
+                  onClose();
+                }}
+                className="w-full py-2.5 rounded-xl border border-gray-200 text-sm font-poppins
+                           text-gray-500 hover:border-gray-300 transition-colors"
+              >
+                No, listo
+              </button>
+            </div>
+          </div>
+        ) : availableVariants.length === 0 ? (
           <p className="text-sm font-poppins text-gray-400 text-center py-8 px-6">
             No hay tallas con stock disponible.
           </p>

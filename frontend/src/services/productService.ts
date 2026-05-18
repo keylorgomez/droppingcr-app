@@ -286,6 +286,50 @@ export async function deleteVariant(variantId: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+// ── Products with variants (for admin order creation) ─────────────────────
+
+export interface ProductWithVariants {
+  id: string;
+  name: string;
+  price_sale: number;
+  price_purchase: number;
+  image_url: string;
+  variants: { id: string; size: string; stock: number }[];
+}
+
+export async function getProductsWithVariants(): Promise<ProductWithVariants[]> {
+  const { data, error } = await supabase
+    .from("products")
+    .select(`
+      id, name, price_sale, price_purchase,
+      product_images ( image_url, is_primary, display_order ),
+      product_variants ( id, size, stock )
+    `)
+    .eq("is_active", true)
+    .order("created_at", { ascending: false });
+
+  if (error) throw new Error(error.message);
+
+  return (data ?? [])
+    .map((p: any) => {
+      const images = [...(p.product_images ?? [])].sort((a: any, b: any) => {
+        if (a.is_primary !== b.is_primary) return a.is_primary ? -1 : 1;
+        return a.display_order - b.display_order;
+      });
+      return {
+        id:             p.id,
+        name:           p.name,
+        price_sale:     p.price_sale,
+        price_purchase: p.price_purchase ?? 0,
+        image_url:      images[0]?.image_url ?? "",
+        variants:       (p.product_variants ?? [])
+          .filter((v: any) => v.stock > 0)
+          .map((v: any) => ({ id: v.id, size: v.size, stock: v.stock })),
+      };
+    })
+    .filter((p) => p.variants.length > 0); // excluir productos agotados
+}
+
 // ── Mutations ──────────────────────────────────────────────────────────────
 
 export async function createProduct(input: ProductInput): Promise<string> {

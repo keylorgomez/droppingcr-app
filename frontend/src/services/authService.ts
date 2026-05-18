@@ -1,4 +1,5 @@
 import { supabase } from "../lib/supabaseClient";
+import { sendTransactionalEmail } from "../lib/emailService";
 
 // ── Error mapping ──────────────────────────────────────────────────────────
 
@@ -84,9 +85,14 @@ export async function signUp(data: RegisterData): Promise<SignUpResult> {
       },
       { onConflict: "id" }
     );
+    // Send welcome email — profile created here, so AuthContext won't detect isNew
+    sendTransactionalEmail({
+      type: "welcome",
+      data: { email: data.email, first_name: data.first_name },
+    });
   }
   // If no session (email confirmation required), the profile will be created
-  // on first login via AuthContext.fetchOrCreateProfile using user_metadata
+  // on first login via AuthContext.fetchOrCreateProfile (isNew: true → sends email there)
 
   return { requiresEmailConfirmation: !authData.session };
 }

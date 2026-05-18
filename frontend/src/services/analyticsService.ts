@@ -54,18 +54,25 @@ function startOfDayOffset(daysAgo: number): string {
 // ── Queries ────────────────────────────────────────────────────────────────
 
 export async function getDashboardStats(): Promise<DashboardStats> {
-  const { data, error } = await supabase
-    .from("sales")
-    .select("sale_price, cost_price, shipping_cost, status, payments ( amount )")
-    .neq("status", "cancelled");
+  // Fetch sales and orders in parallel
+  const [salesResult, ordersResult] = await Promise.all([
+    supabase
+      .from("sales")
+      .select("sale_price, cost_price, shipping_cost, status, payments ( amount )")
+      .neq("status", "cancelled"),
+    supabase
+      .from("orders")
+      .select("shipping_cost, status, order_items(sale_price, cost_price, quantity), payments(amount)")
+      .neq("status", "cancelled"),
+  ]);
 
-  if (error) throw new Error(error.message);
+  if (salesResult.error) throw new Error(salesResult.error.message);
 
   let totalRevenue = 0;
   let netProfit    = 0;
   let pendingDebt  = 0;
 
-  for (const s of data ?? []) {
+  for (const s of salesResult.data ?? []) {
     totalRevenue += s.sale_price;
     netProfit    += s.sale_price - (s.cost_price ?? 0);
 
@@ -76,21 +83,49 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     }
   }
 
+  // Merge orders data
+  for (const o of ordersResult.data ?? []) {
+    const items: any[] = (o as any).order_items ?? [];
+    const shipping     = (o as any).shipping_cost ?? 0;
+    const itemsRevenue = items.reduce((s: number, i: any) => s + i.sale_price * i.quantity, 0);
+    const itemsProfit  = items.reduce((s: number, i: any) => s + (i.sale_price - (i.cost_price ?? 0)) * i.quantity, 0);
+
+    totalRevenue += itemsRevenue + shipping;
+    netProfit    += itemsProfit;
+
+    if ((o as any).status === "pending") {
+      const paid      = ((o as any).payments ?? []).reduce((s: number, p: any) => s + p.amount, 0);
+      const totalOwed = itemsRevenue + shipping;
+      pendingDebt    += Math.max(0, totalOwed - paid);
+    }
+  }
+
   return {
     totalRevenue,
     netProfit,
     pendingDebt,
-    totalSales: (data ?? []).length,
+    totalSales: (salesResult.data ?? []).length + (ordersResult.data ?? []).length,
   };
 }
 
 export async function getSalesVsCostsLast30Days(): Promise<DayData[]> {
-  const { data, error } = await supabase
-    .from("sales")
-    .select("sale_price, cost_price, sold_at")
-    .gte("sold_at", startOfDayOffset(29));
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 29);
+  cutoff.setHours(0, 0, 0, 0);
 
-  if (error) throw new Error(error.message);
+  const [salesResult, ordersResult] = await Promise.all([
+    supabase
+      .from("sales")
+      .select("sale_price, cost_price, sold_at")
+      .gte("sold_at", startOfDayOffset(29)),
+    supabase
+      .from("orders")
+      .select("sold_at, shipping_cost, order_items(sale_price, cost_price, quantity)")
+      .gte("sold_at", cutoff.toISOString())
+      .neq("status", "cancelled"),
+  ]);
+
+  if (salesResult.error) throw new Error(salesResult.error.message);
 
   // Pre-fill every day with zeros so the chart is always 30 bars
   const map = new Map<string, { ventas: number; costos: number }>();
@@ -98,7 +133,7 @@ export async function getSalesVsCostsLast30Days(): Promise<DayData[]> {
     map.set(dayKey(startOfDayOffset(i)), { ventas: 0, costos: 0 });
   }
 
-  for (const s of data ?? []) {
+  for (const s of salesResult.data ?? []) {
     const key = dayKey(s.sold_at);
     if (map.has(key)) {
       const entry = map.get(key)!;
@@ -107,22 +142,50 @@ export async function getSalesVsCostsLast30Days(): Promise<DayData[]> {
     }
   }
 
+  // Merge orders daily data
+  for (const o of ordersResult.data ?? []) {
+    const key = dayKey((o as any).sold_at);
+    if (map.has(key)) {
+      const entry    = map.get(key)!;
+      const items: any[] = (o as any).order_items ?? [];
+      const shipping     = (o as any).shipping_cost ?? 0;
+      entry.ventas += items.reduce((s: number, i: any) => s + i.sale_price * i.quantity, 0) + shipping;
+      entry.costos += items.reduce((s: number, i: any) => s + (i.cost_price ?? 0) * i.quantity, 0);
+    }
+  }
+
   return [...map.entries()].map(([date, v]) => ({ date, ...v }));
 }
 
 export async function getTopProducts(limit = 5): Promise<TopProduct[]> {
-  const { data, error } = await supabase
-    .from("sales")
-    .select("sale_price, quantity, product_variants ( products ( name ) )");
+  const [salesResult, orderItemsResult] = await Promise.all([
+    supabase
+      .from("sales")
+      .select("sale_price, quantity, product_variants ( products ( name ) )"),
+    supabase
+      .from("order_items")
+      .select("sale_price, quantity, product_variants(products(name))")
+      .not("product_variants", "is", null),
+  ]);
 
-  if (error) throw new Error(error.message);
+  if (salesResult.error) throw new Error(salesResult.error.message);
 
   const map = new Map<string, { revenue: number; units: number }>();
-  for (const s of data ?? []) {
+
+  for (const s of salesResult.data ?? []) {
     const name    = (s as any).product_variants?.products?.name ?? "Desconocido";
     const entry   = map.get(name) ?? { revenue: 0, units: 0 };
     entry.revenue += s.sale_price;
     entry.units   += (s as any).quantity ?? 1;
+    map.set(name, entry);
+  }
+
+  // Merge order items
+  for (const i of orderItemsResult.data ?? []) {
+    const name  = (i as any).product_variants?.products?.name ?? "Desconocido";
+    const entry = map.get(name) ?? { revenue: 0, units: 0 };
+    entry.revenue += (i as any).sale_price * ((i as any).quantity ?? 1);
+    entry.units   += (i as any).quantity ?? 1;
     map.set(name, entry);
   }
 

@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { supabase } from "../lib/supabaseClient";
+import { sendTransactionalEmail } from "../lib/emailService";
 import type { User } from "@supabase/supabase-js";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -26,7 +27,9 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-async function fetchOrCreateProfile(authUser: User): Promise<UserProfile | null> {
+async function fetchOrCreateProfile(
+  authUser: User,
+): Promise<{ profile: UserProfile | null; isNew: boolean }> {
   const { data, error } = await supabase
     .from("profiles")
     .select("id, first_name, last_name, whatsapp, role")
@@ -36,12 +39,15 @@ async function fetchOrCreateProfile(authUser: User): Promise<UserProfile | null>
   // Profile exists — return it
   if (!error && data) {
     return {
-      id:         authUser.id,
-      email:      authUser.email ?? "",
-      first_name: data.first_name,
-      last_name:  data.last_name,
-      whatsapp:   data.whatsapp,
-      role:       data.role,
+      profile: {
+        id:         authUser.id,
+        email:      authUser.email ?? "",
+        first_name: data.first_name,
+        last_name:  data.last_name,
+        whatsapp:   data.whatsapp,
+        role:       data.role,
+      },
+      isNew: false,
     };
   }
 
@@ -65,17 +71,20 @@ async function fetchOrCreateProfile(authUser: User): Promise<UserProfile | null>
 
     if (!createError && created) {
       return {
-        id:         authUser.id,
-        email:      authUser.email ?? "",
-        first_name: created.first_name,
-        last_name:  created.last_name,
-        whatsapp:   created.whatsapp,
-        role:       created.role,
+        profile: {
+          id:         authUser.id,
+          email:      authUser.email ?? "",
+          first_name: created.first_name,
+          last_name:  created.last_name,
+          whatsapp:   created.whatsapp,
+          role:       created.role,
+        },
+        isNew: true,
       };
     }
   }
 
-  return null;
+  return { profile: null, isNew: false };
 }
 
 // ── Provider ───────────────────────────────────────────────────────────────
@@ -89,8 +98,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession()
       .then(async ({ data: { session } }) => {
         if (session?.user) {
-          const profile = await fetchOrCreateProfile(session.user);
-          if (profile) setUser(profile); // never force user=null for an active session
+          const { profile } = await fetchOrCreateProfile(session.user);
+          if (profile) setUser(profile);
         }
       })
       .catch(() => {})
@@ -100,10 +109,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // IMPORTANT: callback must be synchronous — Supabase SDK v2 awaits async
     // callbacks internally, which blocks signInWithPassword from resolving.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
         if (session?.user) {
           fetchOrCreateProfile(session.user)
-            .then((profile) => { if (profile) setUser(profile); })
+            .then(({ profile, isNew }) => {
+              if (profile) {
+                setUser(profile);
+                // isNew: true solo cuando confirmación de email está activa y el perfil
+                // se crea al primer login. Si no hay confirmación, authService ya envió el correo.
+                if (isNew) {
+                  sendTransactionalEmail({
+                    type: "welcome",
+                    data: { email: profile.email, first_name: profile.first_name },
+                  });
+                }
+              }
+            })
             .catch(() => {})
             .finally(() => setLoading(false));
         } else {
@@ -119,7 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function refreshUser() {
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.user) {
-      const profile = await fetchOrCreateProfile(session.user);
+      const { profile } = await fetchOrCreateProfile(session.user);
       setUser(profile);
     }
   }
