@@ -109,7 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // IMPORTANT: callback must be synchronous — Supabase SDK v2 awaits async
     // callbacks internally, which blocks signInWithPassword from resolving.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      (_event, session) => {
         if (session?.user) {
           fetchOrCreateProfile(session.user)
             .then(({ profile, isNew }) => {

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 
 const TEXTS = [
+  "Somos Dropping CR",
   "Global drip",
   "Vintage fits",
   "Limited drops",
