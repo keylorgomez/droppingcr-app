@@ -96,12 +96,10 @@ export default function ProductCard({
     >
       {/* ── World Cup stripe — solo para fútbol ── */}
       {isFutbol && (
-        <div className="flex h-[3px] w-full shrink-0">
-          <div className="flex-1 bg-[#E8302A]" />
-          <div className="flex-1 bg-[#F5C400]" />
-          <div className="flex-1 bg-[#1C4F9C]" />
-          <div className="flex-1 bg-[#2B8C3E]" />
-        </div>
+        <div
+          className="h-[3px] w-full shrink-0"
+          style={{ background: "linear-gradient(to right, #E8302A, #1C4F9C, #2B8C3E)" }}
+        />
       )}
 
       {/* Image */}
