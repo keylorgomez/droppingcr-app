@@ -140,26 +140,48 @@ function OrderRow({ order, onClick }: { order: AdminOrder; onClick: () => void }
       className="w-full flex items-center gap-3 px-4 py-3.5 border-b border-gray-50
                  text-left transition-colors last:border-b-0"
     >
-      <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 shrink-0 relative">
-        {firstItem?.image_url
-          ? <img src={firstItem.image_url} alt={label} className="w-full h-full object-cover" />
-          : <Package size={18} className="m-auto mt-3 text-gray-200" />
-        }
-      </div>
+      {/* Image: grid for multi, single for regular */}
+      {isMulti ? (
+        <div className="grid grid-cols-2 gap-0.5 w-12 h-12 shrink-0">
+          {order.items.slice(0, 4).map((item, i) => (
+            <div key={i} className="rounded-md overflow-hidden bg-gray-50 border border-gray-100">
+              {item.image_url
+                ? <img src={item.image_url} alt={item.product_name} className="w-full h-full object-cover" />
+                : <Package size={8} className="m-auto text-gray-200" />
+              }
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 shrink-0">
+          {firstItem?.image_url
+            ? <img src={firstItem.image_url} alt={label} className="w-full h-full object-cover" />
+            : <Package size={18} className="m-auto mt-3 text-gray-200" />
+          }
+        </div>
+      )}
 
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5">
-          <p className="font-poppins font-semibold text-sm italic text-brand-primary truncate">
-            {label}
-          </p>
-          {isMulti && (
-            <span className="shrink-0 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5
-                             rounded-full bg-indigo-100 text-indigo-600 font-poppins">
-              MULTI
-            </span>
-          )}
-        </div>
-        <p className="font-poppins text-xs text-gray-400 truncate mt-0.5">
+        {isMulti ? (
+          <div className="flex flex-col gap-0.5 mb-0.5">
+            {order.items.map((item, i) => (
+              <p key={i} className="font-poppins font-semibold text-xs italic text-brand-primary truncate leading-snug">
+                {item.product_name}
+                <span className="font-normal text-gray-400 not-italic ml-1">{item.variant_size}</span>
+                {item.quantity > 1 && (
+                  <span className="font-normal text-gray-300 not-italic ml-1">×{item.quantity}</span>
+                )}
+              </p>
+            ))}
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <p className="font-poppins font-semibold text-sm italic text-brand-primary truncate">
+              {label}
+            </p>
+          </div>
+        )}
+        <p className="font-poppins text-xs text-gray-400 truncate">
           {order.guest_name ?? "Cliente sin nombre"}{" "}
           {order.guest_phone && (
             <span className="text-gray-300">· {order.guest_phone}</span>

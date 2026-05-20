@@ -266,6 +266,16 @@ serve(async (req) => {
       throw new Error(`Unknown email type: ${type}`);
     }
 
+    // ── Validar email antes de enviar ────────────────────────────────────────
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!toEmail || !emailRegex.test(toEmail)) {
+      console.error("Invalid email address, skipping:", toEmail);
+      return new Response(
+        JSON.stringify({ skipped: "invalid email address", email: toEmail }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     // ── Envío con Resend ─────────────────────────────────────────────────────
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -277,6 +287,9 @@ serve(async (req) => {
     });
 
     const resData = await res.json();
+    if (!res.ok) {
+      console.error("Resend error:", JSON.stringify(resData));
+    }
     return new Response(JSON.stringify(resData), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status:  res.ok ? 200 : 400,

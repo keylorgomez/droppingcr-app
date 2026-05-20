@@ -60,6 +60,14 @@ export interface Payment {
   paid_at: string;
 }
 
+export interface OrderItemDetail {
+  product_name: string;
+  variant_size: string;
+  quantity:     number;
+  sale_price:   number;
+  image_url:    string;
+}
+
 export interface PendingSale {
   id:              string;
   sale_price:      number;
@@ -75,7 +83,8 @@ export interface PendingSale {
   total_paid:      number;
   remaining:       number;   // (sale_price + shipping_cost) − total_paid
   payments:        Payment[];
-  isOrder?:        boolean;  // true when derived from orders table
+  isOrder?:        boolean;       // true when derived from orders table
+  orderItems?:     OrderItemDetail[]; // populated for multi-item orders
 }
 
 // Grouped view: one entry per client (grouped by phone, then name)
@@ -103,6 +112,8 @@ export interface UserOrder {
   variant_size:    string;
   image_url:       string;
   total_paid:      number;
+  isMultiOrder?:   boolean;
+  items?:          OrderItemDetail[];
 }
 
 // ── Record manual sale ─────────────────────────────────────────────────────
@@ -280,7 +291,7 @@ export async function getGroupedDebts(): Promise<ClientDebt[]> {
       .select(`
         id, guest_name, guest_phone, note, sold_at,
         shipping_cost, delivery_status,
-        order_items ( id, sale_price, quantity, product_variants(size, products(name)) ),
+        order_items ( id, sale_price, quantity, product_variants(size, products(name, product_images(image_url, is_primary, display_order))) ),
         payments ( id, amount, note, paid_at )
       `)
       .eq("status", "pending"),
@@ -288,14 +299,20 @@ export async function getGroupedDebts(): Promise<ClientDebt[]> {
 
   const map = new Map<string, ClientDebt>();
 
+  const normalizePhone = (phone: string | null): string | null => {
+    if (!phone) return null;
+    const digits = phone.replace(/\D/g, "").slice(-8);
+    return digits ? `+506${digits}` : null;
+  };
+
   for (const sale of sales) {
-    const key = sale.guest_phone?.replace(/\D/g, "") || sale.guest_name || sale.id;
+    const key = sale.guest_phone?.replace(/\D/g, "").slice(-8) || sale.guest_name || sale.id;
 
     if (!map.has(key)) {
       map.set(key, {
         key,
         guest_name:  sale.guest_name,
-        guest_phone: sale.guest_phone,
+        guest_phone: normalizePhone(sale.guest_phone),
         sales:       [],
         total_sale:  0,
         total_paid:  0,
@@ -309,8 +326,8 @@ export async function getGroupedDebts(): Promise<ClientDebt[]> {
     entry.total_paid += sale.total_paid;
     entry.remaining  += sale.remaining;
 
-    if (!entry.guest_name  && sale.guest_name)  entry.guest_name  = sale.guest_name;
-    if (!entry.guest_phone && sale.guest_phone) entry.guest_phone = sale.guest_phone;
+    if (!entry.guest_name)  entry.guest_name  = sale.guest_name;
+    if (!entry.guest_phone) entry.guest_phone = normalizePhone(sale.guest_phone);
   }
 
   // Merge pending orders into the map
@@ -328,6 +345,21 @@ export async function getGroupedDebts(): Promise<ClientDebt[]> {
     const variantSize = items.length === 1
       ? (items[0]?.product_variants?.size ?? "—")
       : "Varios";
+
+    const orderItems: OrderItemDetail[] = items.map((i: any) => {
+      const rawImgs: any[] = i.product_variants?.products?.product_images ?? [];
+      const sorted = [...rawImgs].sort((a: any, b: any) => {
+        if (a.is_primary !== b.is_primary) return a.is_primary ? -1 : 1;
+        return a.display_order - b.display_order;
+      });
+      return {
+        product_name: i.product_variants?.products?.name ?? "Producto",
+        variant_size: i.product_variants?.size ?? "—",
+        quantity:     i.quantity,
+        sale_price:   i.sale_price,
+        image_url:    sorted[0]?.image_url ?? "",
+      };
+    });
 
     const pendingSale: PendingSale = {
       id:              o.id,
@@ -347,15 +379,16 @@ export async function getGroupedDebts(): Promise<ClientDebt[]> {
         (a, b) => new Date(b.paid_at).getTime() - new Date(a.paid_at).getTime()
       ),
       isOrder:         true,
+      orderItems,
     };
 
-    const key = (o.guest_phone as string | null)?.replace(/\D/g, "") || (o.guest_name as string | null) || o.id;
+    const key = (o.guest_phone as string | null)?.replace(/\D/g, "").slice(-8) || (o.guest_name as string | null) || o.id;
 
     if (!map.has(key)) {
       map.set(key, {
         key,
         guest_name:  o.guest_name  ?? null,
-        guest_phone: o.guest_phone ?? null,
+        guest_phone: normalizePhone(o.guest_phone ?? null),
         sales:       [],
         total_sale:  0,
         total_paid:  0,
@@ -369,8 +402,8 @@ export async function getGroupedDebts(): Promise<ClientDebt[]> {
     entry.total_paid += totalPaid;
     entry.remaining  += pendingSale.remaining;
 
-    if (!entry.guest_name  && o.guest_name)  entry.guest_name  = o.guest_name;
-    if (!entry.guest_phone && o.guest_phone) entry.guest_phone = o.guest_phone;
+    if (!entry.guest_name)  entry.guest_name  = o.guest_name  ?? null;
+    if (!entry.guest_phone) entry.guest_phone = normalizePhone(o.guest_phone ?? null);
   }
 
   return [...map.values()].sort((a, b) => b.remaining - a.remaining);
@@ -490,61 +523,92 @@ export async function claimOrders(userId: string, whatsapp: string): Promise<num
   const userLast8 = last8(whatsapp);
   if (!userLast8) return 0;
 
-  // Fetch unclaimed sales that have a phone
-  const { data, error } = await supabase
+  // Claim unclaimed single-product sales
+  const { data: salesData } = await supabase
     .from("sales")
     .select("id, guest_phone")
     .is("customer_id", null)
     .not("guest_phone", "is", null);
 
-  if (error || !data?.length) return 0;
-
-  const matchIds = data
+  const matchSaleIds = (salesData ?? [])
     .filter((s) => last8(s.guest_phone ?? "") === userLast8)
     .map((s) => s.id);
 
-  if (!matchIds.length) return 0;
+  if (matchSaleIds.length > 0) {
+    await supabase.from("sales").update({ customer_id: userId }).in("id", matchSaleIds);
+  }
 
-  await supabase
-    .from("sales")
-    .update({ customer_id: userId })
-    .in("id", matchIds);
+  // Claim unclaimed multi-item orders
+  const { data: ordersData } = await supabase
+    .from("orders")
+    .select("id, guest_phone")
+    .is("customer_id", null)
+    .not("guest_phone", "is", null);
 
-  return matchIds.length;
+  const matchOrderIds = (ordersData ?? [])
+    .filter((o) => last8(o.guest_phone ?? "") === userLast8)
+    .map((o) => o.id);
+
+  if (matchOrderIds.length > 0) {
+    await supabase.from("orders").update({ customer_id: userId }).in("id", matchOrderIds);
+  }
+
+  return matchSaleIds.length + matchOrderIds.length;
 }
 
 // ── Get user orders ────────────────────────────────────────────────────────
 
 export async function getUserOrders(userId: string): Promise<UserOrder[]> {
-  const { data, error } = await supabase
-    .from("sales")
-    .select(`
-      id, sale_price, shipping_cost, shipping_method,
-      delivery_status, tracking_number, status, sold_at, note,
-      product_variants (
-        size,
-        products (
-          name,
-          product_images ( image_url, is_primary, display_order )
-        )
-      ),
-      payments ( amount )
-    `)
-    .eq("customer_id", userId)
-    .order("sold_at", { ascending: false });
+  const [salesResult, ordersResult] = await Promise.all([
+    supabase
+      .from("sales")
+      .select(`
+        id, sale_price, shipping_cost, shipping_method,
+        delivery_status, tracking_number, status, sold_at, note,
+        product_variants (
+          size,
+          products (
+            name,
+            product_images ( image_url, is_primary, display_order )
+          )
+        ),
+        payments ( amount )
+      `)
+      .eq("customer_id", userId)
+      .order("sold_at", { ascending: false }),
+    supabase
+      .from("orders")
+      .select(`
+        id, shipping_cost, shipping_method,
+        delivery_status, tracking_number, status, sold_at, note,
+        order_items (
+          quantity, sale_price,
+          product_variants (
+            size,
+            products (
+              name,
+              product_images ( image_url, is_primary, display_order )
+            )
+          )
+        ),
+        payments ( amount )
+      `)
+      .eq("customer_id", userId)
+      .order("sold_at", { ascending: false }),
+  ]);
 
-  if (error) throw new Error(error.message);
+  if (salesResult.error) throw new Error(salesResult.error.message);
 
-  return (data ?? []).map((s: any) => {
-    const rawImages: any[] = s.product_variants?.products?.product_images ?? [];
-    const images = [...rawImages].sort((a, b) => {
+  const primaryImage = (images: any[]) => {
+    const sorted = [...images].sort((a, b) => {
       if (a.is_primary !== b.is_primary) return a.is_primary ? -1 : 1;
       return a.display_order - b.display_order;
     });
-    const totalPaid = (s.payments ?? []).reduce(
-      (sum: number, p: any) => sum + p.amount, 0
-    );
+    return sorted[0]?.image_url ?? "";
+  };
 
+  const sales: UserOrder[] = (salesResult.data ?? []).map((s: any) => {
+    const totalPaid = (s.payments ?? []).reduce((sum: number, p: any) => sum + p.amount, 0);
     return {
       id:              s.id,
       sale_price:      s.sale_price,
@@ -557,10 +621,48 @@ export async function getUserOrders(userId: string): Promise<UserOrder[]> {
       note:            s.note ?? null,
       product_name:    s.product_variants?.products?.name ?? "—",
       variant_size:    s.product_variants?.size ?? "—",
-      image_url:       images[0]?.image_url ?? "",
+      image_url:       primaryImage(s.product_variants?.products?.product_images ?? []),
       total_paid:      totalPaid,
     };
   });
+
+  const multiOrders: UserOrder[] = (ordersResult.data ?? []).map((o: any) => {
+    const items: any[]  = o.order_items ?? [];
+    const itemsTotal    = items.reduce((s: number, i: any) => s + i.sale_price * i.quantity, 0);
+    const totalPaid     = (o.payments ?? []).reduce((s: number, p: any) => s + p.amount, 0);
+    const firstItem     = items[0];
+    const isMulti       = items.length > 1;
+
+    const orderItems: OrderItemDetail[] = items.map((i: any) => ({
+      product_name: i.product_variants?.products?.name ?? "Producto",
+      variant_size: i.product_variants?.size ?? "—",
+      quantity:     i.quantity,
+      sale_price:   i.sale_price,
+      image_url:    primaryImage(i.product_variants?.products?.product_images ?? []),
+    }));
+
+    return {
+      id:              o.id,
+      sale_price:      itemsTotal,
+      shipping_cost:   o.shipping_cost  ?? 0,
+      shipping_method: o.shipping_method ?? "personal_grecia",
+      delivery_status: o.delivery_status ?? "validating",
+      tracking_number: o.tracking_number ?? null,
+      status:          o.status,
+      sold_at:         o.sold_at,
+      note:            o.note ?? null,
+      product_name:    isMulti ? `${items.length} productos` : (firstItem?.product_variants?.products?.name ?? "—"),
+      variant_size:    isMulti ? "Varios" : (firstItem?.product_variants?.size ?? "—"),
+      image_url:       primaryImage(firstItem?.product_variants?.products?.product_images ?? []),
+      total_paid:      totalPaid,
+      isMultiOrder:    isMulti,
+      items:           orderItems,
+    };
+  });
+
+  return [...sales, ...multiOrders].sort(
+    (a, b) => new Date(b.sold_at).getTime() - new Date(a.sold_at).getTime()
+  );
 }
 
 // ── Admin: all sales ───────────────────────────────────────────────────────

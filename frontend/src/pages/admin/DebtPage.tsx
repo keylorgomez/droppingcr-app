@@ -135,16 +135,30 @@ function AbonoGeneralForm({ client, onDone }: { client: ClientDebt; onDone: () =
 // ── Sale Detail Row ────────────────────────────────────────────────────────
 
 function SaleRow({ sale }: { sale: PendingSale }) {
-  const paidPct = Math.min(100, Math.round((sale.total_paid / sale.sale_price) * 100));
+  const paidPct   = Math.min(100, Math.round((sale.total_paid / sale.sale_price) * 100));
+  const isMulti   = sale.isOrder && sale.orderItems && sale.orderItems.length > 1;
 
   return (
     <div className="flex flex-col gap-1.5 py-3 border-t border-gray-50 first:border-0">
+      {/* Header row */}
       <div className="flex items-start justify-between gap-2">
-        <div>
-          <p className="text-xs font-poppins font-medium text-brand-dark">
-            {sale.product_name}
-            <span className="text-gray-400 font-normal ml-1">— {sale.variant_size}</span>
-          </p>
+        <div className="flex flex-col gap-0.5">
+          {isMulti ? (
+            <div className="flex items-center gap-1.5">
+              <p className="text-xs font-poppins font-medium text-brand-dark">
+                {sale.orderItems!.length} productos
+              </p>
+              <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5
+                               rounded-full bg-indigo-100 text-indigo-600 font-poppins">
+                MULTI
+              </span>
+            </div>
+          ) : (
+            <p className="text-xs font-poppins font-medium text-brand-dark">
+              {sale.product_name}
+              <span className="text-gray-400 font-normal ml-1">— {sale.variant_size}</span>
+            </p>
+          )}
           <p className="text-[11px] font-poppins text-gray-400">{timeAgo(sale.sold_at)}</p>
           {sale.note && (
             <p className="text-[11px] font-poppins text-gray-300 italic">{sale.note}</p>
@@ -155,6 +169,27 @@ function SaleRow({ sale }: { sale: PendingSale }) {
           <p className="text-xs font-poppins font-semibold text-red-500">{fmt(sale.remaining)}</p>
         </div>
       </div>
+
+      {/* Expanded items for multi-orders */}
+      {isMulti && (
+        <div className="flex flex-col gap-1 pl-2 border-l-2 border-indigo-100 mt-0.5">
+          {sale.orderItems!.map((item, i) => (
+            <div key={i} className="flex items-center justify-between gap-2">
+              <p className="text-[11px] font-poppins text-gray-500">
+                {item.product_name}
+                <span className="text-gray-300 ml-1">— {item.variant_size}</span>
+                {item.quantity > 1 && (
+                  <span className="text-gray-300 ml-1">×{item.quantity}</span>
+                )}
+              </p>
+              <p className="text-[11px] font-poppins text-gray-400 shrink-0">
+                {fmt(item.sale_price * item.quantity)}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="h-1 w-full bg-gray-100 rounded-full overflow-hidden">
         <div
           className="h-full bg-emerald-400 rounded-full transition-all duration-500"

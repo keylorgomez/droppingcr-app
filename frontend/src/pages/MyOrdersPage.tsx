@@ -60,28 +60,60 @@ function OrderCard({ order }: { order: UserOrder }) {
       className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
     >
       <div className="flex gap-4 p-4">
-        {/* Product image */}
-        <div className="w-20 h-20 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 shrink-0">
-          {order.image_url ? (
-            <img src={order.image_url} alt={order.product_name}
-                 className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <Package size={24} className="text-gray-200" strokeWidth={1.4} />
-            </div>
-          )}
-        </div>
+        {/* Product image — grid for multi, single for regular */}
+        {order.isMultiOrder && order.items && order.items.length > 1 ? (
+          <div className="grid grid-cols-2 gap-1 w-20 h-20 shrink-0">
+            {order.items.slice(0, 4).map((item, i) => (
+              <div key={i} className="rounded-lg overflow-hidden bg-gray-50 border border-gray-100">
+                {item.image_url ? (
+                  <img src={item.image_url} alt={item.product_name}
+                       className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Package size={10} className="text-gray-200" strokeWidth={1.4} />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="w-20 h-20 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 shrink-0">
+            {order.image_url ? (
+              <img src={order.image_url} alt={order.product_name}
+                   className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <Package size={24} className="text-gray-200" strokeWidth={1.4} />
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Info */}
         <div className="flex flex-col gap-1 flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <p className="font-poppins font-semibold text-sm italic text-brand-primary
-                            leading-snug line-clamp-2">
-                {order.product_name}
-              </p>
+            <div className="min-w-0 flex-1">
+              {order.isMultiOrder && order.items && order.items.length > 1 ? (
+                <div className="flex flex-col gap-0.5">
+                  {order.items.map((item, i) => (
+                    <p key={i} className="font-poppins font-semibold text-sm italic text-brand-primary
+                                leading-snug truncate">
+                      {item.product_name}
+                      <span className="font-normal text-gray-400 not-italic ml-1 text-xs">
+                        {item.variant_size}
+                        {item.quantity > 1 && ` ×${item.quantity}`}
+                      </span>
+                    </p>
+                  ))}
+                </div>
+              ) : (
+                <p className="font-poppins font-semibold text-sm italic text-brand-primary
+                              leading-snug line-clamp-2">
+                  {order.product_name}
+                </p>
+              )}
               <p className="font-poppins text-xs text-gray-400 mt-0.5">
-                Talla {order.variant_size} · {formatDate(order.sold_at)}
+                {!order.isMultiOrder && `Talla ${order.variant_size} · `}{formatDate(order.sold_at)}
               </p>
             </div>
             {/* Delivery status badge */}
