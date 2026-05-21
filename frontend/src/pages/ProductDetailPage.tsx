@@ -247,7 +247,26 @@ function ProductContent({ product }: { product: ProductDetail }) {
     acc[v.size] = (acc[v.size] ?? 0) + v.stock;
     return acc;
   }, {});
-  const sizes = Object.keys(stockBySize);
+
+  // Reserved per size (is_reserved on any variant of that size)
+  const isReservedBySize = product.variants.reduce<Record<string, boolean>>((acc, v) => {
+    if (v.is_reserved) acc[v.size] = true;
+    return acc;
+  }, {});
+
+  // Sort sizes: clothing order → numeric → alphabetical fallback
+  const CLOTHING_ORDER = ["XS","S","M","L","XL","XXL","XLL","XXXL","2XL","3XL","4XL"];
+  const sortSizes = (a: string, b: string): number => {
+    const ai = CLOTHING_ORDER.indexOf(a.toUpperCase());
+    const bi = CLOTHING_ORDER.indexOf(b.toUpperCase());
+    if (ai !== -1 && bi !== -1) return ai - bi;
+    if (ai !== -1) return -1;
+    if (bi !== -1) return 1;
+    const an = parseFloat(a), bn = parseFloat(b);
+    if (!isNaN(an) && !isNaN(bn)) return an - bn;
+    return a.localeCompare(b);
+  };
+  const sizes = Object.keys(stockBySize).sort(sortSizes);
 
 
   const isSoldOut = product.variants.every((v) => v.stock === 0);
@@ -455,22 +474,31 @@ function ProductContent({ product }: { product: ProductDetail }) {
               </div>
               <div className="flex flex-wrap gap-2">
                 {sizes.map((size) => {
-                  const inStock = stockBySize[size] > 0;
-                  const active  = selectedSize === size;
+                  const inStock    = stockBySize[size] > 0;
+                  const isApartada = !inStock && isReservedBySize[size];
+                  const active     = selectedSize === size;
                   return (
                     <button
                       key={size}
                       onClick={() => inStock && setSelectedSize(size)}
                       disabled={!inStock}
-                      className={`min-w-[44px] h-10 px-3 rounded-lg text-sm font-poppins font-medium border transition-all ${
+                      className={`relative min-w-[44px] h-10 px-3 rounded-lg text-sm font-poppins font-medium border transition-all ${
                         active
                           ? "bg-brand-primary text-white border-brand-primary"
                           : inStock
                           ? "bg-white text-brand-dark border-gray-200 hover:border-brand-primary hover:text-brand-primary"
+                          : isApartada
+                          ? "bg-yellow-50 text-yellow-400 border-yellow-200 cursor-not-allowed"
                           : "bg-gray-50 text-gray-300 border-gray-100 line-through cursor-not-allowed"
                       }`}
                     >
                       {size}
+                      {isApartada && (
+                        <span className="absolute -top-2 -right-1 text-[8px] font-bold uppercase
+                                         bg-yellow-400 text-white px-1 py-0.5 rounded-full leading-none">
+                          APT
+                        </span>
+                      )}
                     </button>
                   );
                 })}

@@ -976,10 +976,11 @@ export async function recordManualOrder(data: OrderInput): Promise<void> {
     if (stockError) throw new Error(stockError.message);
 
     if (data.delivery_status === "apartada") {
-      await supabase
+      const { error: reserveErr } = await supabase
         .from("product_variants")
         .update({ is_reserved: true })
         .eq("id", item.variant_id);
+      if (reserveErr) throw new Error(reserveErr.message);
     }
   }
 
