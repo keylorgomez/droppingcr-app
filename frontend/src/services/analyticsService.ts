@@ -196,15 +196,22 @@ export async function getTopProducts(limit = 5): Promise<TopProduct[]> {
 }
 
 export async function getDeliveryStatusDistribution(): Promise<StatusSlice[]> {
-  const { data, error } = await supabase
-    .from("sales")
-    .select("delivery_status");
+  const [salesResult, ordersResult] = await Promise.all([
+    supabase.from("sales").select("delivery_status"),
+    supabase.from("orders").select("delivery_status").neq("status", "cancelled"),
+  ]);
 
-  if (error) throw new Error(error.message);
+  if (salesResult.error) throw new Error(salesResult.error.message);
 
   const counts = new Map<string, number>();
-  for (const s of data ?? []) {
+
+  for (const s of salesResult.data ?? []) {
     const key = (s as any).delivery_status ?? "validating";
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+
+  for (const o of ordersResult.data ?? []) {
+    const key = (o as any).delivery_status ?? "validating";
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
 
