@@ -658,8 +658,8 @@ function OrderDetailModal({ order, onClose }: { order: AdminOrder; onClose: () =
             </div>
           </div>
 
-          {/* Abono panel */}
-          {order.status === "pending" && remaining > 0 && (
+          {/* Abono panel — visible siempre que haya saldo, incluso si status=completed */}
+          {remaining > 0 && (
             <div>
               {!showAbono ? (
                 <button
@@ -1287,7 +1287,11 @@ function NewOrderModal({ onClose }: { onClose: () => void }) {
                 <button
                   key={s}
                   type="button"
-                  onClick={() => setPayStatus(s)}
+                  onClick={() => {
+                    setPayStatus(s);
+                    if (s === "completed") setInitialPayment(orderTotal.toString());
+                    else setInitialPayment("");
+                  }}
                   className={cn(
                     "flex-1 py-2.5 rounded-xl border text-sm font-poppins font-medium transition-all",
                     payStatus === s
@@ -1299,6 +1303,16 @@ function NewOrderModal({ onClose }: { onClose: () => void }) {
                 </button>
               ))}
             </div>
+
+            {/* Confirmación de monto según modo */}
+            {payStatus === "completed" && (
+              <div className="flex items-center gap-2 rounded-xl bg-green-50 border border-green-100 px-3 py-2.5">
+                <span className="text-green-600 text-xs font-poppins">✓ Se registrará pago de</span>
+                <span className="text-green-700 text-sm font-poppins font-semibold">
+                  ₡{orderTotal.toLocaleString("en-US")}
+                </span>
+              </div>
+            )}
           </section>
 
           {/* 5. Abono inicial — visible when status is pending */}

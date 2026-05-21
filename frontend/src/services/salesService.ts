@@ -597,7 +597,8 @@ export async function getUserOrders(userId: string): Promise<UserOrder[]> {
       .order("sold_at", { ascending: false }),
   ]);
 
-  if (salesResult.error) throw new Error(salesResult.error.message);
+  if (salesResult.error)  throw new Error(salesResult.error.message);
+  if (ordersResult.error) throw new Error(`orders: ${ordersResult.error.message}`);
 
   const primaryImage = (images: any[]) => {
     const sorted = [...images].sort((a, b) => {
