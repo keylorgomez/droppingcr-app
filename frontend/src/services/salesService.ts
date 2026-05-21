@@ -656,7 +656,7 @@ export async function getUserOrders(userId: string): Promise<UserOrder[]> {
       variant_size:    isMulti ? "Varios" : (firstItem?.product_variants?.size ?? "—"),
       image_url:       primaryImage(firstItem?.product_variants?.products?.product_images ?? []),
       total_paid:      totalPaid,
-      isMultiOrder:    isMulti,
+      isMultiOrder:    true,   // always use multi-card layout for orders table entries
       items:           orderItems,
     };
   });

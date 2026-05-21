@@ -43,14 +43,15 @@ function OrderSkeleton() {
 // ── Order Card ─────────────────────────────────────────────────────────────
 
 function OrderCard({ order }: { order: UserOrder }) {
-  const total     = order.sale_price + order.shipping_cost;
-  const remaining = Math.max(0, total - order.total_paid);
-  const isPending   = order.status === "pending";
+  const total      = order.sale_price + order.shipping_cost;
+  const remaining  = Math.max(0, total - order.total_paid);
+  const isPending  = order.status === "pending";
   const isCompleted = order.status === "completed";
-  const progress  = total > 0 ? Math.min(100, (order.total_paid / total) * 100) : 100;
-  const status    = deliveryStatusMeta(order.delivery_status);
-  const isCorreos = CORREOS_METHODS.has(order.shipping_method);
+  const progress   = total > 0 ? Math.min(100, (order.total_paid / total) * 100) : 100;
+  const status     = deliveryStatusMeta(order.delivery_status);
+  const isCorreos  = CORREOS_METHODS.has(order.shipping_method);
   const isPersonal = order.shipping_method === "personal_grecia";
+  const isMulti    = order.isMultiOrder && order.items && order.items.length > 1;
 
   return (
     <motion.div
@@ -59,71 +60,135 @@ function OrderCard({ order }: { order: UserOrder }) {
       transition={{ duration: 0.25 }}
       className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
     >
-      <div className="flex gap-4 p-4">
-        {/* Product image — grid for multi, single for regular */}
-        {order.isMultiOrder && order.items && order.items.length > 1 ? (
-          <div className="grid grid-cols-2 gap-1 w-20 h-20 shrink-0">
-            {order.items.slice(0, 4).map((item, i) => (
-              <div key={i} className="rounded-lg overflow-hidden bg-gray-50 border border-gray-100">
-                {item.image_url ? (
-                  <img src={item.image_url} alt={item.product_name}
-                       className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <Package size={10} className="text-gray-200" strokeWidth={1.4} />
-                  </div>
-                )}
+      {/* ── Multi-item order layout ── */}
+      {isMulti ? (
+        <>
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 pt-4 pb-3">
+            <div>
+              <p className="font-poppins text-xs text-gray-400">{formatDate(order.sold_at)}</p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                {isPersonal
+                  ? <MapPin size={11} className="text-gray-300 shrink-0" />
+                  : <Truck  size={11} className="text-gray-300 shrink-0" />
+                }
+                <span className="text-[11px] font-poppins text-gray-400">
+                  {shippingLabel(order.shipping_method)}
+                </span>
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="w-20 h-20 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 shrink-0">
-            {order.image_url ? (
-              <img src={order.image_url} alt={order.product_name}
-                   className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <Package size={24} className="text-gray-200" strokeWidth={1.4} />
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Info */}
-        <div className="flex flex-col gap-1 flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0 flex-1">
-              {order.isMultiOrder && order.items && order.items.length > 1 ? (
-                <div className="flex flex-col gap-0.5">
-                  {order.items.map((item, i) => (
-                    <p key={i} className="font-poppins font-semibold text-sm italic text-brand-primary
-                                leading-snug truncate">
-                      {item.product_name}
-                      <span className="font-normal text-gray-400 not-italic ml-1 text-xs">
-                        {item.variant_size}
-                        {item.quantity > 1 && ` ×${item.quantity}`}
-                      </span>
-                    </p>
-                  ))}
-                </div>
-              ) : (
-                <p className="font-poppins font-semibold text-sm italic text-brand-primary
-                              leading-snug line-clamp-2">
-                  {order.product_name}
-                </p>
-              )}
-              <p className="font-poppins text-xs text-gray-400 mt-0.5">
-                {!order.isMultiOrder && `Talla ${order.variant_size} · `}{formatDate(order.sold_at)}
-              </p>
             </div>
-            {/* Delivery status badge */}
-            <span className={`shrink-0 text-[10px] font-bold uppercase tracking-wider
+            <span className={`text-[10px] font-bold uppercase tracking-wider
                               px-2.5 py-1 rounded-full font-poppins ${status.bgCls}`}>
               {status.label}
             </span>
           </div>
 
-          {/* Shipping method */}
+          {/* Items list */}
+          <div className="flex flex-col divide-y divide-gray-50 border-t border-gray-50">
+            {order.items!.map((item, i) => (
+              <div key={i} className="flex items-center gap-3 px-4 py-3">
+                <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 shrink-0">
+                  {item.image_url
+                    ? <img src={item.image_url} alt={item.product_name} className="w-full h-full object-cover" />
+                    : <div className="w-full h-full flex items-center justify-center">
+                        <Package size={16} className="text-gray-200" strokeWidth={1.4} />
+                      </div>
+                  }
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-poppins font-semibold text-sm italic text-brand-primary leading-snug truncate">
+                    {item.product_name}
+                  </p>
+                  <p className="font-poppins text-xs text-gray-400 mt-0.5">
+                    Talla {item.variant_size}
+                    {item.quantity > 1 && <span className="ml-1">· ×{item.quantity}</span>}
+                  </p>
+                </div>
+                <p className="font-poppins font-semibold text-sm text-brand-dark shrink-0">
+                  ₡{(item.sale_price * item.quantity).toLocaleString("en-US")}
+                </p>
+              </div>
+            ))}
+            {order.shipping_cost > 0 && (
+              <div className="flex items-center justify-between px-4 py-2.5">
+                <p className="font-poppins text-xs text-gray-400">Envío</p>
+                <p className="font-poppins text-xs text-gray-400">
+                  ₡{order.shipping_cost.toLocaleString("en-US")}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Payment summary */}
+          <div className="px-4 pb-4 pt-3 border-t border-gray-100">
+            {isPending ? (
+              <div className="flex flex-col gap-2">
+                <div className="flex justify-between text-xs font-poppins">
+                  <span className="text-gray-400">Abonado</span>
+                  <span className="font-medium text-brand-dark">
+                    ₡{order.total_paid.toLocaleString("en-US")}
+                    <span className="text-gray-300 font-normal"> / ₡{total.toLocaleString("en-US")}</span>
+                  </span>
+                </div>
+                <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                  <div className="h-full rounded-full bg-brand-primary transition-all"
+                       style={{ width: `${progress}%` }} />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-poppins text-gray-400">Saldo pendiente</span>
+                  <span className="text-sm font-poppins font-bold text-red-500">
+                    ₡{remaining.toLocaleString("en-US")}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-[11px] font-poppins text-gray-400">Total pagado</span>
+                  <p className="text-sm font-poppins font-semibold text-brand-dark">
+                    ₡{total.toLocaleString("en-US")}
+                  </p>
+                </div>
+                <span className="flex items-center gap-1.5 text-[11px] font-poppins font-semibold
+                                 text-green-600 bg-green-50 px-3 py-1.5 rounded-full">
+                  ✓ Pago completado
+                </span>
+              </div>
+            )}
+          </div>
+        </>
+      ) : (
+
+      /* ── Single-item order layout (original) ── */
+      <>
+      <div className="flex gap-4 p-4">
+        <div className="w-20 h-20 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 shrink-0">
+          {order.image_url ? (
+            <img src={order.image_url} alt={order.product_name}
+                 className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <Package size={24} className="text-gray-200" strokeWidth={1.4} />
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-1 flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="font-poppins font-semibold text-sm italic text-brand-primary
+                            leading-snug line-clamp-2">
+                {order.product_name}
+              </p>
+              <p className="font-poppins text-xs text-gray-400 mt-0.5">
+                Talla {order.variant_size} · {formatDate(order.sold_at)}
+              </p>
+            </div>
+            <span className={`shrink-0 text-[10px] font-bold uppercase tracking-wider
+                              px-2.5 py-1 rounded-full font-poppins ${status.bgCls}`}>
+              {status.label}
+            </span>
+          </div>
           <div className="flex items-center gap-1.5 mt-0.5">
             {isPersonal
               ? <MapPin size={11} className="text-gray-300 shrink-0" />
@@ -136,7 +201,6 @@ function OrderCard({ order }: { order: UserOrder }) {
         </div>
       </div>
 
-      {/* Payment detail — pending: progress bar */}
       {isPending && (
         <div className="px-4 pb-4 flex flex-col gap-2 border-t border-gray-50 pt-3 mx-4 mb-0">
           <div className="flex justify-between text-xs font-poppins">
@@ -147,10 +211,8 @@ function OrderCard({ order }: { order: UserOrder }) {
             </span>
           </div>
           <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
-            <div
-              className="h-full rounded-full bg-brand-primary transition-all"
-              style={{ width: `${progress}%` }}
-            />
+            <div className="h-full rounded-full bg-brand-primary transition-all"
+                 style={{ width: `${progress}%` }} />
           </div>
           <p className="text-[11px] font-poppins text-gray-400">
             Pendiente: <span className="font-semibold text-red-500">
@@ -165,7 +227,6 @@ function OrderCard({ order }: { order: UserOrder }) {
         </div>
       )}
 
-      {/* Payment detail — completed */}
       {isCompleted && (
         <div className="px-4 pb-4 border-t border-gray-50 pt-3 mx-4 mb-0">
           <div className="flex items-center justify-between">
@@ -202,6 +263,8 @@ function OrderCard({ order }: { order: UserOrder }) {
           </a>
         </div>
       )}
+      </>
+    )}
     </motion.div>
   );
 }
