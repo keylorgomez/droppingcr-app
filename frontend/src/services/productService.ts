@@ -52,6 +52,7 @@ export interface CatalogProduct {
   is_new: boolean;
   is_sold_out: boolean;
   is_reserved: boolean;
+  is_active: boolean;
 }
 
 export interface ProductInput {
@@ -78,17 +79,20 @@ function flattenCategories(productCategories: unknown[]): Category[] {
 
 // ── Queries ────────────────────────────────────────────────────────────────
 
-export async function getProducts(): Promise<CatalogProduct[]> {
-  const { data, error } = await supabase
+export async function getProducts(includeHidden = false): Promise<CatalogProduct[]> {
+  let query = supabase
     .from("products")
     .select(`
-      id, name, slug, price_sale, discount_percentage, is_new,
+      id, name, slug, price_sale, discount_percentage, is_new, is_active,
       product_images ( image_url, is_primary, display_order ),
       product_variants ( stock, size, is_reserved ),
       product_categories ( categories ( name, slug ) )
     `)
-    .eq("is_active", true)
     .order("created_at", { ascending: false });
+
+  if (!includeHidden) query = query.eq("is_active", true);
+
+  const { data, error } = await query;
 
   if (error) throw new Error(error.message);
 
@@ -131,6 +135,7 @@ export async function getProducts(): Promise<CatalogProduct[]> {
       is_new:              p.is_new ?? false,
       is_sold_out:         totalStock === 0,
       is_reserved:         totalStock === 0 && anyReserved,
+      is_active:           p.is_active ?? true,
     };
   });
 }

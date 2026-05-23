@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
-  X, LayoutGrid, Flame, BadgePercent, Tag, Settings2, CreditCard, Receipt, Coins, ShoppingBag,
+  X, LayoutGrid, Flame, BadgePercent, Tag, Settings2, CreditCard, Receipt, Coins, ShoppingBag, EyeOff,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { getProducts } from "../../services/productService";
@@ -24,18 +24,20 @@ const adminLinks = [
 
 export default function Sidebar({ open, onClose }: SidebarProps) {
   const { user }       = useAuth();
+  const isAdmin        = user?.role === "admin";
   const navigate       = useNavigate();
   const [searchParams] = useSearchParams();
   const activeFilter   = searchParams.get("filter") ?? "";
 
   // Reuse the cached products query — no extra network request
   const { data: products = [], isLoading } = useQuery({
-    queryKey: ["products"],
-    queryFn:  getProducts,
+    queryKey: ["products", isAdmin],
+    queryFn:  () => getProducts(isAdmin),
   });
 
   const hasNew       = products.some((p) => p.is_new);
   const hasDiscounts = products.some((p) => p.discount_percentage > 0);
+  const hasHidden    = products.some((p) => !p.is_active);
 
   // Unique categories present in at least one product, sorted alphabetically
   const categories = useMemo(() => {
@@ -126,6 +128,18 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
                   />
                 )}
 
+                {/* Ocultos — admin only, only if at least one product is hidden */}
+                {isAdmin && (isLoading || hasHidden) && (
+                  <NavLink
+                    label="Ocultos"
+                    icon={EyeOff}
+                    active={activeFilter === "oculto"}
+                    onClick={() => handleNav("/?filter=oculto")}
+                    loading={isLoading}
+                    adminOnly
+                  />
+                )}
+
                 {/* Categories section */}
                 {(isLoading || categories.length > 0) && (
                   <p className="px-2 pt-5 pb-1 text-[10px] font-poppins text-gray-400
@@ -190,13 +204,14 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
 // ── Nav link ───────────────────────────────────────────────────────────────
 
 function NavLink({
-  label, icon: Icon, active, onClick, loading = false,
+  label, icon: Icon, active, onClick, loading = false, adminOnly = false,
 }: {
   label: string;
   icon: React.ElementType;
   active: boolean;
   onClick: () => void;
   loading?: boolean;
+  adminOnly?: boolean;
 }) {
   return (
     <button
@@ -206,14 +221,18 @@ function NavLink({
       className={cn(
         "w-full flex items-center gap-3 px-2 py-3 rounded-xl text-sm font-poppins transition-colors text-left",
         active
-          ? "bg-brand-bg text-brand-primary font-medium"
-          : "text-brand-dark hover:bg-brand-bg hover:text-brand-primary"
+          ? adminOnly
+            ? "bg-gray-100 text-gray-600 font-medium"
+            : "bg-brand-bg text-brand-primary font-medium"
+          : adminOnly
+            ? "text-gray-400 hover:bg-gray-50 hover:text-gray-600"
+            : "text-brand-dark hover:bg-brand-bg hover:text-brand-primary"
       )}
     >
       <Icon
         size={17}
         strokeWidth={1.8}
-        className={active ? "text-brand-primary" : "text-brand-accent"}
+        className={active ? (adminOnly ? "text-gray-500" : "text-brand-primary") : "text-gray-300"}
       />
       {label}
     </button>

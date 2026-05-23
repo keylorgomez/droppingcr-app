@@ -56,7 +56,12 @@ function AbonoGeneralForm({ client, onDone }: { client: ClientDebt; onDone: () =
   const [error,  setError]  = useState("");
 
   const mutation = useMutation({
-    mutationFn: () => addGeneralPayment(client.sales, Number(amount), note.trim() || null),
+    mutationFn: () => addGeneralPayment(
+      client.sales,
+      Number(amount),
+      note.trim() || null,
+      { guest_phone: client.guest_phone, guest_name: client.guest_name, total_remaining: client.remaining },
+    ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["grouped-debts"] });
       showToast("Abono registrado y distribuido.", "success");

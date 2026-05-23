@@ -412,9 +412,10 @@ export async function getGroupedDebts(): Promise<ClientDebt[]> {
 // ── Add general payment (distributed oldest-first) ─────────────────────────
 
 export async function addGeneralPayment(
-  sales:  PendingSale[],
-  amount: number,
-  note:   string | null
+  sales:      PendingSale[],
+  amount:     number,
+  note:       string | null,
+  clientInfo: { guest_phone: string | null; guest_name: string | null; total_remaining: number },
 ): Promise<void> {
   const sorted   = [...sales].sort(
     (a, b) => new Date(a.sold_at).getTime() - new Date(b.sold_at).getTime()
@@ -466,6 +467,23 @@ export async function addGeneralPayment(
     }
 
     leftover -= apply;
+  }
+
+  // Fire payment receipt email — only if client has a phone (to look up their email)
+  if (clientInfo.guest_phone) {
+    const totalOwedAll = sales.reduce((s, sale) => s + sale.sale_price + sale.shipping_cost, 0);
+    const newRemaining = Math.max(0, clientInfo.total_remaining - amount);
+    sendTransactionalEmail({
+      type: "payment_receipt",
+      data: {
+        guest_phone:  clientInfo.guest_phone,
+        guest_name:   clientInfo.guest_name,
+        amount_paid:  amount,
+        total_owed:   totalOwedAll,
+        remaining:    newRemaining,
+        note,
+      },
+    });
   }
 }
 
@@ -1147,9 +1165,8 @@ export async function updateOrderAdmin(
       await supabase.from("product_variants")
         .update({ is_reserved: true }).eq("id", (item as any).variant_id);
     }
-  } else if (
-    (delivery_status === "shipped" || delivery_status === "delivered") && wasApartada
-  ) {
+  } else if (wasApartada) {
+    // Moving away from apartada to any other status → release reservation
     const { data: items } = await supabase
       .from("order_items").select("variant_id").eq("order_id", orderId);
     for (const item of (items ?? [])) {
@@ -1275,13 +1292,12 @@ export async function updateSaleAdmin(
       .update({ is_reserved: true })
       .eq("id", variantId);
     if (reserveErr) throw new Error(reserveErr.message);
-  } else if (delivery_status === "shipped" || delivery_status === "delivered") {
-    if (wasApartada) {
-      const { error: clearErr } = await supabase
-        .from("product_variants")
-        .update({ is_reserved: false })
-        .eq("id", variantId);
-      if (clearErr) throw new Error(clearErr.message);
-    }
+  } else if (wasApartada) {
+    // Moving away from apartada to any other status → release reservation
+    const { error: clearErr } = await supabase
+      .from("product_variants")
+      .update({ is_reserved: false })
+      .eq("id", variantId);
+    if (clearErr) throw new Error(clearErr.message);
   }
 }

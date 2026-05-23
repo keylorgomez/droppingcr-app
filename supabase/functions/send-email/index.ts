@@ -164,14 +164,100 @@ function orderHtml(
           </td>
         </tr>
 
-        <!-- Note -->
+        <!-- Footer -->
         <tr>
-          <td style="background:#ffffff;padding:24px 40px 32px;">
-            <div style="background:#ffefd1;border-radius:12px;padding:16px 20px;">
+          <td style="background:#fafafa;border-radius:0 0 16px 16px;padding:20px 40px;
+                     text-align:center;border-top:1px solid #eeeeee;">
+            <p style="margin:0;font-size:12px;color:#bbb;line-height:1.7;">
+              ¿Preguntas? Escribinos por
+              <a href="https://wa.me/50688364879" style="color:#975023;text-decoration:none;">WhatsApp</a>.<br/>
+              © ${new Date().getFullYear()} Dropping CR · Costa Rica
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+
+function paymentReceiptHtml(
+  guestName:   string | null,
+  amountPaid:  number,
+  totalOwed:   number,
+  remaining:   number,
+  note:        string | null,
+): string {
+  const name       = guestName?.trim() || "Cliente";
+  const isPaidOff  = remaining <= 0;
+
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Abono recibido — Dropping CR</title>
+</head>
+<body style="margin:0;padding:0;background:#f2f2f2;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f2f2f2;padding:40px 16px;">
+    <tr><td align="center">
+      <table width="100%" style="max-width:540px;" cellpadding="0" cellspacing="0">
+
+        <!-- Header -->
+        <tr>
+          <td style="background:#0a0a0a;border-radius:16px 16px 0 0;padding:32px 40px;text-align:center;">
+            <p style="margin:0;font-size:20px;font-weight:700;letter-spacing:0.15em;color:#ffffff;text-transform:uppercase;">DROPPING CR</p>
+            <p style="margin:6px 0 0;font-size:10px;letter-spacing:0.22em;color:#975023;text-transform:uppercase;">Comprobante de abono</p>
+          </td>
+        </tr>
+
+        <!-- Body -->
+        <tr>
+          <td style="background:#ffffff;padding:36px 40px 32px;">
+            <p style="margin:0 0 4px;font-size:12px;color:#aaa;text-transform:uppercase;letter-spacing:0.12em;">Hola,</p>
+            <h1 style="margin:0 0 24px;font-size:22px;font-weight:700;color:#0a0a0a;">${name} 👋</h1>
+
+            <p style="margin:0 0 24px;font-size:15px;color:#555;line-height:1.75;">
+              Registramos un abono a tu cuenta. Acá te dejamos el resumen:
+            </p>
+
+            <!-- Payment summary box -->
+            <table width="100%" cellpadding="0" cellspacing="0"
+                   style="background:#f9f9f9;border-radius:12px;padding:0;overflow:hidden;border:1px solid #eeeeee;">
+              <tr>
+                <td style="padding:16px 20px;border-bottom:1px solid #eeeeee;">
+                  <span style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:0.1em;">Abono recibido</span><br/>
+                  <span style="font-size:24px;font-weight:700;color:#975023;">₡${amountPaid.toLocaleString("en-US")}</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:16px 20px;border-bottom:1px solid #eeeeee;">
+                  <span style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:0.1em;">Total de tu pedido</span><br/>
+                  <span style="font-size:16px;font-weight:600;color:#0a0a0a;">₡${totalOwed.toLocaleString("en-US")}</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:16px 20px;">
+                  <span style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:0.1em;">Saldo pendiente</span><br/>
+                  <span style="font-size:20px;font-weight:700;color:${isPaidOff ? "#22c55e" : "#dc2626"};">
+                    ${isPaidOff ? "✓ Pagado completo" : `₡${remaining.toLocaleString("en-US")}`}
+                  </span>
+                </td>
+              </tr>
+            </table>
+
+            ${note ? `
+            <div style="margin-top:20px;background:#ffefd1;border-radius:12px;padding:14px 18px;">
               <p style="margin:0;font-size:13px;color:#975023;line-height:1.65;">
-                📦 Tu pedido está siendo procesado. Te avisamos por WhatsApp cuando esté listo para entrega o envío.
+                📝 Nota: ${note}
               </p>
-            </div>
+            </div>` : ""}
+
+            <p style="margin:24px 0 0;font-size:13px;color:#aaa;line-height:1.65;">
+              Cualquier consulta nos podés escribir por WhatsApp.
+            </p>
           </td>
         </tr>
 
@@ -180,8 +266,7 @@ function orderHtml(
           <td style="background:#fafafa;border-radius:0 0 16px 16px;padding:20px 40px;
                      text-align:center;border-top:1px solid #eeeeee;">
             <p style="margin:0;font-size:12px;color:#bbb;line-height:1.7;">
-              ¿Preguntas? Escribinos por
-              <a href="https://wa.me/50688364879" style="color:#975023;text-decoration:none;">WhatsApp</a>.<br/>
+              <a href="https://wa.me/50688364879" style="color:#975023;text-decoration:none;">WhatsApp</a> · ¿Preguntas? Con gusto te ayudamos.<br/>
               © ${new Date().getFullYear()} Dropping CR · Costa Rica
             </p>
           </td>
@@ -260,6 +345,48 @@ serve(async (req) => {
         data.items        ?? [],
         data.shipping_cost ?? 0,
         data.total        ?? 0,
+      );
+
+    // ── Payment receipt ──────────────────────────────────────────────────────
+    } else if (type === "payment_receipt") {
+      const supabaseAdmin = createClient(
+        Deno.env.get("SUPABASE_URL")              ?? "",
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      );
+
+      const phone = (data.guest_phone ?? "").replace(/\D/g, "").slice(-8);
+
+      if (phone) {
+        const { data: profiles } = await supabaseAdmin
+          .from("profiles")
+          .select("id, whatsapp")
+          .not("whatsapp", "is", null);
+
+        const match = (profiles ?? []).find(
+          (p: { id: string; whatsapp: string }) =>
+            p.whatsapp?.replace(/\D/g, "").slice(-8) === phone,
+        );
+
+        if (match) {
+          const { data: { user } } = await supabaseAdmin.auth.admin.getUserById(match.id);
+          toEmail = user?.email ?? null;
+        }
+      }
+
+      if (!toEmail) {
+        return new Response(
+          JSON.stringify({ skipped: "no registered email for this phone" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      subject = "Abono registrado en Dropping CR 🧾";
+      html    = paymentReceiptHtml(
+        data.guest_name  ?? null,
+        data.amount_paid ?? 0,
+        data.total_owed  ?? 0,
+        data.remaining   ?? 0,
+        data.note        ?? null,
       );
 
     } else {

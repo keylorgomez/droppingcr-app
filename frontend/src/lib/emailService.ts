@@ -20,6 +20,17 @@ type EmailPayload =
         shipping_cost: number;
         total:         number;
       };
+    }
+  | {
+      type: "payment_receipt";
+      data: {
+        guest_phone:  string | null;
+        guest_name:   string | null;
+        amount_paid:  number;
+        total_owed:   number;
+        remaining:    number;
+        note:         string | null;
+      };
     };
 
 // ── Fire-and-forget — nunca bloquea la UI ────────────────────────────────────

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Pencil } from "lucide-react";
+import { Pencil, EyeOff } from "lucide-react";
 import { FEATURES } from "../../constants/featureFlags";
 
 interface ProductCardProps {
@@ -14,6 +14,7 @@ interface ProductCardProps {
   discount_percentage?: number;
   is_sold_out?: boolean;
   is_reserved?: boolean;
+  isHidden?: boolean;
   onClick?: () => void;
   onEdit?: () => void;
 }
@@ -29,6 +30,7 @@ export default function ProductCard({
   discount_percentage = 0,
   is_sold_out = false,
   is_reserved = false,
+  isHidden = false,
   onClick,
   onEdit,
 }: ProductCardProps) {
@@ -81,7 +83,7 @@ export default function ProductCard({
   return (
     <motion.div
       className={`flex flex-col bg-white rounded-2xl border shadow-sm overflow-hidden font-poppins cursor-pointer ${
-        is_sold_out || is_reserved ? "opacity-50" : ""
+        isHidden ? "opacity-50 grayscale" : is_sold_out || is_reserved ? "opacity-50" : ""
       } ${isFutbol ? "border-gray-100/80" : "border-gray-100"}`}
       whileHover={{
         y: -4,
@@ -175,6 +177,18 @@ export default function ProductCard({
               </motion.button>
             )}
           </AnimatePresence>
+        )}
+
+        {/* Hidden badge — admin only */}
+        {isHidden && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <span className="flex items-center gap-1.5 bg-gray-800/75 text-white
+                             text-[10px] font-bold uppercase tracking-widest
+                             px-3 py-1.5 rounded-full backdrop-blur-sm">
+              <EyeOff size={10} strokeWidth={2.5} />
+              Oculto
+            </span>
+          </div>
         )}
       </div>
 

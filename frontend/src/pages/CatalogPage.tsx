@@ -133,17 +133,18 @@ export default function CatalogPage() {
   }, [location.state]);
 
   const { data: products = [], isLoading, isError } = useQuery({
-    queryKey: ["products"],
-    queryFn:  getProducts,
+    queryKey: ["products", isAdmin],
+    queryFn:  () => getProducts(isAdmin),
   });
 
   // Step 1: apply sidebar category / special filter
   const byCategory = useMemo(() => {
-    if (!filter) return products;
-    if (filter === "nuevo")      return products.filter((p) => p.is_new);
-    if (filter === "descuentos") return products.filter((p) => p.discount_percentage > 0);
-    return products.filter((p) => p.categories.some((c) => c.slug === filter));
-  }, [products, filter]);
+    if (!filter) return products.filter((p) => p.is_active || isAdmin);
+    if (filter === "nuevo")      return products.filter((p) => p.is_new && (p.is_active || isAdmin));
+    if (filter === "descuentos") return products.filter((p) => p.discount_percentage > 0 && (p.is_active || isAdmin));
+    if (filter === "oculto")     return products.filter((p) => !p.is_active);
+    return products.filter((p) => p.categories.some((c) => c.slug === filter) && (p.is_active || isAdmin));
+  }, [products, filter, isAdmin]);
 
   // Step 2: available sizes from the category-filtered set (with stock)
   const availableSizes = useMemo(() => {
@@ -219,6 +220,7 @@ export default function CatalogPage() {
     if (!filter) return null;
     if (filter === "nuevo")      return "Nuevo";
     if (filter === "descuentos") return "Descuentos";
+    if (filter === "oculto")     return "Ocultos";
     const cat = products.flatMap((p) => p.categories).find((c) => c.slug === filter);
     return cat?.name ?? filter;
   }, [filter, products]);
@@ -389,6 +391,7 @@ export default function CatalogPage() {
                     sessionStorage.setItem("catalog_state", JSON.stringify({ page, scrollY: window.scrollY, filter }));
                     navigate(`/product/${product.slug}`);
                   }}
+                  isHidden={isAdmin && !product.is_active}
                   onEdit={isAdmin ? () => navigate(`/admin/products/${product.id}/edit`) : undefined}
                 />
               ))
