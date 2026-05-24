@@ -536,42 +536,22 @@ export async function addPayment(
 // and permanently assigns customer_id so they appear in "Mis Pedidos".
 
 export async function claimOrders(userId: string, whatsapp: string): Promise<number> {
-  // Compare only the last 8 digits so "+50688887777" matches "88887777"
-  const last8 = (s: string) => s.replace(/\D/g, "").slice(-8);
-  const userLast8 = last8(whatsapp);
-  if (!userLast8) return 0;
+  const last8 = whatsapp.replace(/\D/g, "").slice(-8);
+  if (!last8) return 0;
 
-  // Claim unclaimed single-product sales
-  const { data: salesData } = await supabase
-    .from("sales")
-    .select("id, guest_phone")
-    .is("customer_id", null)
-    .not("guest_phone", "is", null);
+  // Uses a SECURITY DEFINER RPC so it can UPDATE unclaimed rows (customer_id = NULL)
+  // without needing SELECT access to those rows via RLS.
+  const { data, error } = await supabase.rpc("claim_orders_by_phone", {
+    p_user_id:     userId,
+    p_phone_last8: last8,
+  });
 
-  const matchSaleIds = (salesData ?? [])
-    .filter((s) => last8(s.guest_phone ?? "") === userLast8)
-    .map((s) => s.id);
-
-  if (matchSaleIds.length > 0) {
-    await supabase.from("sales").update({ customer_id: userId }).in("id", matchSaleIds);
+  if (error) {
+    console.error("claimOrders rpc error:", error.message);
+    return 0;
   }
 
-  // Claim unclaimed multi-item orders
-  const { data: ordersData } = await supabase
-    .from("orders")
-    .select("id, guest_phone")
-    .is("customer_id", null)
-    .not("guest_phone", "is", null);
-
-  const matchOrderIds = (ordersData ?? [])
-    .filter((o) => last8(o.guest_phone ?? "") === userLast8)
-    .map((o) => o.id);
-
-  if (matchOrderIds.length > 0) {
-    await supabase.from("orders").update({ customer_id: userId }).in("id", matchOrderIds);
-  }
-
-  return matchSaleIds.length + matchOrderIds.length;
+  return (data as number) ?? 0;
 }
 
 // ── Get user orders ────────────────────────────────────────────────────────
