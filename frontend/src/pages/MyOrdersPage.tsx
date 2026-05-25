@@ -218,6 +218,50 @@ function OrderCard({ order, onClick }: { order: UserOrder; onClick: () => void }
   );
 }
 
+// ── Image Lightbox ─────────────────────────────────────────────────────────
+
+function ImageLightbox({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-[60] bg-black flex items-center justify-center"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      onClick={onClose}
+    >
+      {/* Close button */}
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/10 backdrop-blur-sm
+                   flex items-center justify-center text-white hover:bg-white/20 transition-colors z-10"
+      >
+        <X size={18} />
+      </button>
+
+      {/* Image — click/tap inside stops propagation so only backdrop closes */}
+      <motion.img
+        src={src}
+        alt={alt}
+        initial={{ scale: 0.92, opacity: 0 }}
+        animate={{ scale: 1,    opacity: 1 }}
+        exit={{ scale: 0.92,    opacity: 0 }}
+        transition={{ duration: 0.2 }}
+        onClick={(e) => e.stopPropagation()}
+        className="max-w-full max-h-full object-contain select-none"
+        style={{ touchAction: "pinch-zoom" }}
+        draggable={false}
+      />
+    </motion.div>
+  );
+}
+
 // ── Order Detail Sheet ─────────────────────────────────────────────────────
 
 function OrderDetailSheet({ order, onClose }: { order: UserOrder; onClose: () => void }) {
@@ -229,6 +273,7 @@ function OrderDetailSheet({ order, onClose }: { order: UserOrder; onClose: () =>
   const isCorreos  = CORREOS_METHODS.has(order.shipping_method);
   const isPersonal = order.shipping_method === "personal_grecia";
   const isMulti    = order.isMultiOrder && order.items && order.items.length > 1;
+  const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(null);
 
   // Lock body scroll while open
   useEffect(() => {
@@ -284,8 +329,11 @@ function OrderDetailSheet({ order, onClose }: { order: UserOrder; onClose: () =>
 
           {/* ── Single-item: large image ── */}
           {!isMulti && (
-            <div className="mx-5 rounded-2xl overflow-hidden bg-gray-50 mb-4
-                            aspect-square max-h-[60vw] md:max-h-64">
+            <div
+              className="mx-5 rounded-2xl overflow-hidden bg-gray-50 mb-4
+                         aspect-square max-h-[60vw] md:max-h-64 cursor-zoom-in"
+              onClick={() => order.image_url && setLightbox({ src: order.image_url, alt: order.product_name })}
+            >
               {order.image_url
                 ? <img src={order.image_url} alt={order.product_name}
                        className="w-full h-full object-cover" />
@@ -321,8 +369,11 @@ function OrderDetailSheet({ order, onClose }: { order: UserOrder; onClose: () =>
               <div className="flex flex-col gap-3">
                 {order.items!.map((item, i) => (
                   <div key={i} className="flex gap-3 items-center">
-                    <div className="w-36 h-36 sm:w-28 sm:h-28 md:w-24 md:h-24 rounded-xl overflow-hidden bg-gray-50
-                                    border border-gray-100 shrink-0">
+                    <div
+                      className="w-36 h-36 sm:w-28 sm:h-28 md:w-24 md:h-24 rounded-xl overflow-hidden bg-gray-50
+                                 border border-gray-100 shrink-0 cursor-zoom-in"
+                      onClick={() => item.image_url && setLightbox({ src: item.image_url, alt: item.product_name })}
+                    >
                       {item.image_url
                         ? <img src={item.image_url} alt={item.product_name}
                                className="w-full h-full object-cover" />
@@ -456,6 +507,17 @@ function OrderDetailSheet({ order, onClose }: { order: UserOrder; onClose: () =>
           <div className="h-6" />
         </div>
       </motion.div>
+
+      {/* Lightbox */}
+      <AnimatePresence>
+        {lightbox && (
+          <ImageLightbox
+            src={lightbox.src}
+            alt={lightbox.alt}
+            onClose={() => setLightbox(null)}
+          />
+        )}
+      </AnimatePresence>
     </>
   );
 }
