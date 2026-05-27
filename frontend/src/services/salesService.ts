@@ -432,7 +432,7 @@ export async function addGeneralPayment(
     // For now we route order-derived PendingSales to addOrderPayment.
     if (sale.isOrder) {
       const orderTotal = sale.sale_price + sale.shipping_cost;
-      await addOrderPayment(sale.id, orderTotal, apply, note);
+      await addOrderPayment(sale.id, orderTotal, apply, note, true);
       leftover -= apply;
       continue;
     }
@@ -1163,6 +1163,7 @@ export async function addOrderPayment(
   orderTotal: number,
   amount:     number,
   note:       string | null,
+  skipEmail = false,
 ): Promise<void> {
   const { error: payError } = await supabase.from("payments").insert({
     order_id: orderId,
@@ -1204,7 +1205,7 @@ export async function addOrderPayment(
     }
   }
 
-  if (orderData?.guest_phone) {
+  if (!skipEmail && orderData?.guest_phone) {
     const remaining = Math.max(0, orderTotal - totalPaid);
     sendTransactionalEmail({
       type: "payment_receipt",
