@@ -1181,13 +1181,13 @@ export async function addOrderPayment(
     (sum: number, p: any) => sum + p.amount, 0
   );
 
-  if (totalPaid >= orderTotal) {
-    const { data: orderData } = await supabase
-      .from("orders")
-      .select("delivery_status")
-      .eq("id", orderId)
-      .single();
+  const { data: orderData } = await supabase
+    .from("orders")
+    .select("delivery_status, guest_phone, guest_name")
+    .eq("id", orderId)
+    .single();
 
+  if (totalPaid >= orderTotal) {
     const isApartada = orderData?.delivery_status === "apartada";
     const updates: Record<string, unknown> = { status: "completed" };
     if (isApartada) updates.delivery_status = "confirmed";
@@ -1202,6 +1202,21 @@ export async function addOrderPayment(
           .update({ is_reserved: false }).eq("id", (item as any).variant_id);
       }
     }
+  }
+
+  if (orderData?.guest_phone) {
+    const remaining = Math.max(0, orderTotal - totalPaid);
+    sendTransactionalEmail({
+      type: "payment_receipt",
+      data: {
+        guest_phone: orderData.guest_phone,
+        guest_name:  orderData.guest_name ?? null,
+        amount_paid: amount,
+        total_owed:  orderTotal,
+        remaining,
+        note,
+      },
+    });
   }
 }
 
