@@ -326,8 +326,8 @@ serve(async (req) => {
         );
 
         if (match) {
-          const { data: { user } } = await supabaseAdmin.auth.admin.getUserById(match.id);
-          toEmail = user?.email ?? null;
+          const result = await supabaseAdmin.auth.admin.getUserById(match.id);
+          toEmail = result.data?.user?.email ?? null;
         }
       }
 
@@ -368,8 +368,8 @@ serve(async (req) => {
         );
 
         if (match) {
-          const { data: { user } } = await supabaseAdmin.auth.admin.getUserById(match.id);
-          toEmail = user?.email ?? null;
+          const result = await supabaseAdmin.auth.admin.getUserById(match.id);
+          toEmail = result.data?.user?.email ?? null;
         }
       }
 
