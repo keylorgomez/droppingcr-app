@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import { useToast } from "../ui/Toast";
 import {
   DELIVERY_STATUSES,
-  deliveryStatusMeta,
   type DeliveryStatus,
 } from "../../services/salesService";
 import {

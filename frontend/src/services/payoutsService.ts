@@ -98,7 +98,7 @@ export async function getAllPayouts(): Promise<AdminPayout[]> {
     .order("paid_at", { ascending: false });
 
   if (error) throw new Error(error.message);
-  return (data ?? []).map((p: RawPayoutRow) => ({
+  return (data as unknown as RawPayoutRow[]).map((p) => ({
     id:             p.id,
     recipient_id:   p.recipient_id,
     recipient_name: `${p.recipient?.first_name ?? ""} ${p.recipient?.last_name ?? ""}`.trim() || "—",
@@ -123,7 +123,7 @@ export async function getMyPayouts(userId: string): Promise<AdminPayout[]> {
     .order("paid_at", { ascending: false });
 
   if (error) throw new Error(error.message);
-  return (data ?? []).map((p: RawMyPayoutRow) => ({
+  return (data as unknown as RawMyPayoutRow[]).map((p) => ({
     id:             p.id,
     recipient_id:   p.recipient_id,
     recipient_name: "",

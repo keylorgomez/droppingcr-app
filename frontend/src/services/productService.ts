@@ -102,7 +102,7 @@ interface RawProductWithVariantsRow {
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 function flattenCategories(
-  productCategories: Array<{ categories: Category | null }>
+  productCategories: Array<{ categories: Category | Category[] | null }>
 ): Category[] {
   return (productCategories ?? [])
     .map((pc) => pc.categories)
@@ -128,7 +128,7 @@ export async function getProducts(includeHidden = false): Promise<CatalogProduct
 
   if (error) throw new Error(error.message);
 
-  return (data ?? []).map((p: RawProductRow) => {
+  return (data as unknown as RawProductRow[]).map((p) => {
     // Primary image always first, then rest by display_order
     const images = [...(p.product_images ?? [])].sort((imgA, imgB) => {
       if (imgA.is_primary !== imgB.is_primary) return imgA.is_primary ? -1 : 1;

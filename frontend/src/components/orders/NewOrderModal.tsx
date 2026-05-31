@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  X, Package, Check, Loader2, ShoppingBag,
+  X, Package, Loader2, ShoppingBag,
   Search, Plus, Minus, ArrowLeft, ChevronRight,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";

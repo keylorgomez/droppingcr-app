@@ -260,7 +260,7 @@ export interface AdminSale {
 
 export interface RefundLog {
   id:           string;
-  sale_id:      string;
+  sale_id:      string | null;
   guest_name:   string | null;
   guest_phone:  string | null;
   product_name: string;
@@ -301,7 +301,7 @@ export function triggerNewOrderEmail(
           .select("size, products(name)")
           .eq("id", item.variant_id)
           .single();
-        const product = variant?.products as { name: string } | null;
+        const product = variant?.products as unknown as { name: string } | null;
         return {
           product_name: product?.name ?? "Producto",
           variant_size: variant?.size ?? "—",
@@ -422,7 +422,7 @@ export async function getPendingSales(): Promise<PendingSale[]> {
 
   if (error) throw new Error(error.message);
 
-  return (data as RawPendingSaleRow[]).map((saleRow) => {
+  return (data as unknown as RawPendingSaleRow[]).map((saleRow) => {
     const shippingCost = saleRow.shipping_cost ?? 0;
     const totalOwed    = saleRow.sale_price + shippingCost;
     const totalPaid    = saleRow.payments.reduce(
@@ -568,7 +568,7 @@ export async function getUserOrders(userId: string): Promise<UserOrder[]> {
     return sorted[0]?.image_url ?? "";
   };
 
-  const singleSales: UserOrder[] = (salesResult.data as RawUserSaleRow[]).map((saleRow) => {
+  const singleSales: UserOrder[] = (salesResult.data as unknown as RawUserSaleRow[]).map((saleRow) => {
     const totalPaid = saleRow.payments.reduce(
       (total, payment) => total + payment.amount, 0
     );
@@ -579,7 +579,7 @@ export async function getUserOrders(userId: string): Promise<UserOrder[]> {
       shipping_method: saleRow.shipping_method ?? SHIPPING_METHOD.PERSONAL_GRECIA,
       delivery_status: saleRow.delivery_status ?? DELIVERY_STATUS.VALIDATING,
       tracking_number: saleRow.tracking_number ?? null,
-      status:          saleRow.status,
+      status:          saleRow.status as UserOrder["status"],
       sold_at:         saleRow.sold_at,
       note:            saleRow.note ?? null,
       product_name:    saleRow.product_variants?.products?.name ?? "—",
@@ -589,7 +589,7 @@ export async function getUserOrders(userId: string): Promise<UserOrder[]> {
     };
   });
 
-  const multiOrders: UserOrder[] = (ordersResult.data as RawUserOrderRow[]).map((orderRow) => {
+  const multiOrders: UserOrder[] = (ordersResult.data as unknown as RawUserOrderRow[]).map((orderRow) => {
     const items      = orderRow.order_items;
     const itemsTotal = items.reduce(
       (total, item) => total + item.sale_price * item.quantity, 0
@@ -615,7 +615,7 @@ export async function getUserOrders(userId: string): Promise<UserOrder[]> {
       shipping_method: orderRow.shipping_method ?? SHIPPING_METHOD.PERSONAL_GRECIA,
       delivery_status: orderRow.delivery_status ?? DELIVERY_STATUS.VALIDATING,
       tracking_number: orderRow.tracking_number ?? null,
-      status:          orderRow.status,
+      status:          orderRow.status as UserOrder["status"],
       sold_at:         orderRow.sold_at,
       note:            orderRow.note ?? null,
       product_name:    isMulti ? `${items.length} productos` : (firstItem?.product_variants?.products?.name ?? "—"),
@@ -654,7 +654,7 @@ export async function getAllSales(): Promise<AdminSale[]> {
 
   if (error) throw new Error(error.message);
 
-  return (data as RawAdminSaleRow[]).map((saleRow) => {
+  return (data as unknown as RawAdminSaleRow[]).map((saleRow) => {
     const rawImages = saleRow.product_variants?.products?.product_images ?? [];
     const images    = [...rawImages].sort((imageA, imageB) => {
       if (imageA.is_primary !== imageB.is_primary) return imageA.is_primary ? -1 : 1;
@@ -671,7 +671,7 @@ export async function getAllSales(): Promise<AdminSale[]> {
       shipping_method: saleRow.shipping_method ?? SHIPPING_METHOD.PERSONAL_GRECIA,
       delivery_status: saleRow.delivery_status ?? DELIVERY_STATUS.VALIDATING,
       tracking_number: saleRow.tracking_number ?? null,
-      status:          saleRow.status,
+      status:          saleRow.status as AdminSale["status"],
       note:            saleRow.note            ?? null,
       guest_name:      saleRow.guest_name      ?? null,
       guest_phone:     saleRow.guest_phone     ?? null,
@@ -701,7 +701,7 @@ export async function getRefundsLog(): Promise<RefundLog[]> {
 
   if (error) throw new Error(error.message);
 
-  return (data as RawRefundRow[]).map((refundRow) => ({
+  return (data as unknown as RawRefundRow[]).map((refundRow) => ({
     id:           refundRow.id,
     sale_id:      refundRow.sale_id,
     guest_name:   refundRow.sales?.guest_name  ?? null,
@@ -744,7 +744,7 @@ export async function getPaymentsLog(): Promise<PaymentLog[]> {
 
   if (salesPmtsResult.error) throw new Error(salesPmtsResult.error.message);
 
-  const saleLogs: PaymentLog[] = (salesPmtsResult.data as RawSalePaymentLogRow[]).map((paymentRow) => ({
+  const saleLogs: PaymentLog[] = (salesPmtsResult.data as unknown as RawSalePaymentLogRow[]).map((paymentRow) => ({
     id:              paymentRow.id,
     amount:          paymentRow.amount,
     note:            paymentRow.note               ?? null,
@@ -759,7 +759,7 @@ export async function getPaymentsLog(): Promise<PaymentLog[]> {
     shipping_cost:   paymentRow.sales?.shipping_cost                    ?? 0,
   }));
 
-  const orderLogs: PaymentLog[] = (orderPmtsResult.data as RawOrderPaymentLogRow[]).map((paymentRow) => {
+  const orderLogs: PaymentLog[] = (orderPmtsResult.data as unknown as RawOrderPaymentLogRow[]).map((paymentRow) => {
     const order      = paymentRow.orders;
     const items      = order?.order_items ?? [];
     const itemsTotal = items.reduce(

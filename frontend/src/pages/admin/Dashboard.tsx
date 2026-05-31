@@ -15,12 +15,16 @@ import {
 } from "../../services/analyticsService";
 import { fmt as fmtFull, fmtCompact as fmt } from "../../lib/formatters";
 import { QUERY_KEYS } from "../../constants/queryKeys";
-import type { TooltipProps } from "recharts";
-import type { NameType, ValueType } from "recharts/types/component/DefaultTooltipContent";
+
+interface ChartTooltipProps {
+  active?: boolean;
+  payload?: Array<{ name?: string; value?: number; color?: string; fill?: string }>;
+  label?: string;
+}
 
 // ── Custom Tooltip ─────────────────────────────────────────────────────────
 
-function ChartTooltip({ active, payload, label }: TooltipProps<ValueType, NameType>) {
+function ChartTooltip({ active, payload, label }: ChartTooltipProps) {
   if (!active || !payload?.length) return null;
   return (
     <div style={{
@@ -31,8 +35,8 @@ function ChartTooltip({ active, payload, label }: TooltipProps<ValueType, NameTy
     }}>
       {label && <p style={{ color: "#9ca3af", marginBottom: 6, fontSize: 11 }}>{label}</p>}
       {payload.map((entry) => (
-        <p key={entry.name} style={{ color: (entry.color ?? entry.fill) as string, fontWeight: 600, margin: "2px 0" }}>
-          {entry.name}: {fmtFull(entry.value as number)}
+        <p key={entry.name} style={{ color: entry.color ?? entry.fill, fontWeight: 600, margin: "2px 0" }}>
+          {entry.name}: {fmtFull(entry.value ?? 0)}
         </p>
       ))}
     </div>

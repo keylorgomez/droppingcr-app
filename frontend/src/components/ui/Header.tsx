@@ -3,6 +3,8 @@ import { Menu, User, ShoppingCart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
+import { useToast } from "./Toast";
+import { t } from "../../lib/i18n";
 import Sidebar from "./Sidebar";
 import UserSidebar from "./UserSidebar";
 import AuthModal from "./AuthModal";
@@ -16,6 +18,7 @@ export default function Header() {
   const { user, signOut } = useAuth();
   const { itemCount }     = useCart();
   const navigate          = useNavigate();
+  const { showToast }     = useToast();
 
   const [sidebarOpen, setSidebarOpen]         = useState(false);
   const [userSidebarOpen, setUserSidebarOpen] = useState(false);
@@ -105,7 +108,7 @@ export default function Header() {
         open={userSidebarOpen}
         onClose={() => setUserSidebarOpen(false)}
         user={user ? { name: [user.first_name, user.last_name].filter(Boolean).join(" ") || user.email, email: user.email, role: user.role } : null}
-        onLogout={async () => { await signOut(); setUserSidebarOpen(false); }}
+        onLogout={async () => { await signOut(); setUserSidebarOpen(false); showToast(t.toast.sessionClosed, "error"); }}
       />
 
       <AuthModal open={authModalOpen} onClose={() => setAuthModalOpen(false)} />

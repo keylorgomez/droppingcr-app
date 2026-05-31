@@ -208,7 +208,7 @@ export async function getTopProducts(limit = 5): Promise<TopProduct[]> {
 
   const map = new Map<string, { revenue: number; units: number }>();
 
-  for (const sale of (salesResult.data ?? []) as RawProductSale[]) {
+  for (const sale of (salesResult.data ?? []) as unknown as RawProductSale[]) {
     const name    = sale.product_variants?.products?.name ?? "Desconocido";
     const entry   = map.get(name) ?? { revenue: 0, units: 0 };
     entry.revenue += sale.sale_price;
@@ -216,7 +216,7 @@ export async function getTopProducts(limit = 5): Promise<TopProduct[]> {
     map.set(name, entry);
   }
 
-  for (const orderItem of (orderItemsResult.data ?? []) as RawProductOrderItem[]) {
+  for (const orderItem of (orderItemsResult.data ?? []) as unknown as RawProductOrderItem[]) {
     const name  = orderItem.product_variants?.products?.name ?? "Desconocido";
     const entry = map.get(name) ?? { revenue: 0, units: 0 };
     entry.revenue += orderItem.sale_price * (orderItem.quantity ?? 1);

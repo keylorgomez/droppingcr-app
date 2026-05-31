@@ -96,7 +96,7 @@ export async function getGroupedDebts(): Promise<ClientDebt[]> {
     if (!entry.guest_phone) entry.guest_phone = normalizePhoneForDisplay(sale.guest_phone);
   }
 
-  for (const orderRow of (ordersResult.data ?? []) as RawDebtOrderRow[]) {
+  for (const orderRow of (ordersResult.data ?? []) as unknown as RawDebtOrderRow[]) {
     const items        = orderRow.order_items ?? [];
     const shippingCost = orderRow.shipping_cost ?? 0;
     const itemsTotal   = items.reduce(

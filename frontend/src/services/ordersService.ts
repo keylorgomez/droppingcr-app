@@ -3,7 +3,7 @@ import { sendTransactionalEmail } from "../lib/emailService";
 import { DELIVERY_STATUS, SALE_STATUS, SHIPPING_METHOD } from "../constants/domain";
 import {
   triggerNewOrderEmail,
-  type DeliveryStatus, type ShippingMethod, type OrderItemDetail, type Payment,
+  type DeliveryStatus, type ShippingMethod,
 } from "./salesService";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -212,7 +212,7 @@ export async function getAllOrders(): Promise<AdminOrder[]> {
 
   if (error) throw new Error(error.message);
 
-  return (data ?? []).map((orderRow: RawOrderRow) => {
+  return (data as unknown as RawOrderRow[]).map((orderRow) => {
     const items: AdminOrderItem[] = (orderRow.order_items ?? []).map((item) => {
       const rawImages = item.product_variants?.products?.product_images ?? [];
       const images    = [...rawImages].sort((imgA, imgB) => {

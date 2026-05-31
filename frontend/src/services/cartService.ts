@@ -79,15 +79,15 @@ export async function getUserCart(userId: string): Promise<CartItem[]> {
 
   if (error) throw new Error(error.message);
 
-  return (data ?? []).map((row: RawCartRow) => {
+  return (data as unknown as RawCartRow[]).map((row) => {
     const pv   = row.product_variants;
     const pr   = pv?.products;
     const imgs = [...(pr?.product_images ?? [])].sort((imgA, imgB) => {
       if (imgA.is_primary !== imgB.is_primary) return imgA.is_primary ? -1 : 1;
       return imgA.display_order - imgB.display_order;
     });
-    const price = pr?.discount_percentage > 0
-      ? Math.round(pr.price_sale * (1 - pr.discount_percentage / 100))
+    const price = (pr?.discount_percentage ?? 0) > 0
+      ? Math.round((pr?.price_sale ?? 0) * (1 - (pr?.discount_percentage ?? 0) / 100))
       : (pr?.price_sale ?? 0);
 
     return {

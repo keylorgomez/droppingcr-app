@@ -150,7 +150,7 @@ export async function getExpensePaymentsLog(): Promise<ExpensePaymentLog[]> {
 
   if (error) throw new Error(error.message);
 
-  return (data ?? []).map((p: RawExpensePaymentLogRow) => ({
+  return (data as unknown as RawExpensePaymentLogRow[]).map((p) => ({
     id:                  p.id,
     expense_id:          p.expense_id,
     expense_description: p.expense?.description ?? "Gasto",

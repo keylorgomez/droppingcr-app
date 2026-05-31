@@ -6,7 +6,6 @@ import { useToast } from "../ui/Toast";
 import {
   updateSaleAdmin,
   DELIVERY_STATUSES,
-  deliveryStatusMeta,
   type AdminSale,
   type DeliveryStatus,
 } from "../../services/salesService";
@@ -81,8 +80,6 @@ export default function SaleDetailModal({ sale, onClose }: SaleDetailModalProps)
   const waUrl = sale.guest_phone
     ? `https://wa.me/${sale.guest_phone.replace(/\D/g, "")}?text=${encodeURIComponent(waMessage)}`
     : null;
-
-  const statusMeta = deliveryStatusMeta(sale.delivery_status);
 
   return (
     <motion.div

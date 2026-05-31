@@ -73,6 +73,7 @@ export const es = {
     categoryUpdated:            "Categoría actualizada.",
     categoryDeleted:            "Categoría eliminada.",
     sizeDeleted:                "Talla eliminada.",
+    sessionClosed:              "Sesión cerrada correctamente.",
     welcomeBack:                "¡Bienvenido de vuelta! Sesión iniciada.",
     accountCreated:             "¡Cuenta creada exitosamente! Bienvenido a Dropping CR.",
     accountCreatedConfirmEmail: "¡Cuenta creada! Revisa tu correo para confirmarla.",
