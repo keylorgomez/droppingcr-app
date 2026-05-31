@@ -20,13 +20,51 @@ export interface AdminPayout {
   creator_name:   string | null;
 }
 
+// ── Raw Supabase row types (internal) ────────────────────────────────────
+
+interface RawAdminUserRow {
+  id:         string;
+  first_name: string | null;
+  last_name:  string | null;
+  email:      string | null;
+}
+
+interface RawProfileName {
+  first_name: string | null;
+  last_name:  string | null;
+}
+
+interface RawPayoutRow {
+  id:           string;
+  recipient_id: string;
+  amount:       number;
+  note:         string | null;
+  paid_at:      string;
+  created_by:   string | null;
+  recipient:    RawProfileName | null;
+  creator:      RawProfileName | null;
+}
+
+interface RawMyPayoutRow {
+  id:           string;
+  recipient_id: string;
+  amount:       number;
+  note:         string | null;
+  paid_at:      string;
+  created_by:   string | null;
+  creator:      RawProfileName | null;
+}
+
+interface RawSaleProfit  { sale_price: number; cost_price: number | null; }
+interface RawOrderProfit { sale_price: number; cost_price: number | null; quantity: number | null; }
+
 // ── Queries ────────────────────────────────────────────────────────────────
 
 export async function getAdminUsers(): Promise<AdminUser[]> {
   const { data, error } = await supabase.rpc("get_admin_profiles");
 
   if (error) throw new Error(error.message);
-  return (data ?? []).map((u: any) => ({
+  return (data ?? []).map((u: RawAdminUserRow) => ({
     id:         u.id,
     first_name: u.first_name ?? "",
     last_name:  u.last_name  ?? "",
@@ -60,7 +98,7 @@ export async function getAllPayouts(): Promise<AdminPayout[]> {
     .order("paid_at", { ascending: false });
 
   if (error) throw new Error(error.message);
-  return (data ?? []).map((p: any) => ({
+  return (data ?? []).map((p: RawPayoutRow) => ({
     id:             p.id,
     recipient_id:   p.recipient_id,
     recipient_name: `${p.recipient?.first_name ?? ""} ${p.recipient?.last_name ?? ""}`.trim() || "—",
@@ -85,7 +123,7 @@ export async function getMyPayouts(userId: string): Promise<AdminPayout[]> {
     .order("paid_at", { ascending: false });
 
   if (error) throw new Error(error.message);
-  return (data ?? []).map((p: any) => ({
+  return (data ?? []).map((p: RawMyPayoutRow) => ({
     id:             p.id,
     recipient_id:   p.recipient_id,
     recipient_name: "",
@@ -115,12 +153,12 @@ export async function getAllTimeNetProfit(): Promise<number> {
   if (salesResult.error) throw new Error(salesResult.error.message);
 
   const salesProfit = (salesResult.data ?? []).reduce(
-    (sum: number, s: any) => sum + (s.sale_price - (s.cost_price ?? 0)),
+    (sum, s: RawSaleProfit) => sum + (s.sale_price - (s.cost_price ?? 0)),
     0,
   );
 
   const ordersProfit = (orderItemsResult.data ?? []).reduce(
-    (sum: number, i: any) => sum + (i.sale_price - (i.cost_price ?? 0)) * (i.quantity ?? 1),
+    (sum, i: RawOrderProfit) => sum + (i.sale_price - (i.cost_price ?? 0)) * (i.quantity ?? 1),
     0,
   );
 
@@ -133,5 +171,5 @@ export async function getTotalDistributed(): Promise<number> {
     .select("amount");
 
   if (error) throw new Error(error.message);
-  return (data ?? []).reduce((sum: number, p: any) => sum + p.amount, 0);
+  return (data ?? []).reduce((sum, p: { amount: number }) => sum + p.amount, 0);
 }

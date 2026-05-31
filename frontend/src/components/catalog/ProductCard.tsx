@@ -56,7 +56,6 @@ export default function ProductCard({
       }, 1800);
     } else {
       if (intervalRef.current) clearInterval(intervalRef.current);
-      if (!isHovered) setImgIndex(0);
     }
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [isHovered, hasMultipleImages, allImages.length, is_sold_out, is_reserved]);
@@ -93,7 +92,7 @@ export default function ProductCard({
       }}
       transition={{ type: "spring", stiffness: 320, damping: 24 }}
       onHoverStart={() => setIsHovered(true)}
-      onHoverEnd={() => setIsHovered(false)}
+      onHoverEnd={() => { setIsHovered(false); setImgIndex(0); }}
       onClick={onClick}
     >
       {/* ── World Cup stripe — solo para fútbol ── */}

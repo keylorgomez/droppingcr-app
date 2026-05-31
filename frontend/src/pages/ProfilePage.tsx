@@ -7,6 +7,7 @@ import { updateProfile } from "../services/profileService";
 import { getMyPayouts, type AdminPayout } from "../services/payoutsService";
 import { useToast } from "../components/ui/Toast";
 import Header from "../components/ui/Header";
+import { QUERY_KEYS } from "../constants/queryKeys";
 
 // ── Small field components ─────────────────────────────────────────────────
 
@@ -81,7 +82,7 @@ function ProfileSkeleton() {
 
 function AdminPayoutsSection({ userId }: { userId: string }) {
   const { data: payouts = [], isLoading } = useQuery({
-    queryKey: ["my-payouts", userId],
+    queryKey: QUERY_KEYS.MY_PAYOUTS(userId),
     queryFn:  () => getMyPayouts(userId),
   });
 

@@ -13,18 +13,8 @@ import {
   getExpenses, createExpense, addExpensePayment,
   type Expense, type ExpenseStatus,
 } from "../../services/expensesService";
-
-// ── Helpers ────────────────────────────────────────────────────────────────
-
-function fmt(n: number) {
-  return `₡${n.toLocaleString("en-US")}`;
-}
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("es-CR", {
-    day: "numeric", month: "short", year: "numeric",
-  });
-}
+import { QUERY_KEYS } from "../../constants/queryKeys";
+import { fmt, formatDate } from "../../lib/formatters";
 
 const STATUS_META: Record<ExpenseStatus, { label: string; bgCls: string; icon: React.ElementType }> = {
   pending: { label: "Pendiente",   bgCls: "bg-yellow-100 text-yellow-700", icon: Clock        },
@@ -384,7 +374,7 @@ export default function ExpensesPage() {
   const [payTarget, setPayTarget] = useState<Expense | null>(null);
 
   const { data: expenses = [], isLoading } = useQuery({
-    queryKey: ["expenses"],
+    queryKey: QUERY_KEYS.EXPENSES,
     queryFn:  getExpenses,
   });
 
@@ -393,7 +383,7 @@ export default function ExpensesPage() {
       description: string; amount: number; category: string; notes: string;
     }) => createExpense(description, amount, category || null, notes || null, user!.id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["expenses"] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.EXPENSES });
       setNewOpen(false);
       showToast("Gasto registrado.", "success");
     },
@@ -405,9 +395,9 @@ export default function ExpensesPage() {
       expenseId: string; amount: number; note: string;
     }) => addExpensePayment(expenseId, amount, note || null, user!.id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["expenses"] });
-      queryClient.invalidateQueries({ queryKey: ["expense-payments-log"] });
-      queryClient.invalidateQueries({ queryKey: ["payments-log-full"] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.EXPENSES });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.EXPENSE_PAYMENTS_LOG });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PAYMENTS_LOG_FULL });
       setPayTarget(null);
       showToast("Pago registrado.", "success");
     },

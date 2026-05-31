@@ -8,6 +8,9 @@ import Hero from "../components/ui/Hero";
 import ProductCard from "../components/catalog/ProductCard";
 import WorldCupModal from "../components/WorldCupModal";
 import { getProducts } from "../services/productService";
+import { CLOTHING_SIZES } from "../constants/domain";
+import { normalizeText } from "../lib/formatters";
+import { QUERY_KEYS } from "../constants/queryKeys";
 import { useAuth } from "../context/AuthContext";
 import { cn } from "../lib/utils";
 
@@ -25,9 +28,6 @@ function ProductCardSkeleton() {
     </div>
   );
 }
-
-const normalize = (s: string) =>
-  s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
 export default function CatalogPage() {
   const navigate       = useNavigate();
@@ -123,7 +123,7 @@ export default function CatalogPage() {
   }, [modalOpen]);
 
   useEffect(() => {
-    const state = location.state as any;
+    const state = location.state as { scrollToCatalog?: boolean; restoreScroll?: boolean } | null;
     if (state?.scrollToCatalog || state?.restoreScroll) {
       if (!pendingScrollRef.current) {
         document.getElementById("catalogo")?.scrollIntoView({ behavior: "smooth" });
@@ -133,7 +133,7 @@ export default function CatalogPage() {
   }, [location.state]);
 
   const { data: products = [], isLoading, isError } = useQuery({
-    queryKey: ["products", isAdmin],
+    queryKey: [...QUERY_KEYS.PRODUCTS, isAdmin],
     queryFn:  () => getProducts(isAdmin),
   });
 
@@ -149,17 +149,17 @@ export default function CatalogPage() {
   // Step 2: available sizes from the category-filtered set (with stock)
   const availableSizes = useMemo(() => {
     const all = byCategory.flatMap((p) => p.sizes);
-    return [...new Set(all)].sort((a, b) => {
-      const aNum = Number(a), bNum = Number(b);
-      if (!isNaN(aNum) && !isNaN(bNum)) return aNum - bNum;
-      if (!isNaN(aNum)) return 1;
-      if (!isNaN(bNum)) return -1;
-      const order = ["XS", "S", "M", "L", "XL", "XXL"];
-      const ai = order.indexOf(a), bi = order.indexOf(b);
-      if (ai !== -1 && bi !== -1) return ai - bi;
-      if (ai !== -1) return -1;
-      if (bi !== -1) return 1;
-      return a.localeCompare(b, "es");
+    return [...new Set(all)].sort((sizeA, sizeB) => {
+      const numA = Number(sizeA), numB = Number(sizeB);
+      if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+      if (!isNaN(numA)) return 1;
+      if (!isNaN(numB)) return -1;
+      const indexA = CLOTHING_SIZES.CATALOG_FILTER.indexOf(sizeA as typeof CLOTHING_SIZES.CATALOG_FILTER[number]);
+      const indexB = CLOTHING_SIZES.CATALOG_FILTER.indexOf(sizeB as typeof CLOTHING_SIZES.CATALOG_FILTER[number]);
+      if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+      if (indexA !== -1) return -1;
+      if (indexB !== -1) return 1;
+      return sizeA.localeCompare(sizeB, "es");
     });
   }, [byCategory]);
 
@@ -167,8 +167,8 @@ export default function CatalogPage() {
   const filtered = useMemo(() => {
     let result = byCategory;
     if (search.trim()) {
-      const q = normalize(search.trim());
-      result = result.filter((p) => normalize(p.name).includes(q));
+      const q = normalizeText(search.trim());
+      result = result.filter((p) => normalizeText(p.name).includes(q));
     }
     if (selectedSize) {
       result = result.filter((p) => p.sizes.includes(selectedSize));
@@ -207,8 +207,8 @@ export default function CatalogPage() {
   const previewCount = useMemo(() => {
     let result = byCategory;
     if (pendingSearch.trim()) {
-      const q = normalize(pendingSearch.trim());
-      result = result.filter((p) => normalize(p.name).includes(q));
+      const q = normalizeText(pendingSearch.trim());
+      result = result.filter((p) => normalizeText(p.name).includes(q));
     }
     if (pendingSize) {
       result = result.filter((p) => p.sizes.includes(pendingSize));

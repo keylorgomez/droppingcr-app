@@ -11,18 +11,8 @@ import {
   getAllTimeNetProfit, getTotalDistributed,
   type AdminPayout, type AdminUser,
 } from "../../services/payoutsService";
-
-// ── Helpers ────────────────────────────────────────────────────────────────
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("es-CR", {
-    day: "numeric", month: "short", year: "numeric",
-  });
-}
-
-function fmt(n: number) {
-  return `₡${n.toLocaleString("en-US")}`;
-}
+import { fmt, formatDate } from "../../lib/formatters";
+import { QUERY_KEYS } from "../../constants/queryKeys";
 
 // ── Summary card ───────────────────────────────────────────────────────────
 
@@ -411,22 +401,22 @@ export default function PayoutsPage() {
   const [filterAdmin, setFilterAdmin] = useState("");
 
   const { data: payouts = [], isLoading: loadingPayouts } = useQuery({
-    queryKey: ["admin-payouts"],
+    queryKey: QUERY_KEYS.ADMIN_PAYOUTS,
     queryFn:  getAllPayouts,
   });
 
   const { data: admins = [], isLoading: loadingAdmins } = useQuery({
-    queryKey: ["admin-users"],
+    queryKey: QUERY_KEYS.ADMIN_USERS,
     queryFn:  getAdminUsers,
   });
 
   const { data: netProfit = 0, isLoading: loadingProfit } = useQuery({
-    queryKey: ["net-profit-all"],
+    queryKey: QUERY_KEYS.NET_PROFIT_ALL,
     queryFn:  getAllTimeNetProfit,
   });
 
   const { data: totalDistributed = 0, isLoading: loadingDistributed } = useQuery({
-    queryKey: ["total-distributed"],
+    queryKey: QUERY_KEYS.TOTAL_DISTRIBUTED,
     queryFn:  getTotalDistributed,
   });
 
@@ -437,8 +427,8 @@ export default function PayoutsPage() {
       recipientId: string; amount: number; note: string;
     }) => createPayout(recipientId, amount, note || null, user!.id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-payouts"] });
-      queryClient.invalidateQueries({ queryKey: ["total-distributed"] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ADMIN_PAYOUTS });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.TOTAL_DISTRIBUTED });
       setModalOpen(false);
       showToast("Abono registrado correctamente.", "success");
     },

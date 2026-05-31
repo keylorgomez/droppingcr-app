@@ -13,6 +13,7 @@ import {
 } from "../../services/productService";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../components/ui/Toast";
+import { QUERY_KEYS } from "../../constants/queryKeys";
 import Header from "../../components/ui/Header";
 import { cn } from "../../lib/utils";
 
@@ -96,9 +97,9 @@ function inputCls(hasError = false) {
   );
 }
 
-// ── Variants section ───────────────────────────────────────────────────────
+import { CLOTHING_SIZES } from "../../constants/domain";
 
-const COMMON_SIZES = ["XS", "S", "M", "L", "XL", "XXL", "Talla Única"];
+// ── Variants section ───────────────────────────────────────────────────────
 
 function VariantsSection({
   rows, onChange, error,
@@ -123,7 +124,7 @@ function VariantsSection({
     <div className="flex flex-col gap-3">
       {/* Quick-add size chips */}
       <div className="flex flex-wrap gap-1.5">
-        {COMMON_SIZES.map((s) => (
+        {CLOTHING_SIZES.QUICK_ADD.map((s) => (
           <button
             key={s}
             type="button"
@@ -213,12 +214,12 @@ export default function ProductFormPage() {
 
   // ── Remote data ────────────────────────────────────────────────────────
   const { data: categories = [], isLoading: catsLoading } = useQuery({
-    queryKey: ["categories"],
+    queryKey: QUERY_KEYS.CATEGORIES,
     queryFn:  getCategories,
   });
 
   const { data: existingProduct, isLoading: productLoading } = useQuery({
-    queryKey: ["product", id],
+    queryKey: QUERY_KEYS.PRODUCT(id!),
     queryFn:  () => getProductById(id!),
     enabled:  isEdit,
   });
@@ -313,7 +314,7 @@ export default function ProductFormPage() {
       else await createProduct(input);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PRODUCTS });
       showToast(
         isEdit ? "Producto actualizado." : "Producto creado exitosamente.",
         "success"

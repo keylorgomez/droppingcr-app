@@ -5,26 +5,15 @@ import {
   ArrowLeft, Loader2, CreditCard, MessageCircle,
   ChevronDown, ChevronUp, Plus, Package, Wallet, Search, X,
 } from "lucide-react";
-import {
-  getGroupedDebts, addGeneralPayment,
-  type ClientDebt, type PendingSale,
-} from "../../services/salesService";
+import { type ClientDebt, type PendingSale } from "../../services/salesService";
+import { getGroupedDebts, addGeneralPayment } from "../../services/debtService";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../components/ui/Toast";
 import Header from "../../components/ui/Header";
 import { cn } from "../../lib/utils";
-
-// ── Helpers ────────────────────────────────────────────────────────────────
-
-function fmt(n: number) {
-  return `₡${n.toLocaleString("en-US")}`;
-}
-
-function formatPhone(raw: string | null): string | null {
-  if (!raw) return null;
-  const digits = raw.replace(/\D/g, "");
-  return digits.length === 8 ? `506${digits}` : digits;
-}
+import { fmt, formatPhone, normalizeText } from "../../lib/formatters";
+import { QUERY_KEYS } from "../../constants/queryKeys";
+import { MS_PER_DAY } from "../../constants/app";
 
 function waLink(phone: string | null, name: string | null, remaining: number): string {
   const p = formatPhone(phone) ?? "";
@@ -35,7 +24,7 @@ function waLink(phone: string | null, name: string | null, remaining: number): s
 }
 
 function timeAgo(iso: string): string {
-  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / MS_PER_DAY);
   if (days === 0) return "Hoy";
   if (days === 1) return "Ayer";
   return `Hace ${days} días`;
@@ -63,7 +52,7 @@ function AbonoGeneralForm({ client, onDone }: { client: ClientDebt; onDone: () =
       { guest_phone: client.guest_phone, guest_name: client.guest_name, total_remaining: client.remaining },
     ),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["grouped-debts"] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.GROUPED_DEBTS });
       showToast("Abono registrado y distribuido.", "success");
       onDone();
     },
@@ -324,20 +313,17 @@ export default function DebtPage() {
   useEffect(() => { window.scrollTo({ top: 0, behavior: "instant" }); }, []);
 
   const { data: clients = [], isLoading, isError, error } = useQuery({
-    queryKey: ["grouped-debts"],
+    queryKey: QUERY_KEYS.GROUPED_DEBTS,
     queryFn:  getGroupedDebts,
   });
 
   const [search, setSearch] = useState("");
 
-  const normalize = (s: string) =>
-    s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-
   const filtered = search.trim()
     ? clients.filter((c) => {
-        const q         = normalize(search.trim());
+        const q         = normalizeText(search.trim());
         const phoneQ    = q.replace(/\D/g, "");
-        const nameMatch = normalize(c.guest_name ?? "").includes(q);
+        const nameMatch = normalizeText(c.guest_name ?? "").includes(q);
         const phoneMatch = phoneQ.length > 0 &&
                            (c.guest_phone ?? "").replace(/\D/g, "").includes(phoneQ);
         return nameMatch || phoneMatch;

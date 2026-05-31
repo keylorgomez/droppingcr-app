@@ -8,7 +8,10 @@ import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 import { trackViewItem } from "../lib/analytics";
 import Header from "../components/ui/Header";
+import { CLOTHING_SIZES } from "../constants/domain";
 import { FEATURES } from "../constants/featureFlags";
+import { QUERY_KEYS } from "../constants/queryKeys";
+import { STORE_WHATSAPP } from "../constants/app";
 
 // ── WhatsApp icon ──────────────────────────────────────────────────────────
 function WhatsAppIcon({ size = 18 }: { size?: number }) {
@@ -255,16 +258,15 @@ function ProductContent({ product }: { product: ProductDetail }) {
   }, {});
 
   // Sort sizes: clothing order → numeric → alphabetical fallback
-  const CLOTHING_ORDER = ["XS","S","M","L","XL","XXL","XLL","XXXL","2XL","3XL","4XL"];
-  const sortSizes = (a: string, b: string): number => {
-    const ai = CLOTHING_ORDER.indexOf(a.toUpperCase());
-    const bi = CLOTHING_ORDER.indexOf(b.toUpperCase());
-    if (ai !== -1 && bi !== -1) return ai - bi;
-    if (ai !== -1) return -1;
-    if (bi !== -1) return 1;
-    const an = parseFloat(a), bn = parseFloat(b);
-    if (!isNaN(an) && !isNaN(bn)) return an - bn;
-    return a.localeCompare(b);
+  const sortSizes = (sizeA: string, sizeB: string): number => {
+    const indexA = CLOTHING_SIZES.SORT_ORDER.indexOf(sizeA.toUpperCase() as typeof CLOTHING_SIZES.SORT_ORDER[number]);
+    const indexB = CLOTHING_SIZES.SORT_ORDER.indexOf(sizeB.toUpperCase() as typeof CLOTHING_SIZES.SORT_ORDER[number]);
+    if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+    if (indexA !== -1) return -1;
+    if (indexB !== -1) return 1;
+    const numA = parseFloat(sizeA), numB = parseFloat(sizeB);
+    if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+    return sizeA.localeCompare(sizeB);
   };
   const sizes = Object.keys(stockBySize).sort(sortSizes);
 
@@ -295,7 +297,7 @@ function ProductContent({ product }: { product: ProductDetail }) {
       setAddingToCart(false);
     }
   }
-  const phoneNumber = "50688364879";
+  const phoneNumber = STORE_WHATSAPP;
 
   const whatsappBuyUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(
     `Hola! Me interesa el producto: ${product.name} (${window.location.href})`
@@ -571,7 +573,7 @@ export default function ProductDetailPage() {
   useEffect(() => { window.scrollTo({ top: 0, behavior: "instant" }); }, [slug]);
 
   const { data: product, isLoading, isError } = useQuery({
-    queryKey: ["product", slug],
+    queryKey: QUERY_KEYS.PRODUCT(slug!),
     queryFn:  () => getProductBySlug(slug!),
     enabled:  !!slug,
   });

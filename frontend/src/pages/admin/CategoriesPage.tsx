@@ -8,6 +8,7 @@ import {
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../components/ui/Toast";
 import Header from "../../components/ui/Header";
+import { QUERY_KEYS } from "../../constants/queryKeys";
 
 const inputCls =
   "w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-poppins text-brand-dark " +
@@ -35,13 +36,13 @@ export default function CategoriesPage() {
 
   // ── Data ───────────────────────────────────────────────────────────────
   const { data: categories = [], isLoading } = useQuery({
-    queryKey: ["categories-admin"],
+    queryKey: QUERY_KEYS.CATEGORIES_ADMIN,
     queryFn:  getCategories,
   });
 
   const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ["categories-admin"] });
-    queryClient.invalidateQueries({ queryKey: ["categories"] });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES_ADMIN });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.CATEGORIES });
   };
 
   const createMut = useMutation({

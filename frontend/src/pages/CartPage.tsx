@@ -7,6 +7,7 @@ import Header from "../components/ui/Header";
 import { useCart } from "../context/CartContext";
 import { getLiveStocks } from "../services/cartService";
 import { cn } from "../lib/utils";
+import { STORE_WHATSAPP } from "../constants/app";
 
 function WhatsAppIcon({ size = 18 }: { size?: number }) {
   return (
@@ -189,7 +190,7 @@ function CartItemRow({
 
 // ── Page ───────────────────────────────────────────────────────────────────
 
-const PHONE = "50688364879";
+const PHONE = STORE_WHATSAPP;
 
 export default function CartPage() {
   const navigate = useNavigate();

@@ -14,6 +14,31 @@ export interface CartItem {
   stock:        number;  // last-known stock; refresh in CartPage
 }
 
+// ── Raw Supabase row types (internal) ────────────────────────────────────
+
+interface RawCartImageRow {
+  image_url:     string;
+  is_primary:    boolean;
+  display_order: number;
+}
+
+interface RawCartRow {
+  variant_id: string;
+  quantity:   number;
+  product_variants: {
+    size:  string;
+    stock: number;
+    products: {
+      id:                  string;
+      name:                string;
+      slug:                string;
+      price_sale:          number;
+      discount_percentage: number;
+      product_images:      RawCartImageRow[];
+    } | null;
+  } | null;
+}
+
 // ── Guest (localStorage) ───────────────────────────────────────────────────
 
 const CART_KEY = "dropping_guest_cart";
@@ -54,12 +79,12 @@ export async function getUserCart(userId: string): Promise<CartItem[]> {
 
   if (error) throw new Error(error.message);
 
-  return (data ?? []).map((row: any) => {
+  return (data ?? []).map((row: RawCartRow) => {
     const pv   = row.product_variants;
     const pr   = pv?.products;
-    const imgs = [...(pr?.product_images ?? [])].sort((a: any, b: any) => {
-      if (a.is_primary !== b.is_primary) return a.is_primary ? -1 : 1;
-      return a.display_order - b.display_order;
+    const imgs = [...(pr?.product_images ?? [])].sort((imgA, imgB) => {
+      if (imgA.is_primary !== imgB.is_primary) return imgA.is_primary ? -1 : 1;
+      return imgA.display_order - imgB.display_order;
     });
     const price = pr?.discount_percentage > 0
       ? Math.round(pr.price_sale * (1 - pr.discount_percentage / 100))
@@ -120,7 +145,7 @@ export async function syncGuestCartToUser(
 
   // Fetch existing user cart to merge quantities
   const existing = await getUserCart(userId);
-  const existingMap = new Map(existing.map((i) => [i.variant_id, i.quantity]));
+  const existingMap = new Map(existing.map((item) => [item.variant_id, item.quantity]));
 
   for (const item of guestItems) {
     const currentQty = existingMap.get(item.variant_id) ?? 0;
@@ -139,5 +164,5 @@ export async function getLiveStocks(
     .from("product_variants")
     .select("id, stock")
     .in("id", variantIds);
-  return Object.fromEntries((data ?? []).map((v: any) => [v.id, v.stock]));
+  return Object.fromEntries((data ?? []).map((v: { id: string; stock: number }) => [v.id, v.stock]));
 }

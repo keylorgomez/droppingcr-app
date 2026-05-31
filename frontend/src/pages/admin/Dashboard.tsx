@@ -13,19 +13,14 @@ import {
   getDashboardStats, getSalesVsCostsLast30Days,
   getTopProducts, getDeliveryStatusDistribution,
 } from "../../services/analyticsService";
-
-// ── Formatters ─────────────────────────────────────────────────────────────
-
-const fmt = (n: number) =>
-  n >= 1_000_000 ? `₡${(n / 1_000_000).toFixed(1)}M`
-  : n >= 1_000   ? `₡${(n / 1_000).toFixed(0)}k`
-  : `₡${n.toLocaleString("en-US")}`;
-
-const fmtFull = (n: number) => `₡${n.toLocaleString("en-US")}`;
+import { fmt as fmtFull, fmtCompact as fmt } from "../../lib/formatters";
+import { QUERY_KEYS } from "../../constants/queryKeys";
+import type { TooltipProps } from "recharts";
+import type { NameType, ValueType } from "recharts/types/component/DefaultTooltipContent";
 
 // ── Custom Tooltip ─────────────────────────────────────────────────────────
 
-function ChartTooltip({ active, payload, label }: any) {
+function ChartTooltip({ active, payload, label }: TooltipProps<ValueType, NameType>) {
   if (!active || !payload?.length) return null;
   return (
     <div style={{
@@ -35,9 +30,9 @@ function ChartTooltip({ active, payload, label }: any) {
       boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
     }}>
       {label && <p style={{ color: "#9ca3af", marginBottom: 6, fontSize: 11 }}>{label}</p>}
-      {payload.map((entry: any) => (
-        <p key={entry.name} style={{ color: entry.color ?? entry.fill, fontWeight: 600, margin: "2px 0" }}>
-          {entry.name}: {fmtFull(entry.value)}
+      {payload.map((entry) => (
+        <p key={entry.name} style={{ color: (entry.color ?? entry.fill) as string, fontWeight: 600, margin: "2px 0" }}>
+          {entry.name}: {fmtFull(entry.value as number)}
         </p>
       ))}
     </div>
@@ -97,10 +92,10 @@ export default function Dashboard() {
 
   if (user && user.role !== "admin") { navigate("/"); return null; }
 
-  const { data: stats,    isLoading: loadingStats    } = useQuery({ queryKey: ["dash-stats"],    queryFn: getDashboardStats });
-  const { data: areaData, isLoading: loadingArea     } = useQuery({ queryKey: ["dash-area"],     queryFn: getSalesVsCostsLast30Days });
-  const { data: topProds, isLoading: loadingTop      } = useQuery({ queryKey: ["dash-top"],      queryFn: () => getTopProducts(5) });
-  const { data: pie,      isLoading: loadingPie      } = useQuery({ queryKey: ["dash-pie"],      queryFn: getDeliveryStatusDistribution });
+  const { data: stats,    isLoading: loadingStats    } = useQuery({ queryKey: QUERY_KEYS.DASH_STATS, queryFn: getDashboardStats });
+  const { data: areaData, isLoading: loadingArea     } = useQuery({ queryKey: QUERY_KEYS.DASH_AREA,  queryFn: getSalesVsCostsLast30Days });
+  const { data: topProds, isLoading: loadingTop      } = useQuery({ queryKey: QUERY_KEYS.DASH_TOP,   queryFn: () => getTopProducts(5) });
+  const { data: pie,      isLoading: loadingPie      } = useQuery({ queryKey: QUERY_KEYS.DASH_PIE,   queryFn: getDeliveryStatusDistribution });
 
   const margin = stats && stats.totalRevenue > 0
     ? ((stats.netProfit / stats.totalRevenue) * 100).toFixed(1)

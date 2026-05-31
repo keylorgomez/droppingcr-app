@@ -27,6 +27,30 @@ export interface ExpensePaymentLog {
   creator_name:        string | null;
 }
 
+// ── Raw Supabase row types (internal) ────────────────────────────────────
+
+interface RawExpenseRow {
+  id:               string;
+  description:      string;
+  amount:           number;
+  category:         string | null;
+  status:           string;
+  notes:            string | null;
+  created_by:       string | null;
+  created_at:       string;
+  expense_payments: Array<{ amount: number }>;
+}
+
+interface RawExpensePaymentLogRow {
+  id:         string;
+  expense_id: string;
+  amount:     number;
+  note:       string | null;
+  paid_at:    string;
+  expense:    { description: string; category: string | null } | null;
+  creator:    { first_name: string | null; last_name: string | null } | null;
+}
+
 // ── Queries ────────────────────────────────────────────────────────────────
 
 export async function getExpenses(): Promise<Expense[]> {
@@ -37,9 +61,9 @@ export async function getExpenses(): Promise<Expense[]> {
 
   if (error) throw new Error(error.message);
 
-  return (data ?? []).map((e: any) => {
+  return (data ?? []).map((e: RawExpenseRow) => {
     const total_paid = (e.expense_payments ?? []).reduce(
-      (s: number, p: any) => s + p.amount, 0
+      (s, p) => s + p.amount, 0
     );
     return {
       id:          e.id,
@@ -98,7 +122,7 @@ export async function addExpensePayment(
   if (expErr) throw new Error(expErr.message);
 
   const totalPaid = (expData.expense_payments ?? []).reduce(
-    (s: number, p: any) => s + p.amount, 0
+    (s, p: { amount: number }) => s + p.amount, 0
   );
   const newStatus: ExpenseStatus =
     totalPaid >= expData.amount ? "paid"
@@ -126,7 +150,7 @@ export async function getExpensePaymentsLog(): Promise<ExpensePaymentLog[]> {
 
   if (error) throw new Error(error.message);
 
-  return (data ?? []).map((p: any) => ({
+  return (data ?? []).map((p: RawExpensePaymentLogRow) => ({
     id:                  p.id,
     expense_id:          p.expense_id,
     expense_description: p.expense?.description ?? "Gasto",

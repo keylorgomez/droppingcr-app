@@ -28,6 +28,46 @@ export interface StatusSlice {
   color: string;
 }
 
+// ── Raw Supabase row types (internal) ────────────────────────────────────
+
+interface RawPaymentAmount  { amount: number; }
+interface RawOrderItemStats { sale_price: number; cost_price: number | null; quantity: number; }
+
+interface RawStatsSale {
+  sale_price:    number;
+  cost_price:    number | null;
+  shipping_cost: number | null;
+  status:        string;
+  payments:      RawPaymentAmount[];
+}
+
+interface RawStatsOrder {
+  shipping_cost: number | null;
+  status:        string;
+  order_items:   RawOrderItemStats[];
+  payments:      RawPaymentAmount[];
+}
+
+interface RawDailyOrder {
+  sold_at:       string;
+  shipping_cost: number | null;
+  order_items:   RawOrderItemStats[];
+}
+
+interface RawProductSale {
+  sale_price: number;
+  quantity:   number | null;
+  product_variants: { products: { name: string } | null } | null;
+}
+
+interface RawProductOrderItem {
+  sale_price: number;
+  quantity:   number | null;
+  product_variants: { products: { name: string } | null } | null;
+}
+
+interface RawDeliveryStatusRow { delivery_status: string | null; }
+
 // ── Colour map for delivery statuses ──────────────────────────────────────
 
 const STATUS_COLORS: Record<string, string> = {
@@ -72,29 +112,27 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   let netProfit    = 0;
   let pendingDebt  = 0;
 
-  for (const s of salesResult.data ?? []) {
-    totalRevenue += s.sale_price;
-    netProfit    += s.sale_price - (s.cost_price ?? 0);
+  for (const sale of (salesResult.data ?? []) as RawStatsSale[]) {
+    totalRevenue += sale.sale_price;
+    netProfit    += sale.sale_price - (sale.cost_price ?? 0);
 
-    if (s.status === "pending") {
-      const paid  = ((s as any).payments ?? []).reduce((sum: number, p: any) => sum + p.amount, 0);
-      const total = s.sale_price + (s.shipping_cost ?? 0);
+    if (sale.status === "pending") {
+      const paid  = sale.payments.reduce((sum, payment) => sum + payment.amount, 0);
+      const total = sale.sale_price + (sale.shipping_cost ?? 0);
       pendingDebt += Math.max(0, total - paid);
     }
   }
 
-  // Merge orders data
-  for (const o of ordersResult.data ?? []) {
-    const items: any[] = (o as any).order_items ?? [];
-    const shipping     = (o as any).shipping_cost ?? 0;
-    const itemsRevenue = items.reduce((s: number, i: any) => s + i.sale_price * i.quantity, 0);
-    const itemsProfit  = items.reduce((s: number, i: any) => s + (i.sale_price - (i.cost_price ?? 0)) * i.quantity, 0);
+  for (const order of (ordersResult.data ?? []) as RawStatsOrder[]) {
+    const shipping     = order.shipping_cost ?? 0;
+    const itemsRevenue = order.order_items.reduce((total, item) => total + item.sale_price * item.quantity, 0);
+    const itemsProfit  = order.order_items.reduce((total, item) => total + (item.sale_price - (item.cost_price ?? 0)) * item.quantity, 0);
 
     totalRevenue += itemsRevenue + shipping;
     netProfit    += itemsProfit;
 
-    if ((o as any).status === "pending") {
-      const paid      = ((o as any).payments ?? []).reduce((s: number, p: any) => s + p.amount, 0);
+    if (order.status === "pending") {
+      const paid      = order.payments.reduce((total, payment) => total + payment.amount, 0);
       const totalOwed = itemsRevenue + shipping;
       pendingDebt    += Math.max(0, totalOwed - paid);
     }
@@ -133,24 +171,22 @@ export async function getSalesVsCostsLast30Days(): Promise<DayData[]> {
     map.set(dayKey(startOfDayOffset(i)), { ventas: 0, costos: 0 });
   }
 
-  for (const s of salesResult.data ?? []) {
-    const key = dayKey(s.sold_at);
+  for (const sale of salesResult.data ?? []) {
+    const key = dayKey(sale.sold_at);
     if (map.has(key)) {
       const entry = map.get(key)!;
-      entry.ventas += s.sale_price;
-      entry.costos += s.cost_price ?? 0;
+      entry.ventas += sale.sale_price;
+      entry.costos += sale.cost_price ?? 0;
     }
   }
 
-  // Merge orders daily data
-  for (const o of ordersResult.data ?? []) {
-    const key = dayKey((o as any).sold_at);
+  for (const order of (ordersResult.data ?? []) as RawDailyOrder[]) {
+    const key = dayKey(order.sold_at);
     if (map.has(key)) {
       const entry    = map.get(key)!;
-      const items: any[] = (o as any).order_items ?? [];
-      const shipping     = (o as any).shipping_cost ?? 0;
-      entry.ventas += items.reduce((s: number, i: any) => s + i.sale_price * i.quantity, 0) + shipping;
-      entry.costos += items.reduce((s: number, i: any) => s + (i.cost_price ?? 0) * i.quantity, 0);
+      const shipping = order.shipping_cost ?? 0;
+      entry.ventas += order.order_items.reduce((total, item) => total + item.sale_price * item.quantity, 0) + shipping;
+      entry.costos += order.order_items.reduce((total, item) => total + (item.cost_price ?? 0) * item.quantity, 0);
     }
   }
 
@@ -172,26 +208,25 @@ export async function getTopProducts(limit = 5): Promise<TopProduct[]> {
 
   const map = new Map<string, { revenue: number; units: number }>();
 
-  for (const s of salesResult.data ?? []) {
-    const name    = (s as any).product_variants?.products?.name ?? "Desconocido";
+  for (const sale of (salesResult.data ?? []) as RawProductSale[]) {
+    const name    = sale.product_variants?.products?.name ?? "Desconocido";
     const entry   = map.get(name) ?? { revenue: 0, units: 0 };
-    entry.revenue += s.sale_price;
-    entry.units   += (s as any).quantity ?? 1;
+    entry.revenue += sale.sale_price;
+    entry.units   += sale.quantity ?? 1;
     map.set(name, entry);
   }
 
-  // Merge order items
-  for (const i of orderItemsResult.data ?? []) {
-    const name  = (i as any).product_variants?.products?.name ?? "Desconocido";
+  for (const orderItem of (orderItemsResult.data ?? []) as RawProductOrderItem[]) {
+    const name  = orderItem.product_variants?.products?.name ?? "Desconocido";
     const entry = map.get(name) ?? { revenue: 0, units: 0 };
-    entry.revenue += (i as any).sale_price * ((i as any).quantity ?? 1);
-    entry.units   += (i as any).quantity ?? 1;
+    entry.revenue += orderItem.sale_price * (orderItem.quantity ?? 1);
+    entry.units   += orderItem.quantity ?? 1;
     map.set(name, entry);
   }
 
   return [...map.entries()]
-    .map(([name, v]) => ({ name, ...v }))
-    .sort((a, b) => b.revenue - a.revenue)
+    .map(([productName, stats]) => ({ name: productName, ...stats }))
+    .sort((productA, productB) => productB.revenue - productA.revenue)
     .slice(0, limit);
 }
 
@@ -205,13 +240,13 @@ export async function getDeliveryStatusDistribution(): Promise<StatusSlice[]> {
 
   const counts = new Map<string, number>();
 
-  for (const s of salesResult.data ?? []) {
-    const key = (s as any).delivery_status ?? "validating";
+  for (const sale of (salesResult.data ?? []) as RawDeliveryStatusRow[]) {
+    const key = sale.delivery_status ?? "validating";
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
 
-  for (const o of ordersResult.data ?? []) {
-    const key = (o as any).delivery_status ?? "validating";
+  for (const order of (ordersResult.data ?? []) as RawDeliveryStatusRow[]) {
+    const key = order.delivery_status ?? "validating";
     counts.set(key, (counts.get(key) ?? 0) + 1);
   }
 

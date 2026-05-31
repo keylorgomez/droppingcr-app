@@ -69,11 +69,43 @@ export interface ProductInput {
   variants: { size: string; stock: number }[];
 }
 
+// ── Raw Supabase row types (internal) ────────────────────────────────────
+
+interface RawImageRow {
+  image_url:     string;
+  is_primary:    boolean;
+  display_order: number;
+}
+
+interface RawProductRow {
+  id:                  string;
+  name:                string;
+  slug:                string;
+  price_sale:          number;
+  discount_percentage: number;
+  is_new:              boolean;
+  is_active:           boolean;
+  product_images:      RawImageRow[];
+  product_variants:    Array<{ stock: number; size: string; is_reserved: boolean }>;
+  product_categories:  Array<{ categories: { name: string; slug: string } | null }>;
+}
+
+interface RawProductWithVariantsRow {
+  id:             string;
+  name:           string;
+  price_sale:     number;
+  price_purchase: number;
+  product_images:   RawImageRow[];
+  product_variants: Array<{ id: string; size: string; stock: number }>;
+}
+
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-function flattenCategories(productCategories: unknown[]): Category[] {
+function flattenCategories(
+  productCategories: Array<{ categories: Category | null }>
+): Category[] {
   return (productCategories ?? [])
-    .map((pc: any) => pc.categories)
+    .map((pc) => pc.categories)
     .filter(Boolean) as Category[];
 }
 
@@ -96,30 +128,29 @@ export async function getProducts(includeHidden = false): Promise<CatalogProduct
 
   if (error) throw new Error(error.message);
 
-  return (data ?? []).map((p: any) => {
+  return (data ?? []).map((p: RawProductRow) => {
     // Primary image always first, then rest by display_order
-    const images: { image_url: string; is_primary: boolean; display_order: number }[] =
-      [...(p.product_images ?? [])].sort((a, b) => {
-        if (a.is_primary !== b.is_primary) return a.is_primary ? -1 : 1;
-        return a.display_order - b.display_order;
-      });
+    const images = [...(p.product_images ?? [])].sort((imgA, imgB) => {
+      if (imgA.is_primary !== imgB.is_primary) return imgA.is_primary ? -1 : 1;
+      return imgA.display_order - imgB.display_order;
+    });
 
     const primaryImage = images[0];
-    const totalStock = (p.product_variants ?? []).reduce(
-      (sum: number, v: { stock: number }) => sum + v.stock, 0
+    const totalStock   = (p.product_variants ?? []).reduce(
+      (sum, variant) => sum + variant.stock, 0
     );
-    const anyReserved = (p.product_variants ?? []).some((v: any) => v.is_reserved);
+    const anyReserved = (p.product_variants ?? []).some((variant) => variant.is_reserved);
     const sizes: string[] = [
       ...new Set<string>(
         (p.product_variants ?? [])
-          .filter((v: any) => v.stock > 0)
-          .map((v: any) => v.size as string)
+          .filter((variant) => variant.stock > 0)
+          .map((variant) => variant.size)
       ),
     ];
-    const productCategories: { name: string; slug: string }[] = (p.product_categories ?? [])
-      .map((pc: any) => pc.categories)
+    const productCategories = (p.product_categories ?? [])
+      .map((pc) => pc.categories)
       .filter(Boolean)
-      .map((c: any) => ({ name: c.name, slug: c.slug }));
+      .map((cat) => ({ name: cat!.name, slug: cat!.slug }));
 
     return {
       id:                  p.id,
@@ -128,7 +159,7 @@ export async function getProducts(includeHidden = false): Promise<CatalogProduct
       price_sale:          p.price_sale,
       discount_percentage: p.discount_percentage,
       image_url:           primaryImage?.image_url ?? "",
-      images:              images.map((i) => i.image_url),
+      images:              images.map((img) => img.image_url),
       category:            productCategories[0]?.name ?? "",
       categories:          productCategories,
       sizes,
@@ -261,16 +292,16 @@ export async function updateProductInventory(
 
   for (const v of data.variants) {
     if (v.id) {
-      const { error: e } = await supabase
+      const { error: variantError } = await supabase
         .from("product_variants")
         .update({ size: v.size, stock: v.stock })
         .eq("id", v.id);
-      if (e) throw new Error(e.message);
+      if (variantError) throw new Error(variantError.message);
     } else {
-      const { error: e } = await supabase
+      const { error: variantError } = await supabase
         .from("product_variants")
         .insert({ product_id: productId, size: v.size, stock: v.stock });
-      if (e) throw new Error(e.message);
+      if (variantError) throw new Error(variantError.message);
     }
   }
 }
@@ -316,10 +347,10 @@ export async function getProductsWithVariants(): Promise<ProductWithVariants[]> 
   if (error) throw new Error(error.message);
 
   return (data ?? [])
-    .map((p: any) => {
-      const images = [...(p.product_images ?? [])].sort((a: any, b: any) => {
-        if (a.is_primary !== b.is_primary) return a.is_primary ? -1 : 1;
-        return a.display_order - b.display_order;
+    .map((p: RawProductWithVariantsRow) => {
+      const images = [...(p.product_images ?? [])].sort((imgA, imgB) => {
+        if (imgA.is_primary !== imgB.is_primary) return imgA.is_primary ? -1 : 1;
+        return imgA.display_order - imgB.display_order;
       });
       return {
         id:             p.id,
@@ -328,8 +359,8 @@ export async function getProductsWithVariants(): Promise<ProductWithVariants[]> 
         price_purchase: p.price_purchase ?? 0,
         image_url:      images[0]?.image_url ?? "",
         variants:       (p.product_variants ?? [])
-          .filter((v: any) => v.stock > 0)
-          .map((v: any) => ({ id: v.id, size: v.size, stock: v.stock })),
+          .filter((variant) => variant.stock > 0)
+          .map((variant) => ({ id: variant.id, size: variant.size, stock: variant.stock })),
       };
     })
     .filter((p) => p.variants.length > 0); // excluir productos agotados

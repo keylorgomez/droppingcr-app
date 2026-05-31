@@ -8,6 +8,7 @@ import {
 import { useAuth } from "../../context/AuthContext";
 import { getProducts } from "../../services/productService";
 import { cn } from "../../lib/utils";
+import { QUERY_KEYS } from "../../constants/queryKeys";
 
 interface SidebarProps {
   open: boolean;
@@ -31,7 +32,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
 
   // Reuse the cached products query — no extra network request
   const { data: products = [], isLoading } = useQuery({
-    queryKey: ["products", isAdmin],
+    queryKey: [...QUERY_KEYS.PRODUCTS, isAdmin],
     queryFn:  () => getProducts(isAdmin),
   });
 
