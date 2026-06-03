@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ShoppingCart, Pencil, X, ZoomIn, ChevronLeft, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { cloudinaryUrl } from "../lib/cloudinary";
 import { getProductBySlug, type ProductDetail } from "../services/productService";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
@@ -160,7 +161,7 @@ function ZoomModal({
         <AnimatePresence mode="wait">
           <motion.img
             key={images[index].image_url}
-            src={images[index].image_url}
+            src={cloudinaryUrl(images[index].image_url, "full")}
             alt=""
             initial={{ opacity: 0, scale: 0.96 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -352,7 +353,7 @@ function ProductContent({ product }: { product: ProductDetail }) {
             <AnimatePresence mode="wait">
               <motion.img
                 key={sortedImages[activeImg]?.image_url}
-                src={sortedImages[activeImg]?.image_url}
+                src={cloudinaryUrl(sortedImages[activeImg]?.image_url ?? "", "full")}
                 alt={product.name}
                 className="w-full h-full object-cover absolute inset-0"
                 initial={{ opacity: 0 }}
@@ -402,7 +403,7 @@ function ProductContent({ product }: { product: ProductDetail }) {
                     i === activeImg ? "border-brand-primary" : "border-transparent"
                   }`}
                 >
-                  <img src={img.image_url} alt="" className="w-full h-full object-cover" />
+                  <img src={cloudinaryUrl(img.image_url, "thumb")} alt="" className="w-full h-full object-cover" loading="lazy" />
                 </button>
               ))}
             </div>

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Trash2, ShoppingBag, Package, AlertTriangle, Truck } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { cloudinaryUrl } from "../lib/cloudinary";
 import Header from "../components/ui/Header";
 import { useCart } from "../context/CartContext";
 import { getLiveStocks } from "../services/cartService";
@@ -98,8 +99,8 @@ function CartItemRow({
         outOfStock ? "border-red-100 opacity-50" : "border-gray-100 bg-gray-50"
       )}>
         {item.image_url ? (
-          <img src={item.image_url} alt={item.product_name}
-               className="w-full h-full object-cover" />
+          <img src={cloudinaryUrl(item.image_url, "thumb")} alt={item.product_name}
+               className="w-full h-full object-cover" loading="lazy" />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <Package size={20} className="text-gray-200" />

@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { Truck, MapPin, Package, ChevronRight } from "lucide-react";
 import { deliveryStatusMeta, SHIPPING_OPTIONS, type UserOrder } from "../../services/salesService";
 import { fmt, formatDate } from "../../lib/formatters";
+import { cloudinaryUrl } from "../../lib/cloudinary";
 
 // ── Shared helpers (also used by UserOrderDetailSheet) ─────────────────────
 
@@ -76,7 +77,7 @@ export function OrderCard({ order, onClick }: { order: UserOrder; onClick: () =>
             {order.items!.slice(0, 4).map((item, i) => (
               <div key={i} className="w-12 h-12 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 shrink-0">
                 {item.image_url
-                  ? <img src={item.image_url} alt={item.product_name} className="w-full h-full object-cover" />
+                  ? <img src={cloudinaryUrl(item.image_url, "thumb")} alt={item.product_name} className="w-full h-full object-cover" loading="lazy" />
                   : <div className="w-full h-full flex items-center justify-center">
                       <Package size={14} className="text-gray-200" strokeWidth={1.4} />
                     </div>
@@ -120,8 +121,8 @@ export function OrderCard({ order, onClick }: { order: UserOrder; onClick: () =>
           <div className="flex gap-4 p-4">
             <div className="w-20 h-20 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 shrink-0">
               {order.image_url ? (
-                <img src={order.image_url} alt={order.product_name}
-                     className="w-full h-full object-cover" />
+                <img src={cloudinaryUrl(order.image_url ?? "", "thumb")} alt={order.product_name}
+                     className="w-full h-full object-cover" loading="lazy" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
                   <Package size={24} className="text-gray-200" strokeWidth={1.4} />

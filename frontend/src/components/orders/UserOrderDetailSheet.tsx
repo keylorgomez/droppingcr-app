@@ -4,6 +4,7 @@ import { X, Truck, MapPin, Package, ExternalLink } from "lucide-react";
 import { deliveryStatusMeta, type UserOrder } from "../../services/salesService";
 import { fmt, formatDate } from "../../lib/formatters";
 import { shippingLabel, CORREOS_METHODS } from "./UserOrderCard";
+import { cloudinaryUrl } from "../../lib/cloudinary";
 
 // ── Image Lightbox ─────────────────────────────────────────────────────────
 
@@ -118,7 +119,7 @@ export function OrderDetailSheet({ order, onClose }: { order: UserOrder; onClose
               onClick={() => order.image_url && setLightbox({ src: order.image_url, alt: order.product_name })}
             >
               {order.image_url
-                ? <img src={order.image_url} alt={order.product_name}
+                ? <img src={cloudinaryUrl(order.image_url, "full")} alt={order.product_name}
                        className="w-full h-full object-cover" />
                 : <div className="w-full h-full flex items-center justify-center">
                     <Package size={48} className="text-gray-200" strokeWidth={1.2} />
@@ -158,8 +159,8 @@ export function OrderDetailSheet({ order, onClose }: { order: UserOrder; onClose
                       onClick={() => item.image_url && setLightbox({ src: item.image_url, alt: item.product_name })}
                     >
                       {item.image_url
-                        ? <img src={item.image_url} alt={item.product_name}
-                               className="w-full h-full object-cover" />
+                        ? <img src={cloudinaryUrl(item.image_url, "medium")} alt={item.product_name}
+                               className="w-full h-full object-cover" loading="lazy" />
                         : <div className="w-full h-full flex items-center justify-center">
                             <Package size={22} className="text-gray-200" strokeWidth={1.3} />
                           </div>

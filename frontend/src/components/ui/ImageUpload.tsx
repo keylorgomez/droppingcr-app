@@ -56,6 +56,8 @@ export default function ImageUpload({ images, onChange, error }: ImageUploadProp
         sources:      ["local", "camera", "url"],
         maxFileSize:  5_000_000,
         clientAllowedFormats: ["jpg", "jpeg", "png", "webp", "heic", "heif"],
+        max_image_width:  1600,
+        max_image_height: 1600,
         cropping:     false,
         styles: {
           palette: {

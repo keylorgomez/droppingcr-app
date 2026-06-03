@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Pencil, EyeOff } from "lucide-react";
 import { FEATURES } from "../../constants/featureFlags";
+import { cloudinaryUrl } from "../../lib/cloudinary";
 
 interface ProductCardProps {
   name: string;
@@ -108,7 +109,7 @@ export default function ProductCard({
         <AnimatePresence>
           <motion.img
             key={allImages[imgIndex]}
-            src={allImages[imgIndex]}
+            src={cloudinaryUrl(allImages[imgIndex], "thumb")}
             alt={name}
             className="w-full h-full object-cover absolute inset-0"
             initial={{ opacity: 0 }}

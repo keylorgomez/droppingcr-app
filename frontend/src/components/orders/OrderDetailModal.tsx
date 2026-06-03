@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { X, Package, Check, Loader2, MessageCircle, Plus } from "lucide-react";
 import { motion } from "framer-motion";
 import { useToast } from "../ui/Toast";
+import { cloudinaryUrl } from "../../lib/cloudinary";
 import {
   DELIVERY_STATUSES,
   type DeliveryStatus,
@@ -168,7 +169,7 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
                 <div key={item.id} className="flex items-center gap-3 px-3 py-2.5">
                   <div className="w-8 h-8 rounded-lg overflow-hidden bg-gray-50 border border-gray-100 shrink-0">
                     {item.image_url
-                      ? <img src={item.image_url} alt={item.product_name} className="w-full h-full object-cover" />
+                      ? <img src={cloudinaryUrl(item.image_url, "thumb")} alt={item.product_name} className="w-full h-full object-cover" />
                       : <Package size={12} className="m-auto mt-1.5 text-gray-200" />
                     }
                   </div>
