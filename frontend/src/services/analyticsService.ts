@@ -94,8 +94,7 @@ function startOfDayOffset(daysAgo: number): string {
 // ── Queries ────────────────────────────────────────────────────────────────
 
 export async function getDashboardStats(): Promise<DashboardStats> {
-  // Fetch sales and orders in parallel
-  const [salesResult, ordersResult] = await Promise.all([
+  const [salesResult, ordersResult, externalResult] = await Promise.all([
     supabase
       .from("sales")
       .select("sale_price, cost_price, shipping_cost, status, payments ( amount )")
@@ -104,6 +103,9 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       .from("orders")
       .select("shipping_cost, status, order_items(sale_price, cost_price, quantity), payments(amount)")
       .neq("status", "cancelled"),
+    supabase
+      .from("external_sales")
+      .select("sale_price, cost_price"),
   ]);
 
   if (salesResult.error) throw new Error(salesResult.error.message);
@@ -138,11 +140,19 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     }
   }
 
+  for (const ext of (externalResult.data ?? []) as { sale_price: number; cost_price: number }[]) {
+    totalRevenue += ext.sale_price;
+    netProfit    += ext.sale_price - ext.cost_price;
+  }
+
   return {
     totalRevenue,
     netProfit,
     pendingDebt,
-    totalSales: (salesResult.data ?? []).length + (ordersResult.data ?? []).length,
+    totalSales:
+      (salesResult.data ?? []).length +
+      (ordersResult.data ?? []).length +
+      (externalResult.data ?? []).length,
   };
 }
 
@@ -151,7 +161,7 @@ export async function getSalesVsCostsLast30Days(): Promise<DayData[]> {
   cutoff.setDate(cutoff.getDate() - 29);
   cutoff.setHours(0, 0, 0, 0);
 
-  const [salesResult, ordersResult] = await Promise.all([
+  const [salesResult, ordersResult, externalResult] = await Promise.all([
     supabase
       .from("sales")
       .select("sale_price, cost_price, sold_at")
@@ -161,6 +171,10 @@ export async function getSalesVsCostsLast30Days(): Promise<DayData[]> {
       .select("sold_at, shipping_cost, order_items(sale_price, cost_price, quantity)")
       .gte("sold_at", cutoff.toISOString())
       .neq("status", "cancelled"),
+    supabase
+      .from("external_sales")
+      .select("sale_price, cost_price, sold_at")
+      .gte("sold_at", startOfDayOffset(29)),
   ]);
 
   if (salesResult.error) throw new Error(salesResult.error.message);
@@ -187,6 +201,15 @@ export async function getSalesVsCostsLast30Days(): Promise<DayData[]> {
       const shipping = order.shipping_cost ?? 0;
       entry.ventas += order.order_items.reduce((total, item) => total + item.sale_price * item.quantity, 0) + shipping;
       entry.costos += order.order_items.reduce((total, item) => total + (item.cost_price ?? 0) * item.quantity, 0);
+    }
+  }
+
+  for (const ext of (externalResult.data ?? []) as { sale_price: number; cost_price: number; sold_at: string }[]) {
+    const key = dayKey(ext.sold_at);
+    if (map.has(key)) {
+      const entry = map.get(key)!;
+      entry.ventas += ext.sale_price;
+      entry.costos += ext.cost_price;
     }
   }
 

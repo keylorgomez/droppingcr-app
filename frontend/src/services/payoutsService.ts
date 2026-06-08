@@ -137,9 +137,9 @@ export async function getMyPayouts(userId: string): Promise<AdminPayout[]> {
   }));
 }
 
-// Net profit from ALL non-cancelled sales + orders (sale_price − cost_price)
+// Net profit from ALL non-cancelled sales + orders + external sales (sale_price − cost_price)
 export async function getAllTimeNetProfit(): Promise<number> {
-  const [salesResult, orderItemsResult] = await Promise.all([
+  const [salesResult, orderItemsResult, externalResult] = await Promise.all([
     supabase
       .from("sales")
       .select("sale_price, cost_price")
@@ -148,6 +148,9 @@ export async function getAllTimeNetProfit(): Promise<number> {
       .from("order_items")
       .select("sale_price, cost_price, quantity, orders!inner( status )")
       .neq("orders.status", "cancelled"),
+    supabase
+      .from("external_sales")
+      .select("sale_price, cost_price"),
   ]);
 
   if (salesResult.error) throw new Error(salesResult.error.message);
@@ -162,7 +165,12 @@ export async function getAllTimeNetProfit(): Promise<number> {
     0,
   );
 
-  return salesProfit + ordersProfit;
+  const externalProfit = (externalResult.data ?? []).reduce(
+    (sum, e: { sale_price: number; cost_price: number }) => sum + (e.sale_price - e.cost_price),
+    0,
+  );
+
+  return salesProfit + ordersProfit + externalProfit;
 }
 
 export async function getTotalDistributed(): Promise<number> {

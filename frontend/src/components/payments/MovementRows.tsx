@@ -6,14 +6,16 @@ import { cn } from "../../lib/utils";
 import type { PaymentLog, RefundLog } from "../../services/salesService";
 import type { AdminPayout } from "../../services/payoutsService";
 import type { ExpensePaymentLog } from "../../services/expensesService";
+import type { ExternalSale } from "../../services/externalSalesService";
 
 // ── Unified movement entry (shared with PaymentsPage) ─────────────────────
 
 export type Movement =
-  | { kind: "in";      data: PaymentLog        }
-  | { kind: "out";     data: AdminPayout       }
-  | { kind: "expense"; data: ExpensePaymentLog }
-  | { kind: "refund";  data: RefundLog         };
+  | { kind: "in";       data: PaymentLog        }
+  | { kind: "out";      data: AdminPayout       }
+  | { kind: "expense";  data: ExpensePaymentLog }
+  | { kind: "refund";   data: RefundLog         }
+  | { kind: "external"; data: ExternalSale      };
 
 // ── Skeleton ───────────────────────────────────────────────────────────────
 
@@ -469,6 +471,107 @@ export function MobileRefundCard({ refund }: { refund: RefundLog }) {
         </p>
         {refund.reason && (
           <p className="text-[11px] font-poppins text-gray-400 truncate">{refund.reason}</p>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+// ── External sale row ──────────────────────────────────────────────────────
+
+export function ExternalSaleRow({ sale }: { sale: ExternalSale }) {
+  const profit = sale.sale_price - sale.cost_price;
+  return (
+    <motion.tr
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="border-b border-gray-50 last:border-b-0 hover:bg-purple-50/30 transition-colors"
+    >
+      <td className="px-4 py-3 align-top shrink-0">
+        <p className="text-xs font-poppins text-brand-dark whitespace-nowrap">
+          {formatDate(sale.sold_at)}
+        </p>
+        <p className="text-[10px] font-poppins text-gray-300 mt-0.5">
+          {formatTime(sale.sold_at)}
+        </p>
+      </td>
+      <td className="px-4 py-3 align-top min-w-0">
+        <p className="text-xs font-poppins font-medium italic text-gray-400 truncate max-w-[140px]">
+          Venta externa
+        </p>
+      </td>
+      <td className="px-4 py-3 align-top min-w-0">
+        <p className="text-xs font-poppins font-semibold italic text-purple-700 leading-snug
+                      truncate max-w-[160px]">
+          {sale.product_name}
+        </p>
+        <span className="inline-block mt-0.5 text-[10px] font-poppins rounded-full px-2 py-0.5
+                         bg-purple-50 text-purple-500">
+          Ganancia: ₡{profit.toLocaleString("en-US")}
+        </span>
+      </td>
+      <td className="px-4 py-3 align-top text-right shrink-0">
+        <div className="flex items-center justify-end gap-1">
+          <ArrowDownLeft size={12} className="text-purple-500" strokeWidth={2.2} />
+          <p className="text-sm font-poppins font-bold text-purple-600 whitespace-nowrap">
+            ₡{sale.sale_price.toLocaleString("en-US")}
+          </p>
+        </div>
+      </td>
+      <td className="px-4 py-3 align-top text-center shrink-0">
+        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5
+                         rounded-full font-poppins whitespace-nowrap bg-purple-100 text-purple-600">
+          Reventa
+        </span>
+      </td>
+      <td className="px-4 py-3 align-top min-w-0">
+        <p className="text-[11px] font-poppins text-gray-400 truncate max-w-[140px]">
+          {sale.note ?? <span className="text-gray-200 italic">—</span>}
+        </p>
+      </td>
+    </motion.tr>
+  );
+}
+
+// ── Mobile external sale card ──────────────────────────────────────────────
+
+export function MobileExternalSaleCard({ sale }: { sale: ExternalSale }) {
+  const profit = sale.sale_price - sale.cost_price;
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0 }}
+      className="px-4 py-3.5 flex gap-3 bg-purple-50/20"
+    >
+      <div className="flex flex-col items-center gap-1 shrink-0 min-w-[80px]">
+        <div className="flex items-center gap-0.5">
+          <ArrowDownLeft size={11} className="text-purple-500" strokeWidth={2.2} />
+          <p className="text-sm font-poppins font-bold text-purple-600 whitespace-nowrap">
+            ₡{sale.sale_price.toLocaleString("en-US")}
+          </p>
+        </div>
+        <p className="text-[10px] font-poppins text-gray-400 text-center leading-tight">
+          {formatDate(sale.sold_at)}
+        </p>
+      </div>
+      <div className="flex flex-col gap-1 flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-xs font-poppins font-semibold italic text-purple-700 leading-snug
+                        line-clamp-2 flex-1">
+            {sale.product_name}
+          </p>
+          <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider
+                           px-2 py-0.5 rounded-full font-poppins bg-purple-100 text-purple-600">
+            Reventa
+          </span>
+        </div>
+        <p className="text-[11px] font-poppins text-purple-500">
+          Ganancia: ₡{profit.toLocaleString("en-US")}
+        </p>
+        {sale.note && (
+          <p className="text-[11px] font-poppins text-gray-400 truncate">{sale.note}</p>
         )}
       </div>
     </motion.div>
