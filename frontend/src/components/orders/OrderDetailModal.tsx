@@ -1,12 +1,15 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { X, Package, Check, Loader2, MessageCircle, Plus } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { X, Package, Check, Loader2, MessageCircle, Plus, Trash2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useToast } from "../ui/Toast";
 import { cloudinaryUrl } from "../../lib/cloudinary";
 import {
   DELIVERY_STATUSES,
+  getPaymentsForOrder,
+  deletePayment,
   type DeliveryStatus,
+  type Payment,
 } from "../../services/salesService";
 import {
   updateOrderAdmin,
@@ -15,20 +18,81 @@ import {
 } from "../../services/ordersService";
 import { QUERY_KEYS } from "../../constants/queryKeys";
 import { cn } from "../../lib/utils";
-import { formatDate } from "../../lib/formatters";
-
-// ── Shared style ───────────────────────────────────────────────────────────
+import { formatDate, formatTime } from "../../lib/formatters";
 
 const inputCls =
   "w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-poppins text-brand-dark " +
   "placeholder:text-gray-300 outline-none focus:border-brand-primary " +
   "focus:ring-1 focus:ring-brand-primary/20 transition";
 
-// ── Props ──────────────────────────────────────────────────────────────────
-
 interface OrderDetailModalProps {
   order:   AdminOrder;
   onClose: () => void;
+}
+
+// ── Payment history row ────────────────────────────────────────────────────
+
+function PaymentHistoryRow({
+  payment,
+  confirmingId,
+  onDelete,
+  onConfirm,
+  onCancel,
+  isDeleting,
+}: {
+  payment:      Payment;
+  confirmingId: string | null;
+  onDelete:     (id: string) => void;
+  onConfirm:    () => void;
+  onCancel:     () => void;
+  isDeleting:   boolean;
+}) {
+  const isConfirming = confirmingId === payment.id;
+  return (
+    <div className={cn(
+      "flex items-center gap-2 px-3 py-2 rounded-xl transition-colors",
+      isConfirming ? "bg-red-50 border border-red-200" : "bg-gray-50"
+    )}>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-poppins font-semibold text-brand-dark">
+          ₡{payment.amount.toLocaleString("en-US")}
+        </p>
+        <p className="text-[10px] font-poppins text-gray-400 truncate">
+          {formatDate(payment.paid_at)} {formatTime(payment.paid_at)}
+          {payment.note && <span className="ml-1 text-gray-300">· {payment.note}</span>}
+        </p>
+      </div>
+      {isConfirming ? (
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className="text-[10px] font-poppins text-red-500">¿Eliminar?</span>
+          <button
+            onClick={onConfirm}
+            disabled={isDeleting}
+            className="text-[10px] font-poppins font-bold px-2 py-1 rounded-lg
+                       bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-60"
+          >
+            {isDeleting ? <Loader2 size={10} className="animate-spin" /> : "Sí"}
+          </button>
+          <button
+            onClick={onCancel}
+            className="text-[10px] font-poppins px-2 py-1 rounded-lg border border-gray-200
+                       text-gray-500 hover:bg-gray-100 transition-colors"
+          >
+            No
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={() => onDelete(payment.id)}
+          className="p-1.5 rounded-lg text-gray-300 hover:text-red-400 hover:bg-red-50
+                     transition-colors shrink-0"
+          title="Eliminar este pago"
+        >
+          <Trash2 size={13} strokeWidth={2} />
+        </button>
+      )}
+    </div>
+  );
 }
 
 // ── Component ──────────────────────────────────────────────────────────────
@@ -45,11 +109,28 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
   const [trackingError,  setTrackingError]  = useState("");
   const [showAbono,      setShowAbono]      = useState(false);
   const [abonoAmount,    setAbonoAmount]    = useState("");
+  const [confirmingId,   setConfirmingId]   = useState<string | null>(null);
 
-  const remaining = Math.max(0, order.order_total - order.total_paid);
+  // Live payments query — drives the payment summary
+  const { data: payments = [] } = useQuery({
+    queryKey: QUERY_KEYS.ORDER_PAYMENTS(order.id),
+    queryFn:  () => getPaymentsForOrder(order.id),
+    staleTime: 0,
+  });
+  const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
+  const remaining = Math.max(0, order.order_total - totalPaid);
+
   const isShipped = deliveryStatus === "shipped";
   const hasPhone  = !!order.guest_phone;
   const isCorreos = order.shipping_method.startsWith("correos");
+
+  function invalidateAll() {
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ORDER_PAYMENTS(order.id) });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ADMIN_ORDERS });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PAYMENTS_LOG });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.GROUPED_DEBTS });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.DASH_STATS });
+  }
 
   const saveMutation = useMutation({
     mutationFn: () => updateOrderAdmin(
@@ -76,8 +157,20 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
     ),
     onSuccess: () => {
       showToast("Abono registrado.", "success");
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ADMIN_ORDERS });
-      onClose();
+      invalidateAll();
+      setShowAbono(false);
+      setAbonoAmount("");
+    },
+    onError: (err: Error) => showToast(err.message, "error"),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (paymentId: string) =>
+      deletePayment(paymentId, null, order.id, order.order_total),
+    onSuccess: () => {
+      showToast("Pago eliminado.", "success");
+      invalidateAll();
+      setConfirmingId(null);
     },
     onError: (err: Error) => showToast(err.message, "error"),
   });
@@ -208,7 +301,7 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
             <div className="border-x border-gray-200">
               <p className="text-[10px] font-poppins text-gray-400 uppercase tracking-wider mb-0.5">Abonado</p>
               <p className="font-poppins font-semibold text-sm text-green-600">
-                ₡{order.total_paid.toLocaleString("en-US")}
+                ₡{totalPaid.toLocaleString("en-US")}
               </p>
             </div>
             <div>
@@ -221,6 +314,31 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
               </p>
             </div>
           </div>
+
+          {/* Payment history */}
+          {payments.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <p className="text-xs font-medium text-gray-500 font-poppins uppercase tracking-wider">
+                Historial de pagos
+              </p>
+              <div className="flex flex-col gap-1.5">
+                {payments.map((payment: Payment) => (
+                  <PaymentHistoryRow
+                    key={payment.id}
+                    payment={payment}
+                    confirmingId={confirmingId}
+                    onDelete={(id) => setConfirmingId(id)}
+                    onConfirm={() => deleteMutation.mutate(confirmingId!)}
+                    onCancel={() => setConfirmingId(null)}
+                    isDeleting={deleteMutation.isPending}
+                  />
+                ))}
+              </div>
+              <p className="text-[10px] font-poppins text-gray-300 pl-1">
+                Eliminar un pago lo quita de movimientos y deja la orden como pendiente si queda saldo.
+              </p>
+            </div>
+          )}
 
           {/* Abono panel */}
           {remaining > 0 && (

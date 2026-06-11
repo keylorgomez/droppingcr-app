@@ -22,6 +22,8 @@ export const QUERY_KEYS = {
   PAYMENTS_LOG_FULL:    ["payments-log-full"]      as const,
   REFUNDS_LOG:          ["refunds-log"]            as const,
   EXTERNAL_SALES_LOG:   ["external-sales-log"]     as const,
+  SALE_PAYMENTS:        (saleId: string)  => ["sale-payments",  saleId]  as const,
+  ORDER_PAYMENTS:       (orderId: string) => ["order-payments", orderId] as const,
 
   // ── Expenses ──────────────────────────────────────────────────────────────
   EXPENSES:             ["expenses"]               as const,

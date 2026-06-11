@@ -1,31 +1,96 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { X, Package, Check, Loader2, MessageCircle } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { X, Package, Check, Loader2, MessageCircle, Plus, Trash2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useToast } from "../ui/Toast";
 import { cloudinaryUrl } from "../../lib/cloudinary";
 import {
   updateSaleAdmin,
+  addPayment,
+  getPaymentsForSale,
+  deletePayment,
   DELIVERY_STATUSES,
   type AdminSale,
   type DeliveryStatus,
+  type Payment,
 } from "../../services/salesService";
 import { cn } from "../../lib/utils";
-import { formatDate } from "../../lib/formatters";
+import { formatDate, formatTime } from "../../lib/formatters";
 import { QUERY_KEYS } from "../../constants/queryKeys";
-
-// ── Shared style ───────────────────────────────────────────────────────────
 
 const inputCls =
   "w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-poppins text-brand-dark " +
   "placeholder:text-gray-300 outline-none focus:border-brand-primary " +
   "focus:ring-1 focus:ring-brand-primary/20 transition";
 
-// ── Props ──────────────────────────────────────────────────────────────────
-
 interface SaleDetailModalProps {
   sale:    AdminSale;
   onClose: () => void;
+}
+
+// ── Payment history row ────────────────────────────────────────────────────
+
+function PaymentHistoryRow({
+  payment,
+  confirmingId,
+  onDelete,
+  onConfirm,
+  onCancel,
+  isDeleting,
+}: {
+  payment:      Payment;
+  confirmingId: string | null;
+  onDelete:     (id: string) => void;
+  onConfirm:    () => void;
+  onCancel:     () => void;
+  isDeleting:   boolean;
+}) {
+  const isConfirming = confirmingId === payment.id;
+  return (
+    <div className={cn(
+      "flex items-center gap-2 px-3 py-2 rounded-xl transition-colors",
+      isConfirming ? "bg-red-50 border border-red-200" : "bg-gray-50"
+    )}>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-poppins font-semibold text-brand-dark">
+          ₡{payment.amount.toLocaleString("en-US")}
+        </p>
+        <p className="text-[10px] font-poppins text-gray-400 truncate">
+          {formatDate(payment.paid_at)} {formatTime(payment.paid_at)}
+          {payment.note && <span className="ml-1 text-gray-300">· {payment.note}</span>}
+        </p>
+      </div>
+      {isConfirming ? (
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className="text-[10px] font-poppins text-red-500">¿Eliminar?</span>
+          <button
+            onClick={onConfirm}
+            disabled={isDeleting}
+            className="text-[10px] font-poppins font-bold px-2 py-1 rounded-lg
+                       bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-60"
+          >
+            {isDeleting ? <Loader2 size={10} className="animate-spin" /> : "Sí"}
+          </button>
+          <button
+            onClick={onCancel}
+            className="text-[10px] font-poppins px-2 py-1 rounded-lg border border-gray-200
+                       text-gray-500 hover:bg-gray-100 transition-colors"
+          >
+            No
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={() => onDelete(payment.id)}
+          className="p-1.5 rounded-lg text-gray-300 hover:text-red-400 hover:bg-red-50
+                     transition-colors shrink-0"
+          title="Eliminar este pago"
+        >
+          <Trash2 size={13} strokeWidth={2} />
+        </button>
+      )}
+    </div>
+  );
 }
 
 // ── Component ──────────────────────────────────────────────────────────────
@@ -37,15 +102,36 @@ export default function SaleDetailModal({ sale, onClose }: SaleDetailModalProps)
   const [deliveryStatus, setDeliveryStatus] = useState<DeliveryStatus>(
     sale.delivery_status as DeliveryStatus
   );
-  const [trackingNumber, setTrackingNumber] = useState(sale.tracking_number ?? "");
-  const [note,           setNote]           = useState(sale.note ?? "");
-  const [trackingError,  setTrackingError]  = useState("");
+  const [trackingNumber,  setTrackingNumber]  = useState(sale.tracking_number ?? "");
+  const [note,            setNote]            = useState(sale.note ?? "");
+  const [trackingError,   setTrackingError]   = useState("");
+  const [showAbono,       setShowAbono]       = useState(false);
+  const [abonoAmount,     setAbonoAmount]     = useState("");
+  const [confirmingId,    setConfirmingId]    = useState<string | null>(null);
 
-  const total     = sale.sale_price + sale.shipping_cost;
-  const remaining = Math.max(0, total - sale.total_paid);
+  const total = sale.sale_price + sale.shipping_cost;
+
+  // Live payments query — drives the payment summary instead of stale props
+  const { data: payments = [] } = useQuery({
+    queryKey: QUERY_KEYS.SALE_PAYMENTS(sale.id),
+    queryFn:  () => getPaymentsForSale(sale.id),
+    staleTime: 0,
+    initialData: undefined,
+  });
+  const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
+  const remaining = Math.max(0, total - totalPaid);
+
   const isShipped = deliveryStatus === "shipped";
   const hasPhone  = !!sale.guest_phone;
   const isCorreos = sale.shipping_method.startsWith("correos");
+
+  function invalidateAll() {
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.SALE_PAYMENTS(sale.id) });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ADMIN_SALES });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PAYMENTS_LOG });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.GROUPED_DEBTS });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.DASH_STATS });
+  }
 
   const saveMutation = useMutation({
     mutationFn: () => updateSaleAdmin(
@@ -65,6 +151,28 @@ export default function SaleDetailModal({ sale, onClose }: SaleDetailModalProps)
     onError: (err: Error) => showToast(err.message, "error"),
   });
 
+  const abonoMutation = useMutation({
+    mutationFn: () => addPayment(sale.id, total, Number(abonoAmount), "Abono"),
+    onSuccess: () => {
+      showToast("Abono registrado.", "success");
+      invalidateAll();
+      setShowAbono(false);
+      setAbonoAmount("");
+    },
+    onError: (err: Error) => showToast(err.message, "error"),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (paymentId: string) =>
+      deletePayment(paymentId, sale.id, null, total),
+    onSuccess: () => {
+      showToast("Pago eliminado.", "success");
+      invalidateAll();
+      setConfirmingId(null);
+    },
+    onError: (err: Error) => showToast(err.message, "error"),
+  });
+
   function handleSave() {
     if (isShipped && isCorreos && !trackingNumber.trim()) {
       setTrackingError("El número de guía es requerido cuando el envío es por Correos CR.");
@@ -72,6 +180,15 @@ export default function SaleDetailModal({ sale, onClose }: SaleDetailModalProps)
     }
     setTrackingError("");
     saveMutation.mutate();
+  }
+
+  function handleAbono() {
+    const amount = Number(abonoAmount);
+    if (!amount || amount <= 0) {
+      showToast("Ingresá un monto válido.", "error");
+      return;
+    }
+    abonoMutation.mutate();
   }
 
   const waMessage = trackingNumber.trim()
@@ -148,7 +265,7 @@ export default function SaleDetailModal({ sale, onClose }: SaleDetailModalProps)
             <div className="border-x border-gray-200">
               <p className="text-[10px] font-poppins text-gray-400 uppercase tracking-wider mb-0.5">Abonado</p>
               <p className="font-poppins font-semibold text-sm text-green-600">
-                ₡{sale.total_paid.toLocaleString("en-US")}
+                ₡{totalPaid.toLocaleString("en-US")}
               </p>
             </div>
             <div>
@@ -161,6 +278,87 @@ export default function SaleDetailModal({ sale, onClose }: SaleDetailModalProps)
               </p>
             </div>
           </div>
+
+          {/* Payment history */}
+          {payments.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <p className="text-xs font-medium text-gray-500 font-poppins uppercase tracking-wider">
+                Historial de pagos
+              </p>
+              <div className="flex flex-col gap-1.5">
+                {payments.map((payment: Payment) => (
+                  <PaymentHistoryRow
+                    key={payment.id}
+                    payment={payment}
+                    confirmingId={confirmingId}
+                    onDelete={(id) => setConfirmingId(id)}
+                    onConfirm={() => deleteMutation.mutate(confirmingId!)}
+                    onCancel={() => setConfirmingId(null)}
+                    isDeleting={deleteMutation.isPending}
+                  />
+                ))}
+              </div>
+              <p className="text-[10px] font-poppins text-gray-300 pl-1">
+                Eliminar un pago lo quita de movimientos y deja la venta como pendiente si queda saldo.
+              </p>
+            </div>
+          )}
+
+          {/* Abono panel */}
+          {remaining > 0 && (
+            <div>
+              {!showAbono ? (
+                <button
+                  type="button"
+                  onClick={() => setShowAbono(true)}
+                  className="w-full py-2.5 rounded-xl border border-green-200 text-sm font-poppins
+                             text-green-600 hover:bg-green-50 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Plus size={14} strokeWidth={2.5} />
+                  Registrar abono
+                </button>
+              ) : (
+                <div className="flex flex-col gap-2 p-3 rounded-xl border border-green-200 bg-green-50/40">
+                  <p className="text-xs font-poppins font-medium text-green-700">
+                    Monto del abono (₡)
+                  </p>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      min={1}
+                      value={abonoAmount}
+                      onChange={(e) => setAbonoAmount(e.target.value)}
+                      placeholder="Ej: 5000"
+                      className={cn(inputCls, "flex-1")}
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAbono}
+                      disabled={abonoMutation.isPending}
+                      className="px-4 py-2.5 rounded-xl bg-green-600 text-white text-sm font-poppins
+                                 font-medium hover:bg-green-700 transition-colors disabled:opacity-60
+                                 flex items-center gap-1.5 shrink-0"
+                    >
+                      {abonoMutation.isPending
+                        ? <Loader2 size={14} className="animate-spin" />
+                        : <Check size={14} strokeWidth={2.5} />
+                      }
+                      Guardar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setShowAbono(false); setAbonoAmount(""); }}
+                      className="p-2.5 rounded-xl border border-gray-200 text-gray-400 hover:text-gray-600
+                                 transition-colors shrink-0"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Delivery status */}
           <div className="flex flex-col gap-1.5">

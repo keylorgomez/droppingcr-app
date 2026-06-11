@@ -450,6 +450,71 @@ export async function getPendingSales(): Promise<PendingSale[]> {
   });
 }
 
+// ── Get individual payments for a sale ────────────────────────────────────
+
+export async function getPaymentsForSale(saleId: string): Promise<Payment[]> {
+  const { data, error } = await supabase
+    .from("payments")
+    .select("id, amount, note, paid_at")
+    .eq("sale_id", saleId)
+    .order("paid_at", { ascending: true });
+  if (error) throw new Error(error.message);
+  return data as Payment[];
+}
+
+// ── Get individual payments for an order ──────────────────────────────────
+
+export async function getPaymentsForOrder(orderId: string): Promise<Payment[]> {
+  const { data, error } = await supabase
+    .from("payments")
+    .select("id, amount, note, paid_at")
+    .eq("order_id", orderId)
+    .order("paid_at", { ascending: true });
+  if (error) throw new Error(error.message);
+  return data as Payment[];
+}
+
+// ── Delete a payment record and revert status if balance becomes pending ──
+
+export async function deletePayment(
+  paymentId: string,
+  saleId:    string | null,
+  orderId:   string | null,
+  totalOwed: number,
+): Promise<void> {
+  const { error: deleteError } = await supabase
+    .from("payments")
+    .delete()
+    .eq("id", paymentId);
+  if (deleteError) throw new Error(deleteError.message);
+
+  if (saleId) {
+    const { data: remaining } = await supabase
+      .from("payments")
+      .select("amount")
+      .eq("sale_id", saleId);
+    const newTotal = (remaining ?? []).reduce(
+      (s, p: { amount: number }) => s + p.amount, 0
+    );
+    if (newTotal < totalOwed) {
+      await supabase.from("sales").update({ status: "pending" }).eq("id", saleId);
+    }
+  }
+
+  if (orderId) {
+    const { data: remaining } = await supabase
+      .from("payments")
+      .select("amount")
+      .eq("order_id", orderId);
+    const newTotal = (remaining ?? []).reduce(
+      (s, p: { amount: number }) => s + p.amount, 0
+    );
+    if (newTotal < totalOwed) {
+      await supabase.from("orders").update({ status: "pending" }).eq("id", orderId);
+    }
+  }
+}
+
 // ── Add payment to a single sale ───────────────────────────────────────────
 
 export async function addPayment(
