@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { X, Package, Check, Loader2, MessageCircle, Plus, Trash2 } from "lucide-react";
+import { X, Package, Check, Loader2, MessageCircle, Plus, Trash2, Printer } from "lucide-react";
 import { motion } from "framer-motion";
 import { useToast } from "../ui/Toast";
 import { cloudinaryUrl } from "../../lib/cloudinary";
@@ -17,6 +17,7 @@ import {
 import { cn } from "../../lib/utils";
 import { formatDate, formatTime } from "../../lib/formatters";
 import { QUERY_KEYS } from "../../constants/queryKeys";
+import { printLabel } from "../../lib/printLabel";
 
 const inputCls =
   "w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-poppins text-brand-dark " +
@@ -180,6 +181,21 @@ export default function SaleDetailModal({ sale, onClose }: SaleDetailModalProps)
     }
     setTrackingError("");
     saveMutation.mutate();
+  }
+
+  function handlePrintLabel() {
+    printLabel({
+      recipientName:   sale.guest_name  ?? undefined,
+      recipientPhone:  sale.guest_phone ?? undefined,
+      shippingMethod:  sale.shipping_method,
+      products:        [{ name: sale.product_name, size: sale.variant_size, qty: sale.quantity }],
+      trackingNumber:  trackingNumber.trim() || undefined,
+      province:        sale.province ?? undefined,
+      canton:          sale.canton   ?? undefined,
+      district:        sale.district ?? undefined,
+      cashOnDelivery:  remaining,
+      date:            formatDate(sale.sold_at),
+    });
   }
 
   function handleAbono() {
@@ -431,6 +447,18 @@ export default function SaleDetailModal({ sale, onClose }: SaleDetailModalProps)
               className={cn(inputCls, "resize-none")}
             />
           </div>
+
+          {/* Print label */}
+          <button
+            type="button"
+            onClick={handlePrintLabel}
+            className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl
+                       border border-gray-200 text-sm font-poppins text-gray-500
+                       hover:border-brand-primary hover:text-brand-primary transition-colors"
+          >
+            <Printer size={15} strokeWidth={1.8} />
+            Imprimir etiqueta 4"×6"
+          </button>
 
           {/* WhatsApp notify */}
           {isShipped && hasPhone && waUrl && (

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
-  X, LayoutGrid, Flame, BadgePercent, Tag, Settings2, CreditCard, Receipt, Coins, ShoppingBag, EyeOff,
+  X, LayoutGrid, Flame, BadgePercent, Tag, Settings2, CreditCard, Receipt, Coins, ShoppingBag, EyeOff, Printer,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { getProducts } from "../../services/productService";
@@ -21,6 +21,7 @@ const adminLinks = [
   { label: "Movimientos",          icon: Receipt,    href: "/admin/movimientos"  },
   { label: "Ganancias",            icon: Coins,      href: "/admin/ganancias"    },
   { label: "Gastos",               icon: ShoppingBag, href: "/admin/gastos"       },
+  { label: "Etiquetas",            icon: Printer,     href: "/admin/etiquetas"    },
 ];
 
 export default function Sidebar({ open, onClose }: SidebarProps) {

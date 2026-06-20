@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { X, Package, Check, Loader2, MessageCircle, Plus, Trash2 } from "lucide-react";
+import { X, Package, Check, Loader2, MessageCircle, Plus, Trash2, Printer } from "lucide-react";
 import { motion } from "framer-motion";
 import { useToast } from "../ui/Toast";
 import { cloudinaryUrl } from "../../lib/cloudinary";
@@ -17,6 +17,7 @@ import {
   type AdminOrder,
 } from "../../services/ordersService";
 import { QUERY_KEYS } from "../../constants/queryKeys";
+import { printLabel } from "../../lib/printLabel";
 import { cn } from "../../lib/utils";
 import { formatDate, formatTime } from "../../lib/formatters";
 
@@ -182,6 +183,22 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
     }
     setTrackingError("");
     saveMutation.mutate();
+  }
+
+  function handlePrintLabel() {
+    printLabel({
+      recipientName:  order.guest_name  ?? undefined,
+      recipientPhone: order.guest_phone ?? undefined,
+      shippingMethod: order.shipping_method,
+      products: order.items.map((item) => ({
+        name: item.product_name,
+        size: item.variant_size,
+        qty:  item.quantity,
+      })),
+      trackingNumber: trackingNumber.trim() || undefined,
+      cashOnDelivery: remaining,
+      date: formatDate(order.sold_at),
+    });
   }
 
   function handleAbono() {
@@ -467,6 +484,18 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
               className={cn(inputCls, "resize-none")}
             />
           </div>
+
+          {/* Print label */}
+          <button
+            type="button"
+            onClick={handlePrintLabel}
+            className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl
+                       border border-gray-200 text-sm font-poppins text-gray-500
+                       hover:border-brand-primary hover:text-brand-primary transition-colors"
+          >
+            <Printer size={15} strokeWidth={1.8} />
+            Imprimir etiqueta 4"×6"
+          </button>
 
           {/* WhatsApp notify */}
           {isShipped && hasPhone && waUrl && (

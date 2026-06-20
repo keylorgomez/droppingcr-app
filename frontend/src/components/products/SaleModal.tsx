@@ -93,7 +93,7 @@ export default function SaleModal({
   const navigate          = useNavigate();
   const availableVariants = variants.filter((variant) => variant.stock > 0);
 
-  const [variantId,         setVariantId]         = useState(availableVariants[0]?.id ?? "");
+  const [variantId,         setVariantId]         = useState("");
   const [quantity,          setQuantity]          = useState(1);
   const [priceSold,         setPriceSold]         = useState(String(effectivePrice));
   const [guestName,         setGuestName]         = useState("");
@@ -175,6 +175,9 @@ export default function SaleModal({
       shipping_cost:   shippingCost,
       delivery_status: deliveryStatus,
       tracking_number: trackingNumber.trim() || null,
+      province:        deliveryType === "envio" ? (province  || null) : null,
+      canton:          deliveryType === "envio" ? (canton    || null) : null,
+      district:        deliveryType === "envio" ? (district  || null) : null,
     });
   }
 
@@ -256,6 +259,7 @@ export default function SaleModal({
                 onChange={(e) => { setVariantId(e.target.value); setQuantity(1); }}
                 className={inputCls}
               >
+                <option value="">Seleccioná una talla…</option>
                 {availableVariants.map((variant) => (
                   <option key={variant.id} value={variant.id}>
                     {variant.size} — {variant.stock} en stock

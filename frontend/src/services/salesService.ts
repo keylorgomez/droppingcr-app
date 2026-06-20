@@ -105,6 +105,9 @@ interface RawAdminSaleRow {
   note:            string | null;
   guest_name:      string | null;
   guest_phone:     string | null;
+  province:        string | null;
+  canton:          string | null;
+  district:        string | null;
   variant_id:      string | null;
   quantity:        number | null;
   product_variants: {
@@ -174,6 +177,9 @@ export interface SaleInput {
   shipping_cost:    number;
   delivery_status:  DeliveryStatus;
   tracking_number:  string | null;
+  province?:        string | null;
+  canton?:          string | null;
+  district?:        string | null;
 }
 
 export interface Payment {
@@ -246,6 +252,9 @@ export interface AdminSale {
   shipping_method: string;
   delivery_status: string;
   tracking_number: string | null;
+  province:        string | null;
+  canton:          string | null;
+  district:        string | null;
   status:          "pending" | "completed";
   note:            string | null;
   guest_name:      string | null;
@@ -355,6 +364,9 @@ export async function recordManualSale(data: SaleInput): Promise<void> {
       shipping_cost:   data.shipping_cost,
       delivery_status: data.delivery_status,
       tracking_number: data.tracking_number,
+      province:        data.province  ?? null,
+      canton:          data.canton    ?? null,
+      district:        data.district  ?? null,
     })
     .select("id")
     .single();
@@ -705,7 +717,8 @@ export async function getAllSales(): Promise<AdminSale[]> {
     .select(`
       id, sold_at, sale_price, shipping_cost, shipping_method,
       delivery_status, tracking_number, status, note,
-      guest_name, guest_phone, variant_id, quantity,
+      guest_name, guest_phone, province, canton, district,
+      variant_id, quantity,
       product_variants (
         size,
         products (
@@ -736,6 +749,9 @@ export async function getAllSales(): Promise<AdminSale[]> {
       shipping_method: saleRow.shipping_method ?? SHIPPING_METHOD.PERSONAL_GRECIA,
       delivery_status: saleRow.delivery_status ?? DELIVERY_STATUS.VALIDATING,
       tracking_number: saleRow.tracking_number ?? null,
+      province:        saleRow.province        ?? null,
+      canton:          saleRow.canton          ?? null,
+      district:        saleRow.district        ?? null,
       status:          saleRow.status as AdminSale["status"],
       note:            saleRow.note            ?? null,
       guest_name:      saleRow.guest_name      ?? null,
