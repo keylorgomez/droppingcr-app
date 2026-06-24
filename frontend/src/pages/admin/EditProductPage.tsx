@@ -11,8 +11,10 @@ import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../components/ui/Toast";
 import Header from "../../components/ui/Header";
 import { cn } from "../../lib/utils";
-import SaleModal         from "../../components/products/SaleModal";
-import DeleteConfirmModal from "../../components/products/DeleteConfirmModal";
+import SaleModal              from "../../components/products/SaleModal";
+import DeleteConfirmModal      from "../../components/products/DeleteConfirmModal";
+import InstagramPublishModal   from "../../components/products/InstagramPublishModal";
+import { buildInstagramCaption } from "../../services/instagramService";
 import { QUERY_KEYS } from "../../constants/queryKeys";
 
 // ── Shared styles ──────────────────────────────────────────────────────────
@@ -73,6 +75,16 @@ interface VariantRowState {
   stock: string;
 }
 
+function IgIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 let keyCounter = 0;
 const newKey = () => String(++keyCounter);
 
@@ -113,6 +125,7 @@ export default function EditProductPage() {
   const [images,            setImages]            = useState<ImageRow[]>([]);
   const [saleOpen,          setSaleOpen]          = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [igOpen,            setIgOpen]            = useState(false);
 
   useEffect(() => {
     if (!product) return;
@@ -251,6 +264,20 @@ export default function EditProductPage() {
         />
       )}
 
+      {igOpen && product && (
+        <InstagramPublishModal
+          productName={product.name}
+          imageUrls={product.images
+            .sort((a, b) => {
+              if (a.is_primary !== b.is_primary) return a.is_primary ? -1 : 1;
+              return a.display_order - b.display_order;
+            })
+            .map((img) => img.image_url)}
+          caption={buildInstagramCaption(product)}
+          onClose={() => setIgOpen(false)}
+        />
+      )}
+
       {deleteConfirmOpen && (
         <DeleteConfirmModal
           productName={product.name}
@@ -280,16 +307,28 @@ export default function EditProductPage() {
               Edición de inventario y datos del producto
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => setSaleOpen(true)}
-            className="shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-xl
-                       bg-brand-dark text-white text-sm font-poppins font-medium
-                       hover:bg-black transition-colors"
-          >
-            <ShoppingCart size={15} strokeWidth={1.8} />
-            Registrar Venta
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setIgOpen(true)}
+              title="Publicar en Instagram"
+              className="h-10 w-10 flex items-center justify-center rounded-xl
+                         bg-gradient-to-br from-[#833ab4] via-[#fd1d1d] to-[#fcb045]
+                         text-white hover:opacity-90 transition-opacity"
+            >
+              <IgIcon />
+            </button>
+            <button
+              type="button"
+              onClick={() => setSaleOpen(true)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl
+                         bg-brand-dark text-white text-sm font-poppins font-medium
+                         hover:bg-black transition-colors"
+            >
+              <ShoppingCart size={15} strokeWidth={1.8} />
+              Registrar Venta
+            </button>
+          </div>
         </div>
 
         <form onSubmit={handleSave} className="flex flex-col gap-5">
