@@ -1,4 +1,5 @@
 import { supabase } from "../lib/supabaseClient";
+import { NEW_BADGE_DAYS } from "../constants/domain";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -32,6 +33,7 @@ export interface ProductDetail {
   discount_percentage: number;
   is_active: boolean;
   is_new: boolean;
+  new_since: string | null;
   created_at: string;
   categories: Category[];
   images: ProductImage[];
@@ -64,6 +66,7 @@ export interface ProductInput {
   discount_percentage: number;
   is_active: boolean;
   is_new: boolean;
+  new_since: string | null;
   category_ids: string[];
   images: { image_url: string; is_primary: boolean; display_order: number }[];
   variants: { size: string; stock: number }[];
@@ -84,6 +87,7 @@ interface RawProductRow {
   price_sale:          number;
   discount_percentage: number;
   is_new:              boolean;
+  new_since:           string | null;
   is_active:           boolean;
   product_images:      RawImageRow[];
   product_variants:    Array<{ stock: number; size: string; is_reserved: boolean }>;
@@ -109,13 +113,20 @@ function flattenCategories(
     .filter(Boolean) as Category[];
 }
 
+/** Whether the "NUEVO" badge should still show, given when it was activated. */
+function isWithinNewBadgeWindow(isNew: boolean, newSince: string | null): boolean {
+  if (!isNew || !newSince) return false;
+  const elapsedMs = Date.now() - new Date(newSince).getTime();
+  return elapsedMs < NEW_BADGE_DAYS * 24 * 60 * 60 * 1000;
+}
+
 // ── Queries ────────────────────────────────────────────────────────────────
 
 export async function getProducts(includeHidden = false): Promise<CatalogProduct[]> {
   let query = supabase
     .from("products")
     .select(`
-      id, name, slug, price_sale, discount_percentage, is_new, is_active,
+      id, name, slug, price_sale, discount_percentage, is_new, new_since, is_active,
       product_images ( image_url, is_primary, display_order ),
       product_variants ( stock, size, is_reserved ),
       product_categories ( categories ( name, slug ) )
@@ -163,7 +174,7 @@ export async function getProducts(includeHidden = false): Promise<CatalogProduct
       category:            productCategories[0]?.name ?? "",
       categories:          productCategories,
       sizes,
-      is_new:              p.is_new ?? false,
+      is_new:              isWithinNewBadgeWindow(p.is_new ?? false, p.new_since),
       is_sold_out:         totalStock === 0,
       is_reserved:         totalStock === 0 && anyReserved,
       is_active:           p.is_active ?? true,
@@ -187,7 +198,7 @@ export async function getProductBySlug(slug: string): Promise<ProductDetail> {
     .select(`
       id, name, slug, description,
       price_purchase, price_sale, discount_percentage,
-      is_active, is_new, created_at,
+      is_active, is_new, new_since, created_at,
       images: product_images ( id, image_url, is_primary, display_order ),
       variants: product_variants ( id, size, stock, is_reserved ),
       product_categories ( categories ( id, name, slug ) )
@@ -205,6 +216,7 @@ export async function getProductBySlug(slug: string): Promise<ProductDetail> {
 
   return {
     ...data,
+    is_new:     isWithinNewBadgeWindow(data.is_new, data.new_since),
     images,
     categories: flattenCategories(data.product_categories ?? []),
   } as ProductDetail;
@@ -216,7 +228,7 @@ export async function getProductById(id: string): Promise<ProductDetail> {
     .select(`
       id, name, slug, description,
       price_purchase, price_sale, discount_percentage,
-      is_active, is_new, created_at,
+      is_active, is_new, new_since, created_at,
       images: product_images ( id, image_url, is_primary, display_order ),
       variants: product_variants ( id, size, stock, is_reserved ),
       product_categories ( categories ( id, name, slug ) )
@@ -233,6 +245,7 @@ export async function getProductById(id: string): Promise<ProductDetail> {
 
   return {
     ...data,
+    is_new:     isWithinNewBadgeWindow(data.is_new, data.new_since),
     images,
     categories: flattenCategories(data.product_categories ?? []),
   } as ProductDetail;
@@ -248,6 +261,7 @@ export interface InventoryUpdate {
   discount_percentage: number;
   is_active:           boolean;
   is_new:              boolean;
+  new_since:           string | null;
   category_ids: string[];
   variants: { id?: string; size: string; stock: number }[];
   images:   { image_url: string; is_primary: boolean; display_order: number }[];
@@ -267,6 +281,7 @@ export async function updateProductInventory(
       discount_percentage: data.discount_percentage,
       is_active:           data.is_active,
       is_new:              data.is_new,
+      new_since:           data.new_since,
     })
     .eq("id", productId);
 
@@ -380,6 +395,7 @@ export async function createProduct(input: ProductInput): Promise<string> {
       discount_percentage: input.discount_percentage,
       is_active:           input.is_active,
       is_new:              input.is_new,
+      new_since:           input.new_since,
     })
     .select("id")
     .single();
@@ -423,6 +439,7 @@ export async function updateProduct(id: string, input: ProductInput): Promise<vo
       discount_percentage: input.discount_percentage,
       is_active:           input.is_active,
       is_new:              input.is_new,
+      new_since:           input.new_since,
     })
     .eq("id", id);
 

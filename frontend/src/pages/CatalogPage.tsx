@@ -5,8 +5,8 @@ import { ShoppingBag, Search, X, ChevronDown, Check, SlidersHorizontal, ChevronL
 import { AnimatePresence, motion } from "framer-motion";
 import Header from "../components/ui/Header";
 import Hero from "../components/ui/Hero";
+import PromoBanner from "../components/PromoBanner";
 import ProductCard from "../components/catalog/ProductCard";
-import WorldCupModal from "../components/WorldCupModal";
 import { getProducts } from "../services/productService";
 import { CLOTHING_SIZES } from "../constants/domain";
 import { normalizeText } from "../lib/formatters";
@@ -161,6 +161,11 @@ export default function CatalogPage() {
     queryFn:  () => getProducts(isAdmin),
   });
 
+  const maxDiscountPercent = useMemo(
+    () => products.reduce((max, p) => (p.is_active && p.discount_percentage > max ? p.discount_percentage : max), 0),
+    [products]
+  );
+
   // Step 1: apply sidebar category / special filter
   const byCategory = useMemo(() => {
     if (!filter) return products.filter((p) => p.is_active || isAdmin);
@@ -271,7 +276,9 @@ export default function CatalogPage() {
 
   return (
     <>
-      <WorldCupModal />
+      {!isLoading && (
+        <PromoBanner maxDiscountPercent={maxDiscountPercent} suppressed={filter === "descuentos"} />
+      )}
       <Header />
       <Hero />
 
@@ -411,8 +418,6 @@ export default function CatalogPage() {
                   price_sale={product.price_sale}
                   image_url={product.image_url}
                   images={product.images}
-                  category={product.category}
-                  categories={product.categories}
                   is_new={product.is_new}
                   discount_percentage={product.discount_percentage}
                   is_sold_out={product.is_sold_out}

@@ -98,6 +98,7 @@ export default function NewOrderModal({ onClose }: NewOrderModalProps) {
   const { data: products = [], isLoading: productsLoading } = useQuery({
     queryKey: QUERY_KEYS.PRODUCTS_WITH_VARIANTS,
     queryFn:  getProductsWithVariants,
+    staleTime: 0,
   });
 
   const filteredProducts = useMemo(() => {

@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Pencil, EyeOff } from "lucide-react";
-import { FEATURES } from "../../constants/featureFlags";
 import { cloudinaryUrl } from "../../lib/cloudinary";
 
 interface ProductCardProps {
@@ -9,8 +8,6 @@ interface ProductCardProps {
   price_sale: number;
   image_url: string;
   images?: string[];
-  category: string;
-  categories?: { name: string; slug: string }[];
   is_new?: boolean;
   discount_percentage?: number;
   is_sold_out?: boolean;
@@ -25,8 +22,6 @@ export default function ProductCard({
   price_sale,
   image_url,
   images,
-  category,
-  categories = [],
   is_new = false,
   discount_percentage = 0,
   is_sold_out = false,
@@ -36,13 +31,6 @@ export default function ProductCard({
   onEdit,
 }: ProductCardProps) {
 
-  const normalize = (s: string) =>
-    s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-  const isFutbol =
-    FEATURES.worldCup2026 && (
-      categories.some((c) => normalize(c.slug) === "futbol") ||
-      normalize(category ?? "") === "futbol"
-    );
   const allImages = images?.length ? images : [image_url];
   const hasMultipleImages = allImages.length > 1;
 
@@ -82,28 +70,18 @@ export default function ProductCard({
 
   return (
     <motion.div
-      className={`flex flex-col bg-white rounded-2xl border shadow-sm overflow-hidden font-poppins cursor-pointer ${
+      className={`flex flex-col bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden font-poppins cursor-pointer ${
         isHidden ? "opacity-50 grayscale" : is_sold_out || is_reserved ? "opacity-50" : ""
-      } ${isFutbol ? "border-gray-100/80" : "border-gray-100"}`}
+      }`}
       whileHover={{
         y: -4,
-        boxShadow: isFutbol
-          ? "0 8px 28px rgba(245,196,0,0.18), 0 2px 8px rgba(0,0,0,0.06)"
-          : "0 8px 24px rgba(0,0,0,0.10)",
+        boxShadow: "0 8px 24px rgba(0,0,0,0.10)",
       }}
       transition={{ type: "spring", stiffness: 320, damping: 24 }}
       onHoverStart={() => setIsHovered(true)}
       onHoverEnd={() => { setIsHovered(false); setImgIndex(0); }}
       onClick={onClick}
     >
-      {/* ── World Cup stripe — solo para fútbol ── */}
-      {isFutbol && (
-        <div
-          className="h-[3px] w-full shrink-0"
-          style={{ background: "linear-gradient(to right, #E8302A, #1C4F9C, #2B8C3E)" }}
-        />
-      )}
-
       {/* Image */}
       <div className="relative overflow-hidden aspect-square bg-gray-50">
         <AnimatePresence>
@@ -144,16 +122,6 @@ export default function ProductCard({
         {rightBadge && (
           <span className={`absolute top-3 right-3 text-[10px] font-bold tracking-widest uppercase px-2.5 py-1 rounded-full ${rightBadge.cls}`}>
             {rightBadge.text}
-          </span>
-        )}
-
-        {/* WC26 badge — bottom-left, solo fútbol disponible */}
-        {isFutbol && !is_sold_out && !is_reserved && (
-          <span className="absolute bottom-3 left-3
-                           bg-[#F5C400] text-white font-poppins font-bold
-                           text-[9px] tracking-[0.12em] uppercase
-                           px-2.5 py-1 rounded-full shadow-sm">
-            FWC26
           </span>
         )}
 

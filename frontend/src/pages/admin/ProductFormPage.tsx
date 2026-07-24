@@ -234,6 +234,7 @@ export default function ProductFormPage() {
   const [discount,      setDiscount]      = useState("0");
   const [isActive,      setIsActive]      = useState(true);
   const [isNew,         setIsNew]         = useState(false);
+  const [newSince,      setNewSince]      = useState<string | null>(null);
   const [categoryIds,   setCategoryIds]   = useState<string[]>([]);
   const [variants,      setVariants]      = useState<VariantRow[]>([]);
   const [images,        setImages]        = useState<ImageRow[]>([]);
@@ -252,6 +253,7 @@ export default function ProductFormPage() {
     setDiscount(String(p.discount_percentage));
     setIsActive(p.is_active);
     setIsNew(p.is_new);
+    setNewSince(p.new_since);
     setCategoryIds(p.categories.map((c) => c.id));
     setVariants(p.variants.map((v) => ({
       _key: newKey(), size: v.size, stock: String(v.stock),
@@ -315,6 +317,7 @@ export default function ProductFormPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PRODUCTS });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PRODUCTS_WITH_VARIANTS });
       showToast(
         isEdit ? "Producto actualizado." : "Producto creado exitosamente.",
         "success"
@@ -339,6 +342,7 @@ export default function ProductFormPage() {
       discount_percentage: Number(discount) || 0,
       is_active:           isActive,
       is_new:              isNew,
+      new_since:           newSince,
       category_ids:        categoryIds,
       images: images.map((img, i) => ({
         image_url:     img.image_url.trim(),
@@ -457,11 +461,15 @@ export default function ProductFormPage() {
             <div className="flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3">
               <div>
                 <p className="text-sm font-poppins text-brand-dark">Marcar como Nuevo</p>
-                <p className="text-[11px] font-poppins text-gray-400">Muestra el badge verde "NUEVO" en el card</p>
+                <p className="text-[11px] font-poppins text-gray-400">Muestra el badge verde "NUEVO" en el card (se quita solo a los 15 días)</p>
               </div>
               <button
                 type="button"
-                onClick={() => setIsNew((v) => !v)}
+                onClick={() => setIsNew((v) => {
+                  const next = !v;
+                  setNewSince(next ? new Date().toISOString() : null);
+                  return next;
+                })}
                 className={cn(
                   "w-11 h-6 rounded-full transition-colors relative flex items-center shrink-0",
                   isNew ? "bg-emerald-500" : "bg-gray-200"

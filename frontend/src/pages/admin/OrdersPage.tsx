@@ -261,14 +261,15 @@ export default function OrdersPage() {
   }, [unified, activeTab]);
 
   const filtered = useMemo(() => {
-    const searchQuery = normalizeText(search.trim());
+    const searchQuery  = normalizeText(search.trim());
+    const phoneQuery   = searchQuery.replace(/\D/g, "");
     if (!searchQuery) return byTab;
     return byTab.filter((unifiedItem) => {
       const { data } = unifiedItem;
-      return (
-        normalizeText(data.guest_name ?? "").includes(searchQuery) ||
-        (data.guest_phone ?? "").replace(/\D/g, "").includes(searchQuery.replace(/\D/g, ""))
-      );
+      const nameMatch  = normalizeText(data.guest_name ?? "").includes(searchQuery);
+      const phoneMatch = phoneQuery.length > 0 &&
+        (data.guest_phone ?? "").replace(/\D/g, "").includes(phoneQuery);
+      return nameMatch || phoneMatch;
     });
   }, [byTab, search]);
 

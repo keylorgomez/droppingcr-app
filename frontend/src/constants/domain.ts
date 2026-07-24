@@ -45,6 +45,11 @@ export const SHIPPING_METHOD = {
 
 export type ShippingMethodValue = typeof SHIPPING_METHOD[keyof typeof SHIPPING_METHOD];
 
+// ── Product badges ─────────────────────────────────────────────────────────
+
+/** Days the "NUEVO" badge stays visible after being activated, before it auto-expires. */
+export const NEW_BADGE_DAYS = 15;
+
 // ── Clothing sizes ─────────────────────────────────────────────────────────
 
 export const CLOTHING_SIZES = {

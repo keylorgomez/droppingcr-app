@@ -120,6 +120,7 @@ export default function EditProductPage() {
   const [discount,     setDiscount]     = useState("0");
   const [isActive,     setIsActive]     = useState(true);
   const [isNew,        setIsNew]        = useState(false);
+  const [newSince,     setNewSince]     = useState<string | null>(null);
   const [categoryIds,  setCategoryIds]  = useState<string[]>([]);
   const [variants,     setVariants]     = useState<VariantRowState[]>([]);
   const [images,            setImages]            = useState<ImageRow[]>([]);
@@ -136,6 +137,7 @@ export default function EditProductPage() {
     setDiscount(String(product.discount_percentage));
     setIsActive(product.is_active);
     setIsNew(product.is_new);
+    setNewSince(product.new_since);
     setCategoryIds(product.categories.map((category) => category.id));
     setVariants(
       product.variants.map((productVariant) => ({
@@ -185,6 +187,7 @@ export default function EditProductPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PRODUCT(id!) });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PRODUCTS });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PRODUCTS_WITH_VARIANTS });
       showToast("Producto actualizado.", "success");
       navigate(`/product/${product!.slug}`);
     },
@@ -195,6 +198,7 @@ export default function EditProductPage() {
     mutationFn: () => deleteProduct(id!),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PRODUCTS });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PRODUCTS_WITH_VARIANTS });
       showToast("Producto eliminado.", "success");
       navigate("/");
     },
@@ -216,6 +220,7 @@ export default function EditProductPage() {
       discount_percentage: Number(discount) || 0,
       is_active:           isActive,
       is_new:              isNew,
+      new_since:           newSince,
       category_ids:        categoryIds,
       variants: variants.map((variantRow) => ({
         id:    variantRow.id,
@@ -260,6 +265,7 @@ export default function EditProductPage() {
             setSaleOpen(false);
             queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PRODUCT(id!) });
             queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PRODUCTS });
+            queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PRODUCTS_WITH_VARIANTS });
           }}
         />
       )}
@@ -470,9 +476,12 @@ export default function EditProductPage() {
 
             <Toggle
               label="Marcar como Nuevo"
-              description='Muestra el badge verde "NUEVO" en el card'
+              description='Muestra el badge verde "NUEVO" en el card (se quita solo a los 15 días)'
               checked={isNew}
-              onChange={setIsNew}
+              onChange={(value) => {
+                setIsNew(value);
+                setNewSince(value ? new Date().toISOString() : null);
+              }}
               activeColor="bg-emerald-500"
             />
           </SectionCard>

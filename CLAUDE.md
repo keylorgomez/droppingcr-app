@@ -277,13 +277,15 @@ Dropping CR tiene una estética **streetwear vintage retro** con toques cálidos
 | `gray-600` | Badge "AGOTADO" |
 | `gray-800/75` | Badge "Oculto" (solo admin) |
 
-**Colores especiales (feature FWC26):**
-| Color | Uso |
-|-------|-----|
-| `#F5C400` | Badge "FWC26" (World Cup 2026) |
-| `#E8302A / #1C4F9C / #2B8C3E` | Stripe tricolor en cards de categoría fútbol |
+**Colores del banner de promociones (`PromoBanner`):**
+| Token Tailwind | Hex | Uso |
+|----------------|-----|-----|
+| `promo-bg` | `#0a0707` | Fondo de la tarjeta flotante — el único elemento oscuro fuera del catálogo |
+| `promo-blush` | `#e8776a` | Número de descuento, regla, tag "Liquidación" |
+| `promo-coral` | `#bd5245` | Fondo del botón CTA solo al hacer hover |
+| `red-500` | `#ef4444` | Borde de la tarjeta (mismo rojo semántico que el badge "% OFF") |
 
-**Nunca inventar colores fuera de esta paleta.** Si se necesita un tono nuevo, se agrega al `tailwind.config.js` bajo `brand` antes de usarlo.
+**Nunca inventar colores fuera de esta paleta.** Si se necesita un tono nuevo, se agrega al `tailwind.config.js` bajo `brand` (o el namespace correspondiente) antes de usarlo.
 
 ---
 

@@ -259,6 +259,15 @@ export const es = {
     byProduct:           "Buscar producto…",
   },
 
+  // ── Banner de promociones ──────────────────────────────────────────────────
+  promoBanner: {
+    tag:     "Liquidación",
+    lede:    "Hasta",
+    off:     "Off",
+    subtext: "En chemas, abrigos y más, corré antes de que se agoten.",
+    cta:     "Ver promos",
+  },
+
   // ── Correos electrónicos ───────────────────────────────────────────────────
   email: {
     welcomeSubject:       "¡Bienvenido/a a Dropping CR! 🔥",

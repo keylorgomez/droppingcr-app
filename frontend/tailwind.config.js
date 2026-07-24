@@ -13,6 +13,11 @@ export default {
           accent:  "#a26720",
           dark:    "#000011",
         },
+        promo: {
+          bg:    "#0a0707",
+          blush: "#e8776a",
+          coral: "#bd5245",
+        },
       },
       fontFamily: {
         poppins: ["Poppins", "sans-serif"],
