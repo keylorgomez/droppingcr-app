@@ -250,6 +250,11 @@ export default function ProfilePage() {
             <label className="text-xs font-medium text-gray-500 font-poppins uppercase tracking-wider">
               WhatsApp
             </label>
+            {!user?.whatsapp && (
+              <p className="text-[11px] font-poppins text-brand-primary bg-brand-bg/60 rounded-lg px-3 py-2 mb-1">
+                Agregá tu WhatsApp para que podamos vincular tus pedidos y avisarte por ahí.
+              </p>
+            )}
             <div className="flex items-center rounded-xl border border-gray-200 overflow-hidden
                             focus-within:border-brand-primary focus-within:ring-1
                             focus-within:ring-brand-primary/20 transition">

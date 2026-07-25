@@ -10,8 +10,8 @@ import UserSidebar from "./UserSidebar";
 import AuthModal from "./AuthModal";
 import TypewriterBanner from "./TypewriterBanner";
 
-function getInitials(firstName: string, lastName: string) {
-  return `${firstName[0] ?? ""}${lastName[0] ?? ""}`.toUpperCase();
+function getInitials(firstName: string | null, lastName: string | null) {
+  return `${firstName?.[0] ?? ""}${lastName?.[0] ?? ""}`.toUpperCase();
 }
 
 export default function Header() {

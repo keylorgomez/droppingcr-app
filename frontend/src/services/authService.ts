@@ -1,5 +1,4 @@
 import { supabase } from "../lib/supabaseClient";
-import { sendTransactionalEmail } from "../lib/emailService";
 
 // ── Error mapping ──────────────────────────────────────────────────────────
 
@@ -34,6 +33,19 @@ export async function signIn(email: string, password: string): Promise<void> {
       throw new Error("Demasiados intentos. Espera unos minutos antes de volver a intentarlo.");
     throw new Error(mapAuthError(error.message));
   }
+}
+
+// ── Google OAuth ─────────────────────────────────────────────────────────────
+// Redirects the browser to Google. On return, AuthContext.onAuthStateChange
+// picks up the session and fetchOrCreateProfile builds the profile from Google's
+// metadata (whatsapp stays null → CompleteProfileModal prompts for it).
+
+export async function signInWithGoogle(): Promise<void> {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo: `${window.location.origin}/` },
+  });
+  if (error) throw new Error(mapAuthError(error.message));
 }
 
 // ── Password reset ─────────────────────────────────────────────────────────
@@ -104,7 +116,9 @@ export async function signUp(data: RegisterData): Promise<SignUpResult> {
 
   if (!authData.user) throw new Error(mapAuthError(""));
 
-  // If there's an active session (email confirmation disabled), save profile now
+  // If there's an active session (email confirmation disabled), save profile now.
+  // The welcome email is NOT sent here — AuthContext sends it once via the
+  // welcome_sent flag, uniformly across all signup methods (manual, Google, etc.).
   if (authData.session) {
     await supabase.from("profiles").upsert(
       {
@@ -116,14 +130,7 @@ export async function signUp(data: RegisterData): Promise<SignUpResult> {
       },
       { onConflict: "id" }
     );
-    // Send welcome email — profile created here, so AuthContext won't detect isNew
-    sendTransactionalEmail({
-      type: "welcome",
-      data: { email: data.email, first_name: data.first_name },
-    });
   }
-  // If no session (email confirmation required), the profile will be created
-  // on first login via AuthContext.fetchOrCreateProfile (isNew: true → sends email there)
 
   return { requiresEmailConfirmation: !authData.session };
 }

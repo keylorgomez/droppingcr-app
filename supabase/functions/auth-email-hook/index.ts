@@ -178,11 +178,21 @@ serve(async (req) => {
   const { user, email_data } = payload;
   const { token_hash, redirect_to, email_action_type } = email_data;
 
-  // Supabase verifies the token then redirects to redirect_to (must be allowlisted).
-  const ctaLink =
+  // For password recovery, link straight to the app with the token as a query
+  // param so the token is only consumed when the user submits (via verifyOtp).
+  // This survives email-link prefetching (Gmail/security scanners) that would
+  // otherwise consume a one-time /auth/v1/verify link before the user clicks it.
+  // Other action types keep the standard verify link.
+  const appLink =
+    redirect_to +
+    (redirect_to.includes("?") ? "&" : "?") +
+    `token_hash=${token_hash}&type=${email_action_type}`;
+  const verifyLink =
     `${supabaseUrl}/auth/v1/verify?token=${token_hash}` +
     `&type=${email_action_type}` +
     `&redirect_to=${encodeURIComponent(redirect_to)}`;
+
+  const ctaLink = email_action_type === "recovery" ? appLink : verifyLink;
 
   const { subject, html } = contentFor(email_action_type, ctaLink);
 

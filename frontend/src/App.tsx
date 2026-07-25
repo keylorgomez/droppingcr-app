@@ -20,6 +20,7 @@ import Footer            from "./components/ui/Footer";
 import GATracker         from "./components/GATracker";
 import SplashScreen      from "./components/ui/SplashScreen";
 import CartDrawer        from "./components/ui/CartDrawer";
+import CompleteProfileModal from "./components/ui/CompleteProfileModal";
 import { useAuth }       from "./context/AuthContext";
 import { CartProvider }  from "./context/CartContext";
 
@@ -70,6 +71,7 @@ export default function App() {
             <Footer />
           </div>
           <CartDrawer />
+          <CompleteProfileModal />
         </CartProvider>
       )}
     </>

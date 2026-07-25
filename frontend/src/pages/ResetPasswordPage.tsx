@@ -44,35 +44,35 @@ export default function ResetPasswordPage() {
   const navigate = useNavigate();
   const { showToast } = useToast();
 
+  // The email link lands here as /reset-password?token_hash=...&type=recovery.
+  // We do NOT verify on load — email link scanners (Gmail, security bots) prefetch
+  // the URL, which would consume the one-time token. Instead we verify only when
+  // the user actually submits the new password.
+  const tokenHash = new URLSearchParams(window.location.search).get("token_hash");
+
   const [status, setStatus]     = useState<SessionStatus>("checking");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm]   = useState("");
   const [error, setError]       = useState("");
   const [loading, setLoading]   = useState(false);
 
-  // The reset email link opens here with a recovery token in the URL hash.
-  // supabase-js (detectSessionInUrl) parses it and fires PASSWORD_RECOVERY.
   useEffect(() => {
+    // New flow: token in the query string — show the form, verify on submit.
+    if (tokenHash) { setStatus("ready"); return; }
+
+    // Legacy flow: some links still arrive with a recovery session in the URL hash
+    // (supabase-js detectSessionInUrl parses it and fires PASSWORD_RECOVERY).
     let settled = false;
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "PASSWORD_RECOVERY" || session) {
-        settled = true;
-        setStatus("ready");
-      }
+      if (event === "PASSWORD_RECOVERY" || session) { settled = true; setStatus("ready"); }
     });
-
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) { settled = true; setStatus("ready"); }
     });
-
-    // If no recovery session materializes, the link is expired or already used.
-    const timer = setTimeout(() => {
-      if (!settled) setStatus("invalid");
-    }, 3000);
+    const timer = setTimeout(() => { if (!settled) setStatus("invalid"); }, 3000);
 
     return () => { subscription.unsubscribe(); clearTimeout(timer); };
-  }, []);
+  }, [tokenHash]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -82,6 +82,19 @@ export default function ResetPasswordPage() {
 
     setLoading(true);
     try {
+      // Consume the one-time token now (only on real user action, prefetch-safe),
+      // which establishes the recovery session, then set the new password.
+      if (tokenHash) {
+        const { error: verifyError } = await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: "recovery",
+        });
+        if (verifyError) {
+          setError("Este enlace no es válido o ya expiró. Solicitá uno nuevo.");
+          setLoading(false);
+          return;
+        }
+      }
       await updatePassword(password);
       showToast("Contraseña actualizada. Ya podés usarla para ingresar.", "success");
       navigate("/", { replace: true });

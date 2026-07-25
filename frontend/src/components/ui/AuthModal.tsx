@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff, Loader2, Mail } from "lucide-react";
-import { signIn, signUp, resetPassword } from "../../services/authService";
+import { signIn, signUp, resetPassword, signInWithGoogle } from "../../services/authService";
 import { useToast } from "./Toast";
 import { Dialog, DialogContent } from "./dialog";
 
@@ -86,6 +86,52 @@ function ErrorBanner({ message }: { message: string }) {
   );
 }
 
+function GoogleIcon() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 48 48" aria-hidden="true">
+      <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.3-.4-3.5z"/>
+      <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/>
+      <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2c-2 1.5-4.6 2.4-7.2 2.4-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/>
+      <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2c-.4.4 6.6-4.8 6.6-14.8 0-1.3-.1-2.3-.4-3.5z"/>
+    </svg>
+  );
+}
+
+function GoogleButton({ label }: { label: string }) {
+  const { showToast } = useToast();
+  const [loading, setLoading] = useState(false);
+
+  async function handleClick() {
+    setLoading(true);
+    try {
+      await signInWithGoogle(); // redirects the browser away
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Error con Google.", "error");
+      setLoading(false);
+    }
+  }
+
+  return (
+    <button type="button" onClick={handleClick} disabled={loading}
+            className="w-full py-2.5 rounded-xl border border-gray-200 bg-white text-sm
+                       font-poppins font-medium text-brand-dark flex items-center justify-center gap-2.5
+                       hover:bg-gray-50 transition-colors disabled:opacity-60">
+      {loading ? <Loader2 size={15} className="animate-spin" /> : <GoogleIcon />}
+      {label}
+    </button>
+  );
+}
+
+function OrDivider() {
+  return (
+    <div className="flex items-center gap-3 my-0.5">
+      <span className="h-px flex-1 bg-gray-100" />
+      <span className="text-[10px] uppercase tracking-widest text-gray-300 font-poppins">o</span>
+      <span className="h-px flex-1 bg-gray-100" />
+    </div>
+  );
+}
+
 // ── Login form ─────────────────────────────────────────────────────────────
 
 function LoginForm({ onSwitch, onForgot, onSuccess }: { onSwitch: () => void; onForgot: () => void; onSuccess: () => void }) {
@@ -113,6 +159,8 @@ function LoginForm({ onSwitch, onForgot, onSuccess }: { onSwitch: () => void; on
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <GoogleButton label="Continuar con Google" />
+      <OrDivider />
       <Field label="Correo electrónico" type="email" value={email} onChange={setEmail}
              placeholder="correo@email.com" autoComplete="email" />
       <PasswordField label="Contraseña" value={password} onChange={setPassword}
@@ -239,6 +287,8 @@ function RegisterForm({ onSwitch, onSuccess }: { onSwitch: () => void; onSuccess
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
+      <GoogleButton label="Registrarse con Google" />
+      <OrDivider />
       <div className="grid grid-cols-2 gap-3">
         <Field label="Nombre"   value={firstName} onChange={setFirstName} placeholder="Nombre" />
         <Field label="Apellido" value={lastName}  onChange={setLastName}  placeholder="Apellido" />

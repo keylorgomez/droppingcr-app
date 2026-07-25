@@ -131,6 +131,18 @@ export const es = {
     whatsappPlaceholder: "88887777",
   },
 
+  // ── Completar perfil (WhatsApp) ────────────────────────────────────────────
+  completeProfile: {
+    title:       "Un último paso",
+    subtitle:    "Agregá tu WhatsApp para vincular tus pedidos y que podamos avisarte por ahí.",
+    label:       "WhatsApp",
+    placeholder: "88887777",
+    save:        "Guardar número",
+    skip:        "Ahora no",
+    saved:       "¡Listo! Tu WhatsApp quedó guardado.",
+    invalid:     "Ingresá un número de 8 dígitos.",
+  },
+
   // ── Pedidos ────────────────────────────────────────────────────────────────
   orders: {
     title:                  "Pedidos",
