@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
-import { signIn, signUp } from "../../services/authService";
+import { Eye, EyeOff, Loader2, Mail } from "lucide-react";
+import { signIn, signUp, resetPassword } from "../../services/authService";
 import { useToast } from "./Toast";
 import { Dialog, DialogContent } from "./dialog";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-type FormMode = "login" | "register";
+type FormMode = "login" | "register" | "forgot";
 
 interface AuthModalProps {
   open: boolean;
@@ -88,7 +88,7 @@ function ErrorBanner({ message }: { message: string }) {
 
 // ── Login form ─────────────────────────────────────────────────────────────
 
-function LoginForm({ onSwitch, onSuccess }: { onSwitch: () => void; onSuccess: () => void }) {
+function LoginForm({ onSwitch, onForgot, onSuccess }: { onSwitch: () => void; onForgot: () => void; onSuccess: () => void }) {
   const { showToast } = useToast();
   const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
@@ -117,6 +117,10 @@ function LoginForm({ onSwitch, onSuccess }: { onSwitch: () => void; onSuccess: (
              placeholder="correo@email.com" autoComplete="email" />
       <PasswordField label="Contraseña" value={password} onChange={setPassword}
                      autoComplete="current-password" />
+      <button type="button" onClick={onForgot}
+              className="self-end -mt-1.5 text-xs text-gray-400 font-poppins hover:text-brand-primary transition-colors">
+        ¿Olvidaste tu contraseña?
+      </button>
       {error && <ErrorBanner message={error} />}
       <SubmitButton loading={loading} label="Entrar" />
       <p className="text-xs text-center text-gray-400 font-poppins">
@@ -126,6 +130,68 @@ function LoginForm({ onSwitch, onSuccess }: { onSwitch: () => void; onSuccess: (
           Regístrate
         </button>
       </p>
+    </form>
+  );
+}
+
+// ── Forgot password form ───────────────────────────────────────────────────
+
+function ForgotForm({ onBack }: { onBack: () => void }) {
+  const { showToast } = useToast();
+  const [email, setEmail]     = useState("");
+  const [error, setError]     = useState("");
+  const [loading, setLoading] = useState(false);
+  const [sent, setSent]       = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    try {
+      await resetPassword(email);
+      setSent(true);
+      showToast("Te enviamos un correo para restablecer tu contraseña.", "success");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al enviar el correo.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (sent) {
+    return (
+      <div className="flex flex-col gap-4 text-center">
+        <div className="mx-auto w-12 h-12 rounded-full bg-brand-primary/10 flex items-center justify-center">
+          <Mail size={22} className="text-brand-primary" />
+        </div>
+        <div className="flex flex-col gap-1">
+          <p className="text-sm font-poppins font-medium text-brand-dark">Revisa tu correo</p>
+          <p className="text-xs text-gray-400 font-poppins leading-relaxed">
+            Enviamos un enlace a <span className="font-medium text-brand-dark">{email}</span> para
+            restablecer tu contraseña. Revisa también tu carpeta de spam.
+          </p>
+        </div>
+        <button type="button" onClick={onBack}
+                className="text-xs text-brand-primary font-medium font-poppins hover:underline">
+          Volver a iniciar sesión
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <p className="text-xs text-gray-400 font-poppins text-center leading-relaxed -mt-1">
+        Ingresá tu correo y te enviaremos un enlace para crear una nueva contraseña.
+      </p>
+      <Field label="Correo electrónico" type="email" value={email} onChange={setEmail}
+             placeholder="correo@email.com" autoComplete="email" />
+      {error && <ErrorBanner message={error} />}
+      <SubmitButton loading={loading} label="Enviar enlace" />
+      <button type="button" onClick={onBack}
+              className="text-xs text-center text-gray-400 font-poppins hover:text-brand-primary transition-colors">
+        Volver a iniciar sesión
+      </button>
     </form>
   );
 }
@@ -233,9 +299,15 @@ export default function AuthModal({ open, onClose }: AuthModalProps) {
   const [direction, setDirection] = useState<1 | -1>(1);
 
   function switchTo(next: FormMode) {
-    setDirection(next === "register" ? 1 : -1);
+    // Register/forgot slide in from the right, back to login slides from the left
+    setDirection(next === "login" ? -1 : 1);
     setMode(next);
   }
+
+  const subtitle =
+    mode === "login"    ? "Inicia sesión en tu cuenta"
+    : mode === "register" ? "Crea tu cuenta gratis"
+    : "Restablece tu contraseña";
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
@@ -246,7 +318,7 @@ export default function AuthModal({ open, onClose }: AuthModalProps) {
             Dropping CR
           </span>
           <p className="text-xs text-gray-400 font-poppins mt-0.5">
-            {mode === "login" ? "Inicia sesión en tu cuenta" : "Crea tu cuenta gratis"}
+            {subtitle}
           </p>
         </div>
 
@@ -260,10 +332,19 @@ export default function AuthModal({ open, onClose }: AuthModalProps) {
             exit={direction === 1 ? "exitToLeft" : "exitToRight"}
             transition={{ duration: 0.22, ease: "easeInOut" }}
           >
-            {mode === "login"
-              ? <LoginForm    onSwitch={() => switchTo("register")} onSuccess={onClose} />
-              : <RegisterForm onSwitch={() => switchTo("login")}    onSuccess={onClose} />
-            }
+            {mode === "login"    && (
+              <LoginForm
+                onSwitch={() => switchTo("register")}
+                onForgot={() => switchTo("forgot")}
+                onSuccess={onClose}
+              />
+            )}
+            {mode === "register" && (
+              <RegisterForm onSwitch={() => switchTo("login")} onSuccess={onClose} />
+            )}
+            {mode === "forgot"   && (
+              <ForgotForm onBack={() => switchTo("login")} />
+            )}
           </motion.div>
         </AnimatePresence>
 

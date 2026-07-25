@@ -5,6 +5,7 @@ import ProductDetailPage from "./pages/ProductDetailPage";
 import ProfilePage       from "./pages/ProfilePage";
 import MyOrdersPage      from "./pages/MyOrdersPage";
 import CartPage          from "./pages/CartPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import ProductFormPage   from "./pages/admin/ProductFormPage";
 import EditProductPage   from "./pages/admin/EditProductPage";
 import CategoriesPage    from "./pages/admin/CategoriesPage";
@@ -51,6 +52,7 @@ export default function App() {
                 <Route path="/carrito"                 element={<CartPage />} />
                 <Route path="/profile"                 element={<ProfilePage />} />
                 <Route path="/my-orders"               element={<MyOrdersPage />} />
+                <Route path="/reset-password"          element={<ResetPasswordPage />} />
 
                 {/* Admin-only routes */}
                 <Route path="/admin/products/new"      element={<AdminRoute><ProductFormPage /></AdminRoute>} />

@@ -36,6 +36,37 @@ export async function signIn(email: string, password: string): Promise<void> {
   }
 }
 
+// ── Password reset ─────────────────────────────────────────────────────────
+// Sends the recovery email. Supabase redirects back to /reset-password where
+// the client auto-establishes a recovery session (detectSessionInUrl).
+
+export async function resetPassword(email: string): Promise<void> {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/reset-password`,
+  });
+
+  if (error) {
+    const status = (error as { status?: number }).status;
+    if (status === 429)
+      throw new Error("Demasiados intentos. Espera unos minutos antes de volver a intentarlo.");
+    throw new Error(mapAuthError(error.message));
+  }
+}
+
+// ── Update password ────────────────────────────────────────────────────────
+// Called from the reset landing page once the recovery session is active.
+
+export async function updatePassword(newPassword: string): Promise<void> {
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+
+  if (error) {
+    const status = (error as { status?: number }).status;
+    if (status === 429)
+      throw new Error("Demasiados intentos. Espera unos minutos antes de volver a intentarlo.");
+    throw new Error(mapAuthError(error.message));
+  }
+}
+
 // ── Sign up ────────────────────────────────────────────────────────────────
 
 interface RegisterData {
