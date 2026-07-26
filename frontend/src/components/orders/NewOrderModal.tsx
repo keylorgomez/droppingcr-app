@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   X, Package, Loader2, ShoppingBag,
@@ -14,6 +14,7 @@ import {
   type ShippingMethod,
 } from "../../services/salesService";
 import { recordManualOrder } from "../../services/ordersService";
+import { lookupCustomerByPhone } from "../../services/customerService";
 import {
   getProductsWithVariants,
   type ProductWithVariants,
@@ -61,6 +62,8 @@ export default function NewOrderModal({ onClose }: NewOrderModalProps) {
   // Customer info
   const [guestName,  setGuestName]  = useState("");
   const [guestPhone, setGuestPhone] = useState("");
+  const [customerFound, setCustomerFound] = useState(false);
+  const autoFilledRef = useRef(false);
 
   // Load draft from sessionStorage (set by EditProductPage for add-more-products flow)
   useEffect(() => {
@@ -74,6 +77,23 @@ export default function NewOrderModal({ onClose }: NewOrderModalProps) {
       sessionStorage.removeItem("order_draft");
     }
   }, []);
+
+  // Auto-fill the name from a matching profile / past sale when the phone is complete.
+  useEffect(() => {
+    const digits = guestPhone.replace(/\D/g, "");
+    if (digits.length !== 8) { setCustomerFound(false); return; }
+    let cancelled = false;
+    lookupCustomerByPhone(digits).then((name) => {
+      if (cancelled) return;
+      if (!name) { setCustomerFound(false); return; }
+      setCustomerFound(true);
+      // Only fill when the field is empty or was previously auto-filled — never
+      // clobber a name the admin typed by hand.
+      setGuestName((prev) => (prev.trim() === "" || autoFilledRef.current) ? name : prev);
+      autoFilledRef.current = true;
+    });
+    return () => { cancelled = true; };
+  }, [guestPhone]);
 
   // Cart state
   const [cartItems,     setCartItems]     = useState<CartItem[]>([]);
@@ -223,25 +243,36 @@ export default function NewOrderModal({ onClose }: NewOrderModalProps) {
         {/* Body */}
         <div className="overflow-y-auto flex flex-col gap-5 px-5 py-5">
 
-          {/* 1. Cliente */}
+          {/* 1. Cliente — WhatsApp primero para poder autocompletar el nombre */}
           <section className="flex flex-col gap-3">
             <p className="text-xs font-medium text-gray-500 font-poppins uppercase tracking-wider">
               Cliente
             </p>
-            <input
-              type="text"
-              value={guestName}
-              onChange={(e) => setGuestName(e.target.value)}
-              placeholder="Nombre del cliente"
-              className={inputCls}
-            />
-            <input
-              type="text"
-              value={guestPhone}
-              onChange={(e) => setGuestPhone(e.target.value)}
-              placeholder="WhatsApp (ej: 88887777)"
-              className={inputCls}
-            />
+            <div className="flex items-center rounded-xl border border-gray-200 overflow-hidden
+                            focus-within:border-brand-primary focus-within:ring-1 focus-within:ring-brand-primary/20 transition">
+              <span className="px-3 py-2.5 text-sm font-poppins text-gray-400 bg-gray-50
+                               border-r border-gray-200 shrink-0 select-none">+506</span>
+              <input
+                type="tel"
+                value={guestPhone}
+                onChange={(e) => setGuestPhone(e.target.value.replace(/\D/g, "").slice(0, 8))}
+                placeholder="WhatsApp (ej: 88887777)"
+                maxLength={8}
+                className="flex-1 px-3 py-2.5 text-sm font-poppins text-brand-dark outline-none bg-white"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <input
+                type="text"
+                value={guestName}
+                onChange={(e) => { autoFilledRef.current = false; setGuestName(e.target.value); }}
+                placeholder="Nombre del cliente"
+                className={inputCls}
+              />
+              {customerFound && (
+                <span className="text-[11px] font-poppins text-emerald-600">✓ Cliente encontrado</span>
+              )}
+            </div>
           </section>
 
           {/* 2. Productos */}

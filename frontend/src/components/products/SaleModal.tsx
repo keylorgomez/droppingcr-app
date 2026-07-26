@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import { X, Check, Loader2, ShoppingCart } from "lucide-react";
@@ -18,6 +18,7 @@ import {
 import { useToast } from "../ui/Toast";
 import { cn } from "../../lib/utils";
 import { type ProductVariant } from "../../services/productService";
+import { lookupCustomerByPhone } from "../../services/customerService";
 
 // ── Shared style ───────────────────────────────────────────────────────────
 
@@ -98,6 +99,8 @@ export default function SaleModal({
   const [priceSold,         setPriceSold]         = useState(String(effectivePrice));
   const [guestName,         setGuestName]         = useState("");
   const [guestPhone,        setGuestPhone]        = useState("");
+  const [customerFound,     setCustomerFound]     = useState(false);
+  const autoFilledRef = useRef(false);
   const [isPagos,           setIsPagos]           = useState(false);
   const [initialPayment,    setInitialPayment]    = useState("");
   const [note,              setNote]              = useState("");
@@ -113,6 +116,20 @@ export default function SaleModal({
   const [canton,        setCanton]        = useState("");
   const [district,      setDistrict]      = useState("");
   const [carrierChoice, setCarrierChoice] = useState<"mensajero" | "correos">("mensajero");
+
+  // Auto-fill the name from a matching profile / past sale when the phone is complete.
+  useEffect(() => {
+    if (guestPhone.length !== 8) { setCustomerFound(false); return; }
+    let cancelled = false;
+    lookupCustomerByPhone(guestPhone).then((name) => {
+      if (cancelled) return;
+      if (!name) { setCustomerFound(false); return; }
+      setCustomerFound(true);
+      setGuestName((prev) => (prev.trim() === "" || autoFilledRef.current) ? name : prev);
+      autoFilledRef.current = true;
+    });
+    return () => { cancelled = true; };
+  }, [guestPhone]);
 
   const selectedVariant    = availableVariants.find((variant) => variant.id === variantId);
   const priceNum           = Number(priceSold) || 0;
@@ -586,18 +603,6 @@ export default function SaleModal({
               <div className="flex flex-col gap-3">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-medium text-gray-500 font-poppins uppercase tracking-wider">
-                    Nombre
-                  </label>
-                  <input
-                    type="text"
-                    value={guestName}
-                    onChange={(e) => setGuestName(e.target.value)}
-                    placeholder="Ej: Juan Pérez"
-                    className={inputCls}
-                  />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-gray-500 font-poppins uppercase tracking-wider">
                     WhatsApp
                   </label>
                   <div className="flex items-center rounded-xl border border-gray-200 overflow-hidden
@@ -613,6 +618,21 @@ export default function SaleModal({
                       className="flex-1 px-3 py-2.5 text-sm font-poppins text-brand-dark outline-none bg-white"
                     />
                   </div>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-gray-500 font-poppins uppercase tracking-wider">
+                    Nombre
+                  </label>
+                  <input
+                    type="text"
+                    value={guestName}
+                    onChange={(e) => { autoFilledRef.current = false; setGuestName(e.target.value); }}
+                    placeholder="Ej: Juan Pérez"
+                    className={inputCls}
+                  />
+                  {customerFound && (
+                    <span className="text-[11px] font-poppins text-emerald-600">✓ Cliente encontrado</span>
+                  )}
                 </div>
               </div>
             </div>
