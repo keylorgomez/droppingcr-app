@@ -336,7 +336,7 @@ código nuevo**.
 
 | Clase | Equivale a |
 |-------|-----------|
-| `.type-display` | `font-display uppercase leading-[0.86] tracking-display` |
+| `.type-display` | `font-display uppercase leading-[1.12] tracking-display` |
 | `.type-eyebrow` | `font-display uppercase text-[11px] tracking-widest2` |
 | `.type-accent` | `font-serif italic tracking-tight` |
 | `.btn-ink` | Botón primario: fondo `ink-900`, texto `bone`, caja alta |
@@ -347,6 +347,12 @@ código nuevo**.
 
 **Los títulos display escalan con `clamp()`**, no con breakpoints:
 `text-[clamp(2rem,6vw,3.75rem)]`. Anton no tiene pesos: no aplicarle `font-bold`.
+
+**No bajar el interlineado de Anton por debajo de 1.12.** Su tinta desborda la caja
+tipográfica: 0.875em en mayúsculas normales y 1.101em cuando hay tilde. Cualquier valor
+menor hace que un título de dos renglones se pise, y en español las mayúsculas llevan
+tilde. El mismo desborde afecta a los dígitos (0.882em), que es lo que recortaba el
+número del banner de promociones.
 
 Los `h1-h6` ya **no** son italic por defecto. La cursiva es exclusiva de `font-serif`.
 

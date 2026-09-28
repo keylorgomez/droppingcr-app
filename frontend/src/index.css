@@ -50,9 +50,15 @@
 }
 
 @layer components {
-  /* Display condensado en caja alta — hero, títulos de sección, números */
+  /* Display condensado en caja alta — hero, títulos de sección, números.
+     El interlineado no se elige a ojo: Anton pinta 0.875em de tinta en
+     mayúsculas normales y la tilde sube hasta 1.101em sobre la línea base
+     (medido con TextMetrics). Con menos de eso, un título de dos renglones se
+     pisa — y en español las tildes en caja alta son la norma, no la excepción.
+     1.12 despeja el caso común (tilde debajo, renglón plano encima = 1.109)
+     sin perder el bloque compacto; 1.2 ya se veía suelto. */
   .type-display {
-    @apply font-display uppercase leading-[0.86] tracking-display;
+    @apply font-display uppercase leading-[1.12] tracking-display;
   }
 
   /* Eyebrow: la etiqueta chiquita que abre cada sección */
