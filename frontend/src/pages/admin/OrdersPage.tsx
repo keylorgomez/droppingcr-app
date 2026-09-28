@@ -60,32 +60,32 @@ function SaleRow({ sale, onClick }: { sale: AdminSale; onClick: () => void }) {
       type="button"
       onClick={onClick}
       whileHover={{ backgroundColor: "#fafafa" }}
-      className="w-full flex items-center gap-3 px-4 py-3.5 border-b border-gray-50
+      className="w-full flex items-center gap-3 px-4 py-3.5 border-b border-ink-50
                  text-left transition-colors last:border-b-0"
     >
-      <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 shrink-0">
+      <div className="w-12 h-12 rounded-xl overflow-hidden bg-ink-50 border border-ink-100 shrink-0">
         {sale.image_url
           ? <img src={sale.image_url} alt={sale.product_name} className="w-full h-full object-cover" />
-          : <Package size={18} className="m-auto mt-3 text-gray-200" />
+          : <Package size={18} className="m-auto mt-3 text-ink-200" />
         }
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className="font-poppins font-semibold text-sm italic text-brand-primary truncate">
+        <p className="font-semibold text-sm italic text-brand-primary truncate">
           {sale.product_name}
         </p>
-        <p className="font-poppins text-xs text-gray-400 truncate mt-0.5">
+        <p className="text-xs text-ink-400 truncate mt-0.5">
           {sale.guest_name ?? "Cliente sin nombre"}{" "}
           {sale.guest_phone && (
-            <span className="text-gray-300">· {sale.guest_phone}</span>
+            <span className="text-ink-300">· {sale.guest_phone}</span>
           )}
         </p>
         <div className="flex items-center gap-1.5 mt-0.5">
           {isPersonal
-            ? <MapPin size={10} className="text-gray-300 shrink-0" />
-            : <Truck  size={10} className="text-gray-300 shrink-0" />
+            ? <MapPin size={10} className="text-ink-300 shrink-0" />
+            : <Truck  size={10} className="text-ink-300 shrink-0" />
           }
-          <span className="text-[10px] font-poppins text-gray-300 truncate">
+          <span className="text-[10px] text-ink-300 truncate">
             {shippingLabel(sale.shipping_method)}
           </span>
         </div>
@@ -93,18 +93,18 @@ function SaleRow({ sale, onClick }: { sale: AdminSale; onClick: () => void }) {
 
       <div className="flex flex-col items-end gap-1.5 shrink-0">
         <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5
-                          rounded-full font-poppins ${statusMeta.bgCls}`}>
+                          rounded-full ${statusMeta.bgCls}`}>
           {statusMeta.label}
         </span>
-        <span className="text-xs font-poppins font-semibold text-brand-dark">
+        <span className="text-xs font-semibold text-brand-dark">
           ₡{total.toLocaleString("en-US")}
         </span>
-        <span className="text-[10px] font-poppins text-gray-300">
+        <span className="text-[10px] text-ink-300">
           {formatDate(sale.sold_at)}
         </span>
       </div>
 
-      <ChevronRight size={14} className="text-gray-200 shrink-0" />
+      <ChevronRight size={14} className="text-ink-200 shrink-0" />
     </motion.button>
   );
 }
@@ -125,25 +125,25 @@ function OrderRow({ order, onClick }: { order: AdminOrder; onClick: () => void }
       type="button"
       onClick={onClick}
       whileHover={{ backgroundColor: "#fafafa" }}
-      className="w-full flex items-center gap-3 px-4 py-3.5 border-b border-gray-50
+      className="w-full flex items-center gap-3 px-4 py-3.5 border-b border-ink-50
                  text-left transition-colors last:border-b-0"
     >
       {isMulti ? (
         <div className="grid grid-cols-2 gap-0.5 w-12 h-12 shrink-0">
           {order.items.slice(0, 4).map((item, index) => (
-            <div key={index} className="rounded-md overflow-hidden bg-gray-50 border border-gray-100">
+            <div key={index} className="rounded-md overflow-hidden bg-ink-50 border border-ink-100">
               {item.image_url
                 ? <img src={item.image_url} alt={item.product_name} className="w-full h-full object-cover" />
-                : <Package size={8} className="m-auto text-gray-200" />
+                : <Package size={8} className="m-auto text-ink-200" />
               }
             </div>
           ))}
         </div>
       ) : (
-        <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 shrink-0">
+        <div className="w-12 h-12 rounded-xl overflow-hidden bg-ink-50 border border-ink-100 shrink-0">
           {firstItem?.image_url
             ? <img src={firstItem.image_url} alt={label} className="w-full h-full object-cover" />
-            : <Package size={18} className="m-auto mt-3 text-gray-200" />
+            : <Package size={18} className="m-auto mt-3 text-ink-200" />
           }
         </div>
       )}
@@ -152,34 +152,34 @@ function OrderRow({ order, onClick }: { order: AdminOrder; onClick: () => void }
         {isMulti ? (
           <div className="flex flex-col gap-0.5 mb-0.5">
             {order.items.map((item, index) => (
-              <p key={index} className="font-poppins font-semibold text-xs italic text-brand-primary truncate leading-snug">
+              <p key={index} className="font-semibold text-xs italic text-brand-primary truncate leading-snug">
                 {item.product_name}
-                <span className="font-normal text-gray-400 not-italic ml-1">{item.variant_size}</span>
+                <span className="font-normal text-ink-400 not-italic ml-1">{item.variant_size}</span>
                 {item.quantity > 1 && (
-                  <span className="font-normal text-gray-300 not-italic ml-1">×{item.quantity}</span>
+                  <span className="font-normal text-ink-300 not-italic ml-1">×{item.quantity}</span>
                 )}
               </p>
             ))}
           </div>
         ) : (
           <div className="flex items-center gap-1.5 mb-0.5">
-            <p className="font-poppins font-semibold text-sm italic text-brand-primary truncate">
+            <p className="font-semibold text-sm italic text-brand-primary truncate">
               {label}
             </p>
           </div>
         )}
-        <p className="font-poppins text-xs text-gray-400 truncate">
+        <p className="text-xs text-ink-400 truncate">
           {order.guest_name ?? "Cliente sin nombre"}{" "}
           {order.guest_phone && (
-            <span className="text-gray-300">· {order.guest_phone}</span>
+            <span className="text-ink-300">· {order.guest_phone}</span>
           )}
         </p>
         <div className="flex items-center gap-1.5 mt-0.5">
           {isPersonal
-            ? <MapPin size={10} className="text-gray-300 shrink-0" />
-            : <Truck  size={10} className="text-gray-300 shrink-0" />
+            ? <MapPin size={10} className="text-ink-300 shrink-0" />
+            : <Truck  size={10} className="text-ink-300 shrink-0" />
           }
-          <span className="text-[10px] font-poppins text-gray-300 truncate">
+          <span className="text-[10px] text-ink-300 truncate">
             {shippingLabel(order.shipping_method)}
           </span>
         </div>
@@ -187,18 +187,18 @@ function OrderRow({ order, onClick }: { order: AdminOrder; onClick: () => void }
 
       <div className="flex flex-col items-end gap-1.5 shrink-0">
         <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5
-                          rounded-full font-poppins ${statusMeta.bgCls}`}>
+                          rounded-full ${statusMeta.bgCls}`}>
           {statusMeta.label}
         </span>
-        <span className="text-xs font-poppins font-semibold text-brand-dark">
+        <span className="text-xs font-semibold text-brand-dark">
           ₡{order.order_total.toLocaleString("en-US")}
         </span>
-        <span className="text-[10px] font-poppins text-gray-300">
+        <span className="text-[10px] text-ink-300">
           {formatDate(order.sold_at)}
         </span>
       </div>
 
-      <ChevronRight size={14} className="text-gray-200 shrink-0" />
+      <ChevronRight size={14} className="text-ink-200 shrink-0" />
     </motion.button>
   );
 }
@@ -298,17 +298,17 @@ export default function OrdersPage() {
           <div>
             <button
               onClick={() => navigate("/")}
-              className="flex items-center gap-1.5 text-sm font-poppins text-gray-400
+              className="flex items-center gap-1.5 text-sm text-ink-400
                          hover:text-brand-primary transition-colors mb-3"
             >
               <ArrowLeft size={15} strokeWidth={2} />
               Volver al catálogo
             </button>
-            <h1 className="font-poppins font-semibold italic text-brand-primary text-2xl">
+            <h1 className="font-semibold text-brand-primary text-2xl">
               Gestión de pedidos
             </h1>
             {!isLoading && (
-              <p className="font-poppins text-xs text-gray-400 mt-1">
+              <p className="text-xs text-ink-400 mt-1">
                 {unified.length} {unified.length === 1 ? "pedido" : "pedidos"} en total
               </p>
             )}
@@ -317,7 +317,7 @@ export default function OrdersPage() {
             type="button"
             onClick={() => setShowNewModal(true)}
             className="mt-8 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-primary text-white
-                       text-sm font-poppins font-medium hover:bg-[#7a3e18] transition-colors shrink-0"
+                       text-sm font-medium hover:bg-[#2e2e2e] transition-colors shrink-0"
           >
             <Plus size={15} strokeWidth={2.5} />
             Nueva venta
@@ -325,7 +325,7 @@ export default function OrdersPage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 bg-gray-100 p-1 rounded-xl mb-4 overflow-x-auto scrollbar-none">
+        <div className="flex gap-1 bg-ink-100 p-1 rounded-xl mb-4 overflow-x-auto scrollbar-none">
           {TABS.map((tab) => {
             const count = tabCount(tab.id);
             return (
@@ -334,11 +334,11 @@ export default function OrdersPage() {
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  "flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-poppins font-medium",
+                  "flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium",
                   "whitespace-nowrap transition-all shrink-0",
                   activeTab === tab.id
                     ? "bg-white text-brand-primary shadow-sm"
-                    : "text-gray-500 hover:text-gray-700"
+                    : "text-ink-500 hover:text-ink-700"
                 )}
               >
                 {tab.label}
@@ -347,7 +347,7 @@ export default function OrdersPage() {
                     "inline-flex items-center justify-center w-4 h-4 rounded-full text-[10px] font-bold",
                     activeTab === tab.id
                       ? "bg-brand-primary text-white"
-                      : "bg-gray-300 text-white"
+                      : "bg-ink-300 text-white"
                   )}>
                     {count}
                   </span>
@@ -359,14 +359,14 @@ export default function OrdersPage() {
 
         {/* Search */}
         <div className="relative mb-4">
-          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none" />
+          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-300 pointer-events-none" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar por nombre o WhatsApp…"
-            className="w-full rounded-xl border border-gray-200 pl-9 pr-9 py-2.5 text-sm
-                       font-poppins text-brand-dark placeholder:text-gray-300 outline-none
+            className="w-full rounded-xl border border-ink-200 pl-9 pr-9 py-2.5 text-sm
+                       text-brand-dark placeholder:text-ink-300 outline-none
                        focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20
                        transition bg-white"
           />
@@ -374,7 +374,7 @@ export default function OrdersPage() {
             <button
               type="button"
               onClick={() => setSearch("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-300 hover:text-ink-500"
             >
               <X size={14} />
             </button>
@@ -383,24 +383,24 @@ export default function OrdersPage() {
 
         {/* Error */}
         {isError && (
-          <p className="text-center font-poppins text-sm text-red-400 py-10">
+          <p className="text-center text-sm text-red-400 py-10">
             No se pudieron cargar los pedidos. Intenta de nuevo.
           </p>
         )}
 
         {/* Skeleton */}
         {isLoading && (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-2xl border border-ink-100 shadow-sm overflow-hidden">
             {Array.from({ length: 5 }).map((_, index) => (
-              <div key={index} className="flex gap-3 px-4 py-3.5 border-b border-gray-50 last:border-b-0 animate-pulse">
-                <div className="w-12 h-12 rounded-xl bg-gray-100 shrink-0" />
+              <div key={index} className="flex gap-3 px-4 py-3.5 border-b border-ink-50 last:border-b-0 animate-pulse">
+                <div className="w-12 h-12 rounded-xl bg-ink-100 shrink-0" />
                 <div className="flex-1 flex flex-col gap-2 justify-center">
-                  <div className="h-3 bg-gray-100 rounded w-3/4" />
-                  <div className="h-3 bg-gray-100 rounded w-1/2" />
+                  <div className="h-3 bg-ink-100 rounded w-3/4" />
+                  <div className="h-3 bg-ink-100 rounded w-1/2" />
                 </div>
                 <div className="flex flex-col gap-2 items-end">
-                  <div className="h-4 bg-gray-100 rounded w-16" />
-                  <div className="h-3 bg-gray-100 rounded w-12" />
+                  <div className="h-4 bg-ink-100 rounded w-16" />
+                  <div className="h-3 bg-ink-100 rounded w-12" />
                 </div>
               </div>
             ))}
@@ -409,9 +409,9 @@ export default function OrdersPage() {
 
         {/* Empty */}
         {!isLoading && !isError && filtered.length === 0 && (
-          <div className="flex flex-col items-center gap-3 py-20 text-gray-300">
+          <div className="flex flex-col items-center gap-3 py-20 text-ink-300">
             <Package size={40} strokeWidth={1.2} />
-            <p className="font-poppins text-sm text-gray-400">
+            <p className="text-sm text-ink-400">
               {search ? "No hay pedidos con ese criterio." : "No hay pedidos en este estado."}
             </p>
           </div>
@@ -419,7 +419,7 @@ export default function OrdersPage() {
 
         {/* List */}
         {!isLoading && filtered.length > 0 && (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-2xl border border-ink-100 shadow-sm overflow-hidden">
             {filtered.map((unifiedItem) =>
               unifiedItem.kind === "sale" ? (
                 <SaleRow

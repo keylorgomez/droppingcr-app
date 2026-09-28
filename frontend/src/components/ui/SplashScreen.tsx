@@ -1,29 +1,31 @@
 import { motion } from "framer-motion";
+import Logo from "./Logo";
 
 export default function SplashScreen() {
   return (
     <motion.div
-      className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-white"
+      className="fixed inset-0 z-[9999] pointer-events-none flex flex-col items-center justify-center bg-ink-950 grain"
       initial={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.4, ease: "easeOut" }}
+      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
     >
-      {/* Logo */}
-      <motion.img
-        src="/droppingCR.png"
-        alt="Dropping CR"
-        className="w-24 h-24 object-contain mb-6"
-        initial={{ opacity: 0, scale: 0.85 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.4, ease: "easeOut" }}
-      />
-
-      {/* Spinner */}
       <motion.div
-        className="w-6 h-6 rounded-full border-2 border-gray-200 border-t-brand-primary"
-        animate={{ rotate: 360 }}
-        transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}
-      />
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+      >
+        <Logo className="w-[62vw] max-w-[380px] h-auto text-bone" />
+      </motion.div>
+
+      {/* Barra de carga: lee como intención, no como espera */}
+      <div className="w-[62vw] max-w-[380px] h-px bg-bone/15 mt-8 overflow-hidden">
+        <motion.div
+          className="h-full bg-bone"
+          initial={{ x: "-100%" }}
+          animate={{ x: "100%" }}
+          transition={{ duration: 1.1, repeat: Infinity, ease: "easeInOut" }}
+        />
+      </div>
     </motion.div>
   );
 }

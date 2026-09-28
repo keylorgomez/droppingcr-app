@@ -78,7 +78,7 @@ export function OrderDetailSheet({ order, onClose }: { order: UserOrder; onClose
 
       {/* Sheet */}
       <motion.div
-        className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl
+        className="fixed bottom-0 left-0 right-0 z-50 bg-bone rounded-t-panel
                    max-h-[90dvh] flex flex-col shadow-2xl"
         initial={{ y: "100%" }}
         animate={{ y: 0 }}
@@ -87,24 +87,24 @@ export function OrderDetailSheet({ order, onClose }: { order: UserOrder; onClose
       >
         {/* Drag handle */}
         <div className="flex justify-center pt-3 pb-1 shrink-0">
-          <div className="w-10 h-1 rounded-full bg-gray-200" />
+          <div className="w-10 h-1 rounded-full bg-ink-200" />
         </div>
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3 shrink-0">
           <div>
             <span className={`text-[10px] font-bold uppercase tracking-wider
-                              px-2.5 py-1 rounded-full font-poppins ${status.bgCls}`}>
+                              px-2.5 py-1 rounded-full ${status.bgCls}`}>
               {status.label}
             </span>
-            <p className="font-poppins text-xs text-gray-400 mt-1.5">{formatDate(order.sold_at)}</p>
+            <p className="text-xs text-ink-400 mt-1.5">{formatDate(order.sold_at)}</p>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center
-                       hover:bg-gray-200 transition-colors"
+            className="w-8 h-8 rounded-full bg-ink-100 flex items-center justify-center
+                       hover:bg-ink-200 transition-colors"
           >
-            <X size={15} className="text-gray-500" />
+            <X size={15} className="text-ink-500" />
           </button>
         </div>
 
@@ -114,7 +114,7 @@ export function OrderDetailSheet({ order, onClose }: { order: UserOrder; onClose
           {/* Single-item: large image */}
           {!isMulti && (
             <div
-              className="mx-5 rounded-2xl overflow-hidden bg-gray-50 mb-4
+              className="mx-5 rounded-btn overflow-hidden bg-ink-50 mb-4
                          aspect-square max-h-[60vw] md:max-h-64 cursor-zoom-in"
               onClick={() => order.image_url && setLightbox({ src: order.image_url, alt: order.product_name })}
             >
@@ -122,7 +122,7 @@ export function OrderDetailSheet({ order, onClose }: { order: UserOrder; onClose
                 ? <img src={cloudinaryUrl(order.image_url, "full")} alt={order.product_name}
                        className="w-full h-full object-cover" />
                 : <div className="w-full h-full flex items-center justify-center">
-                    <Package size={48} className="text-gray-200" strokeWidth={1.2} />
+                    <Package size={48} className="text-ink-200" strokeWidth={1.2} />
                   </div>
               }
             </div>
@@ -131,13 +131,13 @@ export function OrderDetailSheet({ order, onClose }: { order: UserOrder; onClose
           {/* Single-item: product info */}
           {!isMulti && (
             <div className="px-5 mb-4">
-              <p className="font-poppins font-bold text-lg italic text-brand-primary leading-snug">
+              <p className="type-display text-xl text-ink-900 leading-none">
                 {order.product_name}
               </p>
-              <p className="font-poppins text-sm text-gray-400 mt-1">
+              <p className="text-sm text-ink-400 mt-1">
                 Talla {order.variant_size}
               </p>
-              <p className="font-poppins text-lg font-bold text-brand-dark mt-2">
+              <p className="text-lg font-bold text-brand-dark mt-2">
                 {fmt(order.sale_price)}
               </p>
             </div>
@@ -146,36 +146,36 @@ export function OrderDetailSheet({ order, onClose }: { order: UserOrder; onClose
           {/* Multi-item: items list with large images */}
           {isMulti && (
             <div className="px-5 mb-4">
-              <p className="font-poppins text-[11px] font-semibold uppercase tracking-widest
-                             text-gray-400 mb-3">
+              <p className="text-[11px] font-semibold uppercase tracking-widest
+                             text-ink-400 mb-3">
                 Productos
               </p>
               <div className="flex flex-col gap-3">
                 {order.items!.map((item, i) => (
                   <div key={i} className="flex gap-3 items-center">
                     <div
-                      className="w-36 h-36 sm:w-28 sm:h-28 md:w-24 md:h-24 rounded-xl overflow-hidden bg-gray-50
-                                 border border-gray-100 shrink-0 cursor-zoom-in"
+                      className="w-36 h-36 sm:w-28 sm:h-28 md:w-24 md:h-24 rounded-btn overflow-hidden bg-ink-50
+                                 border border-ink-100 shrink-0 cursor-zoom-in"
                       onClick={() => item.image_url && setLightbox({ src: item.image_url, alt: item.product_name })}
                     >
                       {item.image_url
                         ? <img src={cloudinaryUrl(item.image_url, "medium")} alt={item.product_name}
                                className="w-full h-full object-cover" loading="lazy" />
                         : <div className="w-full h-full flex items-center justify-center">
-                            <Package size={22} className="text-gray-200" strokeWidth={1.3} />
+                            <Package size={22} className="text-ink-200" strokeWidth={1.3} />
                           </div>
                       }
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-poppins font-semibold text-sm italic text-brand-primary
+                      <p className="text-[13px] text-ink-900
                                     leading-snug line-clamp-2">
                         {item.product_name}
                       </p>
-                      <p className="font-poppins text-xs text-gray-400 mt-0.5">
+                      <p className="text-xs text-ink-400 mt-0.5">
                         Talla {item.variant_size}
                         {item.quantity > 1 && <span className="ml-1">· ×{item.quantity}</span>}
                       </p>
-                      <p className="font-poppins text-sm font-semibold text-brand-dark mt-1">
+                      <p className="text-sm font-semibold text-brand-dark mt-1">
                         {fmt(item.sale_price * item.quantity)}
                       </p>
                     </div>
@@ -186,17 +186,17 @@ export function OrderDetailSheet({ order, onClose }: { order: UserOrder; onClose
           )}
 
           {/* Shipping info */}
-          <div className="mx-5 mb-4 rounded-2xl bg-gray-50 px-4 py-3 flex items-center gap-2">
+          <div className="mx-5 mb-4 rounded-btn bg-ink-50 px-4 py-3 flex items-center gap-2">
             {isPersonal
-              ? <MapPin size={14} className="text-gray-400 shrink-0" />
-              : <Truck  size={14} className="text-gray-400 shrink-0" />
+              ? <MapPin size={14} className="text-ink-400 shrink-0" />
+              : <Truck  size={14} className="text-ink-400 shrink-0" />
             }
             <div>
-              <p className="font-poppins text-xs font-medium text-gray-600">
+              <p className="text-xs font-medium text-ink-600">
                 {shippingLabel(order.shipping_method)}
               </p>
               {order.shipping_cost > 0 && (
-                <p className="font-poppins text-[11px] text-gray-400">
+                <p className="text-[11px] text-ink-400">
                   {fmt(order.shipping_cost)} de envío
                 </p>
               )}
@@ -204,64 +204,64 @@ export function OrderDetailSheet({ order, onClose }: { order: UserOrder; onClose
           </div>
 
           {/* Payment summary */}
-          <div className="mx-5 mb-4 rounded-2xl border border-gray-100 overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-50">
-              <p className="font-poppins text-[11px] font-semibold uppercase tracking-widest text-gray-400">
+          <div className="mx-5 mb-4 rounded-btn border border-ink-100 overflow-hidden">
+            <div className="px-4 py-3 border-b border-ink-50">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-ink-400">
                 Pago
               </p>
             </div>
 
             {isMulti && order.items!.map((item, i) => (
-              <div key={i} className="flex justify-between px-4 py-2.5 border-b border-gray-50">
-                <p className="font-poppins text-xs text-gray-500 truncate mr-2">
+              <div key={i} className="flex justify-between px-4 py-2.5 border-b border-ink-50">
+                <p className="text-xs text-ink-500 truncate mr-2">
                   {item.product_name}
-                  {item.quantity > 1 && <span className="text-gray-300"> ×{item.quantity}</span>}
+                  {item.quantity > 1 && <span className="text-ink-300"> ×{item.quantity}</span>}
                 </p>
-                <p className="font-poppins text-xs text-gray-500 shrink-0">
+                <p className="text-xs text-ink-500 shrink-0">
                   {fmt(item.sale_price * item.quantity)}
                 </p>
               </div>
             ))}
 
             {order.shipping_cost > 0 && (
-              <div className="flex justify-between px-4 py-2.5 border-b border-gray-50">
-                <p className="font-poppins text-xs text-gray-400">Envío</p>
-                <p className="font-poppins text-xs text-gray-400">{fmt(order.shipping_cost)}</p>
+              <div className="flex justify-between px-4 py-2.5 border-b border-ink-50">
+                <p className="text-xs text-ink-400">Envío</p>
+                <p className="text-xs text-ink-400">{fmt(order.shipping_cost)}</p>
               </div>
             )}
 
-            <div className="flex justify-between px-4 py-3 border-b border-gray-50">
-              <p className="font-poppins text-sm font-semibold text-brand-dark">Total</p>
-              <p className="font-poppins text-sm font-semibold text-brand-dark">{fmt(total)}</p>
+            <div className="flex justify-between px-4 py-3 border-b border-ink-50">
+              <p className="text-sm font-semibold text-brand-dark">Total</p>
+              <p className="text-sm font-semibold text-brand-dark">{fmt(total)}</p>
             </div>
 
             {isPending ? (
               <div className="px-4 py-3">
-                <div className="flex justify-between text-xs font-poppins mb-2">
-                  <span className="text-gray-400">Abonado</span>
+                <div className="flex justify-between text-xs mb-2">
+                  <span className="text-ink-400">Abonado</span>
                   <span className="font-medium text-brand-dark">
                     {fmt(order.total_paid)}
-                    <span className="text-gray-300 font-normal"> / {fmt(total)}</span>
+                    <span className="text-ink-300 font-normal"> / {fmt(total)}</span>
                   </span>
                 </div>
-                <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+                <div className="h-2 rounded-full bg-ink-100 overflow-hidden">
                   <div className="h-full rounded-full bg-brand-primary transition-all"
                        style={{ width: `${progress}%` }} />
                 </div>
                 <div className="flex items-center justify-between mt-2">
-                  <span className="text-[11px] font-poppins text-gray-400">Saldo pendiente</span>
-                  <span className="text-base font-poppins font-bold text-red-500">
+                  <span className="text-[11px] text-ink-400">Saldo pendiente</span>
+                  <span className="text-base font-bold text-ink-900">
                     {fmt(remaining)}
                   </span>
                 </div>
               </div>
             ) : (
               <div className="px-4 py-3 flex items-center justify-between">
-                <span className="font-poppins text-sm font-semibold text-brand-dark">
+                <span className="text-sm font-semibold text-brand-dark">
                   {fmt(total)}
                 </span>
-                <span className="flex items-center gap-1.5 text-[11px] font-poppins font-semibold
-                                 text-green-600 bg-green-50 px-3 py-1.5 rounded-full">
+                <span className="flex items-center gap-1.5 text-[11px] font-semibold
+                                 text-ink-900 bg-ink-100 px-3 py-1.5 rounded-full">
                   ✓ Pago completado
                 </span>
               </div>
@@ -275,15 +275,15 @@ export function OrderDetailSheet({ order, onClose }: { order: UserOrder; onClose
                 href="https://rastrea.correos.go.cr/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-between w-full rounded-xl border border-gray-200
-                           px-4 py-3 text-xs font-poppins text-brand-dark hover:border-brand-primary
+                className="flex items-center justify-between w-full rounded-btn border border-ink-200
+                           px-4 py-3 text-xs text-brand-dark hover:border-brand-primary
                            hover:text-brand-primary transition-colors"
               >
                 <span>
                   Rastrear paquete{" "}
                   <span className="font-semibold">{order.tracking_number}</span>
                 </span>
-                <ExternalLink size={13} className="shrink-0 text-gray-300" />
+                <ExternalLink size={13} className="shrink-0 text-ink-300" />
               </a>
             </div>
           )}

@@ -62,20 +62,20 @@ export default function ImageUpload({ images, onChange, error }: ImageUploadProp
         styles: {
           palette: {
             window:      "#FFFFFF",
-            windowBorder:"#E5E7EB",
-            tabIcon:     "#975023",
-            menuIcons:   "#975023",
-            textDark:    "#000011",
+            windowBorder:"#D9D9D9",
+            tabIcon:     "#0a0a0a",
+            menuIcons:   "#0a0a0a",
+            textDark:    "#0a0a0a",
             textLight:   "#FFFFFF",
-            link:        "#975023",
-            action:      "#975023",
-            inactiveTabIcon: "#9CA3AF",
+            link:        "#0a0a0a",
+            action:      "#0a0a0a",
+            inactiveTabIcon: "#909090",
             error:       "#EF4444",
-            inProgress:  "#a26720",
+            inProgress:  "#4a4a4a",
             complete:    "#10B981",
-            sourceBg:    "#F9FAFB",
+            sourceBg:    "#F5F4F2",
           },
-          fonts: { default: null, "'Poppins', sans-serif": { url: "https://fonts.googleapis.com/css?family=Poppins", active: true } },
+          fonts: { default: null, "'Inter', sans-serif": { url: "https://fonts.googleapis.com/css?family=Inter", active: true } },
         },
       },
       (_err, result) => {
@@ -120,10 +120,10 @@ export default function ImageUpload({ images, onChange, error }: ImageUploadProp
                 "relative group rounded-xl overflow-hidden border-2 transition-all",
                 img.is_primary
                   ? "border-brand-primary shadow-sm"
-                  : "border-gray-100 hover:border-gray-200"
+                  : "border-ink-100 hover:border-ink-200"
               )}
             >
-              <div className="aspect-square bg-gray-50">
+              <div className="aspect-square bg-ink-50">
                 <img
                   src={img.image_url}
                   alt=""
@@ -159,7 +159,7 @@ export default function ImageUpload({ images, onChange, error }: ImageUploadProp
                   className="w-7 h-7 rounded-full bg-white/90 flex items-center justify-center
                              hover:bg-red-50 transition-colors"
                 >
-                  <Trash2 size={13} className="text-gray-600" />
+                  <Trash2 size={13} className="text-ink-600" />
                 </button>
               </div>
             </div>
@@ -169,7 +169,7 @@ export default function ImageUpload({ images, onChange, error }: ImageUploadProp
 
       {/* Legend */}
       {images.length > 0 && (
-        <p className="text-[10px] font-poppins text-gray-400">
+        <p className="text-[10px] text-ink-400">
           La imagen con{" "}
           <Star size={9} className="inline text-brand-primary fill-brand-primary" />{" "}
           es la principal. Pasá el cursor para cambiarla o eliminarla.
@@ -179,10 +179,10 @@ export default function ImageUpload({ images, onChange, error }: ImageUploadProp
       {/* Empty state */}
       {images.length === 0 && (
         <div className="flex flex-col items-center gap-2 py-8 border-2 border-dashed
-                        border-gray-200 rounded-xl text-gray-400">
+                        border-ink-200 rounded-xl text-ink-400">
           <ImagePlus size={26} strokeWidth={1.4} />
-          <p className="text-xs font-poppins">Aún no hay imágenes</p>
-          <p className="text-[11px] font-poppins text-gray-300">
+          <p className="text-xs">Aún no hay imágenes</p>
+          <p className="text-[11px] text-ink-300">
             JPG, PNG o WebP · Máx. 5 MB por imagen
           </p>
         </div>
@@ -193,7 +193,7 @@ export default function ImageUpload({ images, onChange, error }: ImageUploadProp
         type="button"
         onClick={openWidget}
         className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-brand-primary
-                   text-brand-primary text-sm font-poppins font-medium self-start
+                   text-brand-primary text-sm font-medium self-start
                    hover:bg-brand-bg transition-colors"
       >
         <ImagePlus size={16} strokeWidth={1.8} />
@@ -201,7 +201,7 @@ export default function ImageUpload({ images, onChange, error }: ImageUploadProp
       </button>
 
       {error && (
-        <span className="text-[11px] text-red-500 font-poppins -mt-2">{error}</span>
+        <span className="text-[11px] text-red-500 -mt-2">{error}</span>
       )}
     </div>
   );

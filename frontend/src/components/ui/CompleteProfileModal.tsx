@@ -62,51 +62,51 @@ export default function CompleteProfileModal() {
           <div className="w-12 h-12 rounded-full bg-brand-primary/10 flex items-center justify-center">
             <MessageCircle size={22} className="text-brand-primary" />
           </div>
-          <span className="font-poppins font-semibold italic text-brand-primary text-xl">
+          <span className="font-semibold text-brand-primary text-xl">
             {t.completeProfile.title}
           </span>
-          <p className="text-xs text-gray-400 font-poppins leading-relaxed max-w-[38ch]">
+          <p className="text-xs text-ink-400 leading-relaxed max-w-[38ch]">
             {t.completeProfile.subtitle}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-gray-500 font-poppins uppercase tracking-wider">
+            <label className="text-xs font-medium text-ink-500 uppercase tracking-wider">
               {t.completeProfile.label}
             </label>
-            <div className="flex items-center rounded-xl border border-gray-200 overflow-hidden
+            <div className="flex items-center rounded-btn border border-ink-200 overflow-hidden
                             focus-within:border-brand-primary focus-within:ring-1
                             focus-within:ring-brand-primary/20 transition">
-              <span className="px-3 py-2.5 text-sm font-poppins text-gray-400 bg-gray-50
-                               border-r border-gray-200 shrink-0 select-none">
+              <span className="px-3 py-2.5 text-sm text-ink-400 bg-ink-50
+                               border-r border-ink-200 shrink-0 select-none">
                 +506
               </span>
               <input
                 type="tel" value={whatsapp}
                 onChange={(e) => setWhatsapp(e.target.value.replace(/\D/g, "").slice(0, 8))}
                 placeholder={t.completeProfile.placeholder} maxLength={8} autoFocus
-                className="flex-1 px-3 py-2.5 text-sm font-poppins text-brand-dark outline-none bg-white"
+                className="flex-1 px-3 py-2.5 text-sm text-brand-dark outline-none bg-white"
               />
             </div>
           </div>
 
           {error && (
-            <p className="text-xs text-red-500 font-poppins text-center bg-red-50 rounded-lg px-3 py-2">
+            <p className="text-xs text-ink-900 text-center bg-ink-50 rounded-btn px-3 py-2">
               {error}
             </p>
           )}
 
           <button type="submit" disabled={loading}
-                  className="mt-1 w-full py-3 rounded-xl bg-brand-primary text-white text-sm
-                             font-poppins font-medium flex items-center justify-center gap-2
-                             hover:bg-[#7a3e18] transition-colors disabled:opacity-60">
+                  className="mt-1 w-full py-3 rounded-btn bg-brand-primary text-white text-sm
+                             font-medium flex items-center justify-center gap-2
+                             hover:bg-[#2e2e2e] transition-colors disabled:opacity-60">
             {loading && <Loader2 size={15} className="animate-spin" />}
             {t.completeProfile.save}
           </button>
 
           <button type="button" onClick={dismiss}
-                  className="text-xs text-center text-gray-400 font-poppins hover:text-brand-primary transition-colors">
+                  className="text-xs text-center text-ink-400 hover:text-brand-primary transition-colors">
             {t.completeProfile.skip}
           </button>
         </form>

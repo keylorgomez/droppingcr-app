@@ -39,26 +39,26 @@ export default function MultiSelect({
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "w-full flex items-center justify-between rounded-xl border px-4 py-2.5 text-sm font-poppins transition",
+          "w-full flex items-center justify-between rounded-xl border px-4 py-2.5 text-sm transition",
           "focus:outline-none focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20",
-          error ? "border-red-300" : "border-gray-200",
+          error ? "border-red-300" : "border-ink-200",
           open && "border-brand-primary ring-1 ring-brand-primary/20"
         )}
       >
-        <span className={selectedLabels.length ? "text-brand-dark" : "text-gray-300"}>
+        <span className={selectedLabels.length ? "text-brand-dark" : "text-ink-300"}>
           {selectedLabels.length ? selectedLabels.join(", ") : placeholder}
         </span>
         <ChevronDown
           size={15}
-          className={cn("text-gray-400 transition-transform", open && "rotate-180")}
+          className={cn("text-ink-400 transition-transform", open && "rotate-180")}
         />
       </button>
 
       {open && (
-        <div className="absolute z-20 mt-1.5 w-full bg-white rounded-xl border border-gray-200
+        <div className="absolute z-20 mt-1.5 w-full bg-white rounded-xl border border-ink-200
                         shadow-lg py-1 max-h-52 overflow-y-auto">
           {options.length === 0 && (
-            <p className="px-4 py-3 text-xs text-gray-400 font-poppins">Sin categorías</p>
+            <p className="px-4 py-3 text-xs text-ink-400">Sin categorías</p>
           )}
           {options.map((opt) => {
             const checked = selected.includes(opt.id);
@@ -67,12 +67,12 @@ export default function MultiSelect({
                 key={opt.id}
                 type="button"
                 onClick={() => toggle(opt.id)}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-poppins
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm
                            text-brand-dark hover:bg-brand-bg transition-colors text-left"
               >
                 <span className={cn(
                   "w-4 h-4 rounded-md border flex items-center justify-center shrink-0 transition",
-                  checked ? "bg-brand-primary border-brand-primary" : "border-gray-300"
+                  checked ? "bg-brand-primary border-brand-primary" : "border-ink-300"
                 )}>
                   {checked && <Check size={10} className="text-white" strokeWidth={3} />}
                 </span>
@@ -82,7 +82,7 @@ export default function MultiSelect({
           })}
         </div>
       )}
-      {error && <span className="text-[11px] text-red-500 font-poppins mt-1 block">{error}</span>}
+      {error && <span className="text-[11px] text-red-500 mt-1 block">{error}</span>}
     </div>
   );
 }

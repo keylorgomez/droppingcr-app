@@ -20,16 +20,16 @@ import { QUERY_KEYS } from "../../constants/queryKeys";
 // ── Shared styles ──────────────────────────────────────────────────────────
 
 const inputCls =
-  "w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-poppins text-brand-dark " +
-  "placeholder:text-gray-300 outline-none focus:border-brand-primary " +
+  "w-full rounded-xl border border-ink-200 px-4 py-2.5 text-sm text-brand-dark " +
+  "placeholder:text-ink-300 outline-none focus:border-brand-primary " +
   "focus:ring-1 focus:ring-brand-primary/20 transition";
 
 // ── Small layout helpers ───────────────────────────────────────────────────
 
 function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-6 flex flex-col gap-4">
-      <h2 className="font-poppins font-semibold text-sm text-brand-dark uppercase tracking-wider">
+    <div className="bg-white rounded-2xl border border-ink-100 p-6 flex flex-col gap-4">
+      <h2 className="font-semibold text-sm text-brand-dark uppercase tracking-wider">
         {title}
       </h2>
       {children}
@@ -44,17 +44,17 @@ function Toggle({
   onChange: (value: boolean) => void; activeColor?: string;
 }) {
   return (
-    <div className="flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3">
+    <div className="flex items-center justify-between rounded-xl border border-ink-200 px-4 py-3">
       <div>
-        <p className="text-sm font-poppins text-brand-dark">{label}</p>
-        <p className="text-[11px] font-poppins text-gray-400">{description}</p>
+        <p className="text-sm text-brand-dark">{label}</p>
+        <p className="text-[11px] text-ink-400">{description}</p>
       </div>
       <button
         type="button"
         onClick={() => onChange(!checked)}
         className={cn(
           "w-11 h-6 rounded-full transition-colors relative flex items-center shrink-0",
-          checked ? activeColor : "bg-gray-200"
+          checked ? activeColor : "bg-ink-200"
         )}
       >
         <span className={cn(
@@ -120,6 +120,7 @@ export default function EditProductPage() {
   const [discount,     setDiscount]     = useState("0");
   const [isActive,     setIsActive]     = useState(true);
   const [isNew,        setIsNew]        = useState(false);
+  const [isFeatured,   setIsFeatured]   = useState(false);
   const [newSince,     setNewSince]     = useState<string | null>(null);
   const [categoryIds,  setCategoryIds]  = useState<string[]>([]);
   const [variants,     setVariants]     = useState<VariantRowState[]>([]);
@@ -137,6 +138,7 @@ export default function EditProductPage() {
     setDiscount(String(product.discount_percentage));
     setIsActive(product.is_active);
     setIsNew(product.is_new);
+    setIsFeatured(product.is_featured ?? false);
     setNewSince(product.new_since);
     setCategoryIds(product.categories.map((category) => category.id));
     setVariants(
@@ -220,6 +222,7 @@ export default function EditProductPage() {
       discount_percentage: Number(discount) || 0,
       is_active:           isActive,
       is_new:              isNew,
+      is_featured:         isFeatured,
       new_since:           newSince,
       category_ids:        categoryIds,
       variants: variants.map((variantRow) => ({
@@ -240,10 +243,10 @@ export default function EditProductPage() {
       <>
         <Header />
         <main className="max-w-2xl mx-auto px-4 py-10 animate-pulse space-y-4">
-          <div className="h-5 bg-gray-100 rounded-lg w-1/4" />
-          <div className="h-32 bg-gray-100 rounded-2xl" />
-          <div className="h-48 bg-gray-100 rounded-2xl" />
-          <div className="h-32 bg-gray-100 rounded-2xl" />
+          <div className="h-5 bg-ink-100 rounded-lg w-1/4" />
+          <div className="h-32 bg-ink-100 rounded-2xl" />
+          <div className="h-48 bg-ink-100 rounded-2xl" />
+          <div className="h-32 bg-ink-100 rounded-2xl" />
         </main>
       </>
     );
@@ -297,7 +300,7 @@ export default function EditProductPage() {
 
         <button
           onClick={() => navigate("/")}
-          className="flex items-center gap-1.5 text-xs font-poppins text-gray-400
+          className="flex items-center gap-1.5 text-xs text-ink-400
                      hover:text-brand-primary transition-colors mb-6 -ml-0.5"
         >
           <ArrowLeft size={15} strokeWidth={1.8} />
@@ -306,10 +309,10 @@ export default function EditProductPage() {
 
         <div className="flex items-start justify-between gap-4 mb-8">
           <div>
-            <h1 className="font-poppins font-semibold text-xl text-brand-dark leading-tight">
+            <h1 className="font-semibold text-xl text-brand-dark leading-tight">
               {product.name}
             </h1>
-            <p className="font-poppins text-xs text-gray-400 mt-0.5">
+            <p className="text-xs text-ink-400 mt-0.5">
               Edición de inventario y datos del producto
             </p>
           </div>
@@ -328,7 +331,7 @@ export default function EditProductPage() {
               type="button"
               onClick={() => setSaleOpen(true)}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl
-                         bg-brand-dark text-white text-sm font-poppins font-medium
+                         bg-brand-dark text-white text-sm font-medium
                          hover:bg-black transition-colors"
             >
               <ShoppingCart size={15} strokeWidth={1.8} />
@@ -343,7 +346,7 @@ export default function EditProductPage() {
           <SectionCard title="Información del producto">
 
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-gray-500 font-poppins uppercase tracking-wider">
+              <label className="text-xs font-medium text-ink-500 uppercase tracking-wider">
                 Nombre
               </label>
               <input
@@ -355,7 +358,7 @@ export default function EditProductPage() {
             </div>
 
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-gray-500 font-poppins uppercase tracking-wider">
+              <label className="text-xs font-medium text-ink-500 uppercase tracking-wider">
                 Descripción
               </label>
               <textarea
@@ -369,7 +372,7 @@ export default function EditProductPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-gray-500 font-poppins uppercase tracking-wider">
+                <label className="text-xs font-medium text-ink-500 uppercase tracking-wider">
                   Precio costo (₡)
                 </label>
                 <input
@@ -383,7 +386,7 @@ export default function EditProductPage() {
                 />
               </div>
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-medium text-gray-500 font-poppins uppercase tracking-wider">
+                <label className="text-xs font-medium text-ink-500 uppercase tracking-wider">
                   Precio venta (₡)
                 </label>
                 <input
@@ -399,7 +402,7 @@ export default function EditProductPage() {
             </div>
 
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-gray-500 font-poppins uppercase tracking-wider">
+              <label className="text-xs font-medium text-ink-500 uppercase tracking-wider">
                 Descuento (%)
               </label>
               <input
@@ -438,7 +441,7 @@ export default function EditProductPage() {
               return (
                 <div className={`rounded-xl border px-4 py-3 flex flex-col gap-2 transition-colors ${mainBand.cls}`}>
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-poppins font-semibold uppercase tracking-wider opacity-70">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider opacity-70">
                       Margen de ganancia
                     </span>
                     <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${mainBand.cls}`}>
@@ -446,19 +449,19 @@ export default function EditProductPage() {
                     </span>
                   </div>
                   <div className="flex items-baseline gap-2">
-                    <span className="font-poppins font-bold text-xl leading-none">
+                    <span className="font-bold text-xl leading-none">
                       {profitPct > 0 ? "+" : ""}{profitPct}%
                     </span>
-                    <span className="font-poppins text-sm font-medium">
+                    <span className="text-sm font-medium">
                       ₡{profit.toLocaleString("en-US")} por unidad
                     </span>
                   </div>
                   {hasDiscount && (
                     <div className={`rounded-lg border px-3 py-2 flex items-center justify-between ${effectiveBand.cls}`}>
-                      <span className="text-[11px] font-poppins">
+                      <span className="text-[11px]">
                         Con {discountPct}% descuento aplicado:
                       </span>
-                      <span className="text-[11px] font-poppins font-semibold">
+                      <span className="text-[11px] font-semibold">
                         {effectivePct > 0 ? "+" : ""}{effectivePct}% · ₡{effectiveProfit.toLocaleString("en-US")}
                       </span>
                     </div>
@@ -484,6 +487,13 @@ export default function EditProductPage() {
               }}
               activeColor="bg-emerald-500"
             />
+
+            <Toggle
+              label="Destacar en la home"
+              description='Ocupa la sección "01 / Pieza destacada". Solo una pieza a la vez: activarla acá se la quita a la anterior.'
+              checked={isFeatured}
+              onChange={setIsFeatured}
+            />
           </SectionCard>
 
           {/* Categories */}
@@ -502,8 +512,8 @@ export default function EditProductPage() {
             {variants.length > 0 && (
               <div className="flex flex-col gap-2">
                 <div className="grid grid-cols-[1fr_120px_36px] gap-2 px-1">
-                  <span className="text-[10px] font-poppins text-gray-400 uppercase tracking-wider">Talla</span>
-                  <span className="text-[10px] font-poppins text-gray-400 uppercase tracking-wider">Stock</span>
+                  <span className="text-[10px] text-ink-400 uppercase tracking-wider">Talla</span>
+                  <span className="text-[10px] text-ink-400 uppercase tracking-wider">Stock</span>
                   <span />
                 </div>
 
@@ -539,7 +549,7 @@ export default function EditProductPage() {
                       type="button"
                       onClick={() => removeVariantRow(row._key, row.id)}
                       className="h-10 w-9 flex items-center justify-center rounded-xl
-                                 text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors"
+                                 text-ink-300 hover:text-red-400 hover:bg-red-50 transition-colors"
                     >
                       <Trash2 size={15} />
                     </button>
@@ -549,8 +559,8 @@ export default function EditProductPage() {
             )}
 
             {variants.length === 0 && (
-              <p className="text-xs text-gray-400 font-poppins text-center py-3
-                            border border-dashed border-gray-200 rounded-xl">
+              <p className="text-xs text-ink-400 text-center py-3
+                            border border-dashed border-ink-200 rounded-xl">
                 No hay tallas registradas
               </p>
             )}
@@ -558,8 +568,8 @@ export default function EditProductPage() {
             <button
               type="button"
               onClick={() => setVariants((prev) => [...prev, { _key: newKey(), size: "", stock: "0" }])}
-              className="flex items-center gap-2 text-xs font-poppins text-brand-primary
-                         hover:text-[#7a3e18] transition-colors self-start"
+              className="flex items-center gap-2 text-xs text-brand-primary
+                         hover:text-[#2e2e2e] transition-colors self-start"
             >
               <Plus size={14} /> Agregar talla
             </button>
@@ -578,17 +588,17 @@ export default function EditProductPage() {
             <button
               type="button"
               onClick={() => navigate("/")}
-              className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-poppins
-                         text-gray-500 hover:border-gray-300 transition-colors"
+              className="flex-1 py-3 rounded-xl border border-ink-200 text-sm
+                         text-ink-500 hover:border-ink-300 transition-colors"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={saveProductMutation.isPending}
-              className="flex-1 py-3 rounded-xl bg-brand-primary text-white text-sm font-poppins
+              className="flex-1 py-3 rounded-xl bg-brand-primary text-white text-sm
                          font-medium flex items-center justify-center gap-2
-                         hover:bg-[#7a3e18] transition-colors disabled:opacity-60"
+                         hover:bg-[#2e2e2e] transition-colors disabled:opacity-60"
             >
               {saveProductMutation.isPending && <Loader2 size={15} className="animate-spin" />}
               Guardar cambios
@@ -598,8 +608,8 @@ export default function EditProductPage() {
           {/* Danger zone */}
           <div className="rounded-2xl border border-red-100 p-5 flex items-center justify-between gap-4">
             <div>
-              <p className="font-poppins text-sm font-medium text-red-500">Eliminar producto</p>
-              <p className="font-poppins text-[11px] text-gray-400 mt-0.5">
+              <p className="text-sm font-medium text-red-500">Eliminar producto</p>
+              <p className="text-[11px] text-ink-400 mt-0.5">
                 Acción permanente. No se puede deshacer.
               </p>
             </div>
@@ -608,7 +618,7 @@ export default function EditProductPage() {
               onClick={() => setDeleteConfirmOpen(true)}
               disabled={deleteProductMutation.isPending}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-red-200
-                         text-red-500 text-sm font-poppins font-medium
+                         text-red-500 text-sm font-medium
                          hover:bg-red-50 transition-colors disabled:opacity-60 shrink-0"
             >
               {deleteProductMutation.isPending

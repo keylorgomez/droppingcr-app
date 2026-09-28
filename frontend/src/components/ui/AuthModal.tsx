@@ -24,14 +24,14 @@ function Field({
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-xs font-medium text-gray-500 font-poppins uppercase tracking-wider">
+      <label className="type-eyebrow text-ink-400">
         {label}
       </label>
       <input
         type={type} value={value} onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder} autoComplete={autoComplete}
-        className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-poppins
-                   text-brand-dark placeholder:text-gray-300 outline-none
+        className="w-full rounded-btn border border-ink-200 px-4 py-2.5 text-sm
+                   text-brand-dark placeholder:text-ink-300 outline-none
                    focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20 transition"
       />
     </div>
@@ -46,19 +46,19 @@ function PasswordField({
   const [show, setShow] = useState(false);
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-xs font-medium text-gray-500 font-poppins uppercase tracking-wider">
+      <label className="type-eyebrow text-ink-400">
         {label}
       </label>
       <div className="relative">
         <input
           type={show ? "text" : "password"} value={value}
           onChange={(e) => onChange(e.target.value)} autoComplete={autoComplete}
-          className="w-full rounded-xl border border-gray-200 px-4 py-2.5 pr-10 text-sm font-poppins
+          className="w-full rounded-btn border border-ink-200 px-4 py-2.5 pr-10 text-sm
                      text-brand-dark outline-none focus:border-brand-primary
                      focus:ring-1 focus:ring-brand-primary/20 transition"
         />
         <button type="button" onClick={() => setShow(!show)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-brand-primary transition-colors">
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-400 hover:text-ink-900 transition-colors">
           {show ? <EyeOff size={15} /> : <Eye size={15} />}
         </button>
       </div>
@@ -69,9 +69,9 @@ function PasswordField({
 function SubmitButton({ loading, label }: { loading: boolean; label: string }) {
   return (
     <button type="submit" disabled={loading}
-            className="mt-1 w-full py-3 rounded-xl bg-brand-primary text-white text-sm
-                       font-poppins font-medium flex items-center justify-center gap-2
-                       hover:bg-[#7a3e18] transition-colors disabled:opacity-60">
+            className="btn-ink mt-1 w-full py-3.5 text-[12px]
+                       font-medium flex items-center justify-center gap-2
+                       hover:bg-[#2e2e2e] transition-colors disabled:opacity-60">
       {loading && <Loader2 size={15} className="animate-spin" />}
       {label}
     </button>
@@ -80,7 +80,7 @@ function SubmitButton({ loading, label }: { loading: boolean; label: string }) {
 
 function ErrorBanner({ message }: { message: string }) {
   return (
-    <p className="text-xs text-red-500 font-poppins text-center bg-red-50 rounded-lg px-3 py-2">
+    <p className="text-xs text-ink-900 text-center bg-ink-50 rounded-btn px-3 py-2">
       {message}
     </p>
   );
@@ -113,9 +113,9 @@ function GoogleButton({ label }: { label: string }) {
 
   return (
     <button type="button" onClick={handleClick} disabled={loading}
-            className="w-full py-2.5 rounded-xl border border-gray-200 bg-white text-sm
-                       font-poppins font-medium text-brand-dark flex items-center justify-center gap-2.5
-                       hover:bg-gray-50 transition-colors disabled:opacity-60">
+            className="w-full py-2.5 rounded-btn border border-ink-200 bg-white text-sm
+                       font-medium text-brand-dark flex items-center justify-center gap-2.5
+                       hover:bg-ink-50 transition-colors disabled:opacity-60">
       {loading ? <Loader2 size={15} className="animate-spin" /> : <GoogleIcon />}
       {label}
     </button>
@@ -125,9 +125,9 @@ function GoogleButton({ label }: { label: string }) {
 function OrDivider() {
   return (
     <div className="flex items-center gap-3 my-0.5">
-      <span className="h-px flex-1 bg-gray-100" />
-      <span className="text-[10px] uppercase tracking-widest text-gray-300 font-poppins">o</span>
-      <span className="h-px flex-1 bg-gray-100" />
+      <span className="h-px flex-1 bg-ink-100" />
+      <span className="text-[10px] uppercase tracking-widest text-ink-300">o</span>
+      <span className="h-px flex-1 bg-ink-100" />
     </div>
   );
 }
@@ -166,15 +166,15 @@ function LoginForm({ onSwitch, onForgot, onSuccess }: { onSwitch: () => void; on
       <PasswordField label="Contraseña" value={password} onChange={setPassword}
                      autoComplete="current-password" />
       <button type="button" onClick={onForgot}
-              className="self-end -mt-1.5 text-xs text-gray-400 font-poppins hover:text-brand-primary transition-colors">
+              className="self-end -mt-1.5 text-xs text-ink-400 hover:text-ink-900 transition-colors">
         ¿Olvidaste tu contraseña?
       </button>
       {error && <ErrorBanner message={error} />}
       <SubmitButton loading={loading} label="Entrar" />
-      <p className="text-xs text-center text-gray-400 font-poppins">
+      <p className="text-xs text-center text-ink-400">
         ¿No tienes cuenta?{" "}
         <button type="button" onClick={onSwitch}
-                className="text-brand-primary font-medium hover:underline">
+                className="link-underline text-ink-900 font-medium">
           Regístrate
         </button>
       </p>
@@ -209,18 +209,18 @@ function ForgotForm({ onBack }: { onBack: () => void }) {
   if (sent) {
     return (
       <div className="flex flex-col gap-4 text-center">
-        <div className="mx-auto w-12 h-12 rounded-full bg-brand-primary/10 flex items-center justify-center">
-          <Mail size={22} className="text-brand-primary" />
+        <div className="mx-auto w-12 h-12 rounded-full bg-ink-900 flex items-center justify-center">
+          <Mail size={20} className="text-bone" strokeWidth={1.8} />
         </div>
         <div className="flex flex-col gap-1">
-          <p className="text-sm font-poppins font-medium text-brand-dark">Revisa tu correo</p>
-          <p className="text-xs text-gray-400 font-poppins leading-relaxed">
+          <p className="text-sm font-medium text-brand-dark">Revisa tu correo</p>
+          <p className="text-xs text-ink-400 leading-relaxed">
             Enviamos un enlace a <span className="font-medium text-brand-dark">{email}</span> para
             restablecer tu contraseña. Revisa también tu carpeta de spam.
           </p>
         </div>
         <button type="button" onClick={onBack}
-                className="text-xs text-brand-primary font-medium font-poppins hover:underline">
+                className="link-underline text-xs text-ink-900 font-medium">
           Volver a iniciar sesión
         </button>
       </div>
@@ -229,7 +229,7 @@ function ForgotForm({ onBack }: { onBack: () => void }) {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <p className="text-xs text-gray-400 font-poppins text-center leading-relaxed -mt-1">
+      <p className="text-xs text-ink-400 text-center leading-relaxed -mt-1">
         Ingresá tu correo y te enviaremos un enlace para crear una nueva contraseña.
       </p>
       <Field label="Correo electrónico" type="email" value={email} onChange={setEmail}
@@ -237,7 +237,7 @@ function ForgotForm({ onBack }: { onBack: () => void }) {
       {error && <ErrorBanner message={error} />}
       <SubmitButton loading={loading} label="Enviar enlace" />
       <button type="button" onClick={onBack}
-              className="text-xs text-center text-gray-400 font-poppins hover:text-brand-primary transition-colors">
+              className="text-xs text-center text-ink-400 hover:text-ink-900 transition-colors">
         Volver a iniciar sesión
       </button>
     </form>
@@ -296,21 +296,21 @@ function RegisterForm({ onSwitch, onSuccess }: { onSwitch: () => void; onSuccess
 
       {/* WhatsApp with +506 prefix */}
       <div className="flex flex-col gap-1">
-        <label className="text-xs font-medium text-gray-500 font-poppins uppercase tracking-wider">
+        <label className="type-eyebrow text-ink-400">
           WhatsApp
         </label>
-        <div className="flex items-center rounded-xl border border-gray-200 overflow-hidden
+        <div className="flex items-center rounded-btn border border-ink-200 overflow-hidden
                         focus-within:border-brand-primary focus-within:ring-1
                         focus-within:ring-brand-primary/20 transition">
-          <span className="px-3 py-2.5 text-sm font-poppins text-gray-400 bg-gray-50
-                           border-r border-gray-200 shrink-0 select-none">
+          <span className="px-3 py-2.5 text-sm text-ink-400 bg-ink-50
+                           border-r border-ink-200 shrink-0 select-none">
             +506
           </span>
           <input
             type="tel" value={whatsapp}
             onChange={(e) => setWhatsapp(e.target.value.replace(/\D/g, "").slice(0, 8))}
             placeholder="88887777" maxLength={8}
-            className="flex-1 px-3 py-2.5 text-sm font-poppins text-brand-dark outline-none bg-white"
+            className="flex-1 px-3 py-2.5 text-sm text-brand-dark outline-none bg-white"
           />
         </div>
       </div>
@@ -323,10 +323,10 @@ function RegisterForm({ onSwitch, onSuccess }: { onSwitch: () => void; onSuccess
       {error && <ErrorBanner message={error} />}
       <SubmitButton loading={loading} label="Crear cuenta" />
 
-      <p className="text-xs text-center text-gray-400 font-poppins">
+      <p className="text-xs text-center text-ink-400">
         ¿Ya tienes cuenta?{" "}
         <button type="button" onClick={onSwitch}
-                className="text-brand-primary font-medium hover:underline">
+                className="link-underline text-ink-900 font-medium">
           Inicia sesión
         </button>
       </p>
@@ -364,10 +364,10 @@ export default function AuthModal({ open, onClose }: AuthModalProps) {
       <DialogContent className="overflow-hidden px-8 py-8">
 
         <div className="mb-6 text-center">
-          <span className="font-poppins font-semibold italic text-brand-primary text-xl">
+          <span className="type-display text-[28px] text-ink-900">
             Dropping CR
           </span>
-          <p className="text-xs text-gray-400 font-poppins mt-0.5">
+          <p className="text-xs text-ink-400 mt-0.5">
             {subtitle}
           </p>
         </div>

@@ -25,12 +25,12 @@ function CartSkeleton() {
   return (
     <div className="flex flex-col gap-3">
       {[1, 2, 3].map((i) => (
-        <div key={i} className="animate-pulse flex gap-4 bg-white rounded-2xl border border-gray-100 p-4">
-          <div className="w-20 h-20 bg-gray-100 rounded-xl shrink-0" />
+        <div key={i} className="animate-pulse flex gap-4 bg-bone rounded-card border border-ink-100 p-4">
+          <div className="w-20 h-20 bg-ink-100 rounded-btn shrink-0" />
           <div className="flex flex-col gap-2 flex-1 pt-1">
-            <div className="h-3 bg-gray-100 rounded w-3/4" />
-            <div className="h-3 bg-gray-100 rounded w-1/3" />
-            <div className="h-4 bg-gray-100 rounded w-1/4 mt-1" />
+            <div className="h-3 bg-ink-100 rounded w-3/4" />
+            <div className="h-3 bg-ink-100 rounded w-1/3" />
+            <div className="h-4 bg-ink-100 rounded w-1/4 mt-1" />
           </div>
         </div>
       ))}
@@ -42,20 +42,20 @@ function CartSkeleton() {
 
 function EmptyCart({ onBack }: { onBack: () => void }) {
   return (
-    <div className="flex flex-col items-center gap-5 py-24 text-gray-300">
+    <div className="flex flex-col items-center gap-5 py-24 text-ink-300">
       <ShoppingBag size={56} strokeWidth={1.1} />
       <div className="text-center">
-        <p className="font-poppins font-semibold text-base text-gray-400">
+        <p className="font-semibold text-base text-ink-400">
           Tu carrito está vacío
         </p>
-        <p className="font-poppins text-sm text-gray-300 mt-1">
+        <p className="text-sm text-ink-300 mt-1">
           Explora el catálogo y agrega lo que te guste.
         </p>
       </div>
       <button
         onClick={onBack}
-        className="mt-2 flex items-center gap-2 px-6 py-3 rounded-xl bg-brand-primary
-                   text-white text-sm font-poppins font-medium hover:bg-[#7a3e18] transition-colors"
+        className="mt-2 flex items-center gap-2 px-6 py-3 rounded-btn bg-brand-primary
+                   text-white text-sm font-medium hover:bg-[#2e2e2e] transition-colors"
       >
         <ArrowLeft size={15} />
         Ver catálogo
@@ -89,21 +89,21 @@ function CartItemRow({
       exit={{ opacity: 0, x: -16 }}
       transition={{ duration: 0.22 }}
       className={cn(
-        "bg-white rounded-2xl border p-4 flex gap-4 transition-colors",
-        outOfStock ? "border-red-200 bg-red-50/30" : "border-gray-100 shadow-sm"
+        "bg-bone rounded-card border p-4 flex gap-4 transition-colors",
+        outOfStock ? "border-ink-900 bg-ink-50" : "border-ink-100 shadow-sm"
       )}
     >
       {/* Image */}
       <div className={cn(
-        "w-20 h-20 rounded-xl overflow-hidden border shrink-0",
-        outOfStock ? "border-red-100 opacity-50" : "border-gray-100 bg-gray-50"
+        "w-20 h-20 rounded-btn overflow-hidden border shrink-0",
+        outOfStock ? "border-ink-200 opacity-50" : "border-ink-100 bg-ink-50"
       )}>
         {item.image_url ? (
           <img src={cloudinaryUrl(item.image_url, "thumb")} alt={item.product_name}
                className="w-full h-full object-cover" loading="lazy" />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <Package size={20} className="text-gray-200" />
+            <Package size={20} className="text-ink-200" />
           </div>
         )}
       </div>
@@ -113,13 +113,13 @@ function CartItemRow({
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <p className={cn(
-              "font-poppins font-semibold text-sm italic leading-snug line-clamp-2",
-              outOfStock ? "text-red-400" : "text-brand-primary"
+              "text-[13px] leading-snug line-clamp-2",
+              outOfStock ? "text-ink-600" : "text-brand-primary"
             )}>
               {item.product_name}
             </p>
-            <span className="inline-block mt-0.5 text-[11px] font-poppins text-gray-400
-                             bg-gray-100 rounded-full px-2 py-0.5">
+            <span className="inline-block mt-0.5 text-[11px] text-ink-400
+                             bg-ink-100 rounded-full px-2 py-0.5">
               Talla {item.variant_size}
             </span>
           </div>
@@ -127,7 +127,7 @@ function CartItemRow({
           {/* Remove */}
           <button
             onClick={onRemove}
-            className="shrink-0 text-gray-300 hover:text-red-400 transition-colors p-0.5"
+            className="shrink-0 text-ink-300 hover:text-ink-600 transition-colors p-0.5"
             aria-label="Eliminar"
           >
             <Trash2 size={15} strokeWidth={1.8} />
@@ -136,13 +136,13 @@ function CartItemRow({
 
         {/* Stock warnings */}
         {outOfStock && (
-          <div className="flex items-center gap-1.5 text-[11px] font-poppins text-red-500">
+          <div className="flex items-center gap-1.5 text-[11px] text-ink-900">
             <AlertTriangle size={12} strokeWidth={2} />
             Sin stock disponible — eliminá este producto para continuar.
           </div>
         )}
         {overStock && (
-          <div className="flex items-center gap-1.5 text-[11px] font-poppins text-amber-600">
+          <div className="flex items-center gap-1.5 text-[11px] text-ink-600">
             <AlertTriangle size={12} strokeWidth={2} />
             Solo quedan {stock} unidades.
           </div>
@@ -151,8 +151,8 @@ function CartItemRow({
         {/* Price + quantity */}
         <div className="flex items-center justify-between mt-1">
           <p className={cn(
-            "font-poppins font-semibold text-base",
-            outOfStock ? "text-red-300" : "text-brand-dark"
+            "font-semibold text-base",
+            outOfStock ? "text-ink-300" : "text-brand-dark"
           )}>
             ₡{(item.price * item.quantity).toLocaleString("en-US")}
           </p>
@@ -162,20 +162,20 @@ function CartItemRow({
             <div className="flex items-center gap-1.5">
               <button
                 onClick={() => onUpdateQty(item.quantity - 1)}
-                className="w-7 h-7 rounded-lg border border-gray-200 flex items-center justify-center
-                           text-gray-500 hover:border-brand-primary hover:text-brand-primary
+                className="w-7 h-7 rounded-btn border border-ink-200 flex items-center justify-center
+                           text-ink-500 hover:border-brand-primary hover:text-brand-primary
                            transition-colors text-base leading-none"
               >
                 −
               </button>
-              <span className="w-6 text-center text-sm font-poppins font-medium text-brand-dark">
+              <span className="w-6 text-center text-sm font-medium text-brand-dark">
                 {item.quantity}
               </span>
               <button
                 onClick={() => onUpdateQty(Math.min(stock, item.quantity + 1))}
                 disabled={item.quantity >= stock}
-                className="w-7 h-7 rounded-lg border border-gray-200 flex items-center justify-center
-                           text-gray-500 hover:border-brand-primary hover:text-brand-primary
+                className="w-7 h-7 rounded-btn border border-ink-200 flex items-center justify-center
+                           text-ink-500 hover:border-brand-primary hover:text-brand-primary
                            transition-colors text-base leading-none
                            disabled:opacity-30 disabled:cursor-not-allowed"
               >
@@ -235,17 +235,17 @@ export default function CartPage() {
         <div className="mb-6">
           <button
             onClick={() => navigate("/")}
-            className="flex items-center gap-1.5 text-sm font-poppins text-gray-400
+            className="flex items-center gap-1.5 text-sm text-ink-400
                        hover:text-brand-primary transition-colors mb-3"
           >
             <ArrowLeft size={15} strokeWidth={2} />
             Seguir comprando
           </button>
-          <h1 className="font-poppins font-semibold italic text-brand-primary text-2xl">
+          <h1 className="type-display text-[clamp(1.9rem,7vw,3rem)] text-ink-900">
             Mi carrito
           </h1>
           {!isLoading && itemCount > 0 && (
-            <p className="font-poppins text-xs text-gray-400 mt-1">
+            <p className="text-xs text-ink-400 mt-1">
               {itemCount} {itemCount === 1 ? "producto" : "productos"}
             </p>
           )}
@@ -275,9 +275,9 @@ export default function CartPage() {
 
             {/* ── Order summary ──────────────────────────────────── */}
             <div className="lg:sticky lg:top-24 flex flex-col gap-3">
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5
+              <div className="bg-bone rounded-card border border-ink-100 shadow-sm p-5
                               flex flex-col gap-4">
-                <h2 className="font-poppins font-semibold text-sm uppercase tracking-wider
+                <h2 className="font-display text-[11px] uppercase tracking-widest2
                                text-brand-dark">
                   Resumen de compra
                 </h2>
@@ -288,16 +288,16 @@ export default function CartPage() {
                     const stock = liveStocks[item.variant_id] ?? item.stock;
                     return (
                       <div key={item.variant_id}
-                           className="flex items-center justify-between text-xs font-poppins gap-2">
+                           className="flex items-center justify-between text-xs gap-2">
                         <span className={cn(
                           "truncate",
-                          stock === 0 ? "text-red-400 line-through" : "text-gray-500"
+                          stock === 0 ? "text-ink-600 line-through" : "text-ink-500"
                         )}>
                           {item.product_name} · T.{item.variant_size} ×{item.quantity}
                         </span>
                         <span className={cn(
                           "shrink-0 font-medium",
-                          stock === 0 ? "text-red-300" : "text-brand-dark"
+                          stock === 0 ? "text-ink-300" : "text-brand-dark"
                         )}>
                           ₡{(item.price * item.quantity).toLocaleString("en-US")}
                         </span>
@@ -306,18 +306,18 @@ export default function CartPage() {
                   })}
                 </div>
 
-                <div className="border-t border-gray-100 pt-3 flex flex-col gap-2">
-                  <div className="flex items-center justify-between text-sm font-poppins">
-                    <span className="text-gray-500">Subtotal</span>
+                <div className="border-t border-ink-100 pt-3 flex flex-col gap-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-ink-500">Subtotal</span>
                     <span className="font-bold text-brand-dark text-lg">
                       ₡{subtotal.toLocaleString("en-US")}
                     </span>
                   </div>
 
                   {/* Shipping note */}
-                  <div className="flex items-start gap-2 bg-gray-50 rounded-xl px-3 py-2.5">
-                    <Truck size={14} className="text-gray-400 shrink-0 mt-0.5" strokeWidth={1.8} />
-                    <p className="text-[11px] font-poppins text-gray-400 leading-relaxed">
+                  <div className="flex items-start gap-2 bg-ink-50 rounded-btn px-3 py-2.5">
+                    <Truck size={14} className="text-ink-400 shrink-0 mt-0.5" strokeWidth={1.8} />
+                    <p className="text-[11px] text-ink-400 leading-relaxed">
                       El costo de envío se calculará en el siguiente paso según tu ubicación.
                     </p>
                   </div>
@@ -325,9 +325,9 @@ export default function CartPage() {
 
                 {/* Out-of-stock warning */}
                 {hasOutOfStock && (
-                  <div className="flex items-start gap-2 bg-red-50 rounded-xl px-3 py-2.5">
-                    <AlertTriangle size={14} className="text-red-400 shrink-0 mt-0.5" strokeWidth={2} />
-                    <p className="text-[11px] font-poppins text-red-500 leading-relaxed">
+                  <div className="flex items-start gap-2 bg-ink-50 rounded-btn px-3 py-2.5">
+                    <AlertTriangle size={14} className="text-ink-600 shrink-0 mt-0.5" strokeWidth={2} />
+                    <p className="text-[11px] text-ink-900 leading-relaxed">
                       Algunos productos no tienen stock. Retíralos para poder continuar.
                     </p>
                   </div>
@@ -341,11 +341,11 @@ export default function CartPage() {
                   aria-disabled={hasOutOfStock || validItems.length === 0}
                   onClick={(e) => { if (hasOutOfStock || validItems.length === 0) e.preventDefault(); }}
                   className={cn(
-                    "flex items-center justify-center gap-2 w-full py-3.5 rounded-xl",
-                    "text-sm font-poppins font-medium transition-colors",
+                    "flex items-center justify-center gap-2 w-full py-3.5 rounded-btn",
+                    "text-sm font-medium transition-colors",
                     hasOutOfStock || validItems.length === 0
-                      ? "bg-gray-100 text-gray-300 cursor-not-allowed pointer-events-none"
-                      : "bg-[#25D366] text-white hover:bg-[#1da851]"
+                      ? "bg-ink-100 text-ink-300 cursor-not-allowed pointer-events-none"
+                      : "bg-[#0a0a0a] text-white hover:bg-[#2e2e2e]"
                   )}
                   whileHover={!hasOutOfStock ? { scale: 1.01 } : {}}
                   whileTap={!hasOutOfStock ? { scale: 0.98 } : {}}

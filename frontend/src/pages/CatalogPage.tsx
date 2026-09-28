@@ -1,20 +1,21 @@
-import { useMemo, useEffect, useState, useRef } from "react";
-import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
+import { useMemo, useEffect, useLayoutEffect, useState, useRef } from "react";
+import { useNavigate, useSearchParams, useLocation, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ShoppingBag, Search, X, ChevronDown, Check, SlidersHorizontal, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, X, ChevronDown, Check, SlidersHorizontal, ChevronLeft, ChevronRight } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import Header from "../components/ui/Header";
-import Hero from "../components/ui/Hero";
 import PromoBanner from "../components/PromoBanner";
 import ProductCard from "../components/catalog/ProductCard";
 import { getProducts } from "../services/productService";
 import { CLOTHING_SIZES } from "../constants/domain";
 import { normalizeText } from "../lib/formatters";
 import { QUERY_KEYS } from "../constants/queryKeys";
+import { ROUTES } from "../constants/app";
 import { useAuth } from "../context/AuthContext";
 import { cn } from "../lib/utils";
 
 const PAGE_SIZE = 12;
+const GRID_ANCHOR = "grid";
 
 function getPageItems(current: number, total: number): (number | "…")[] {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
@@ -33,15 +34,29 @@ function getPageItems(current: number, total: number): (number | "…")[] {
   return items;
 }
 
+interface SavedCatalogState {
+  page?:          number;
+  scrollY?:       number;
+  filter?:        string;
+  search?:        string;
+  selectedSizes?: string[];
+}
+
+function readSavedState(): SavedCatalogState | null {
+  try {
+    const raw = sessionStorage.getItem("catalog_state");
+    return raw ? (JSON.parse(raw) as SavedCatalogState) : null;
+  } catch {
+    return null;
+  }
+}
+
 function ProductCardSkeleton() {
   return (
-    <div className="animate-pulse flex flex-col bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-      <div className="aspect-square bg-gray-100" />
-      <div className="flex flex-col gap-2 p-3">
-        <div className="h-3 bg-gray-100 rounded-lg w-full" />
-        <div className="h-3 bg-gray-100 rounded-lg w-2/3" />
-        <div className="h-4 bg-gray-100 rounded-lg w-1/3 mt-1" />
-      </div>
+    <div className="animate-pulse flex flex-col">
+      <div className="aspect-[4/5] rounded-card bg-ink-100" />
+      <div className="h-3 bg-ink-100 w-3/4 mt-3" />
+      <div className="h-3 bg-ink-100 w-1/3 mt-2" />
     </div>
   );
 }
@@ -54,24 +69,15 @@ export default function CatalogPage() {
   const isAdmin        = user?.role === "admin";
   const filter         = searchParams.get("filter") ?? "";
 
-  // Applied filters — initialized from sessionStorage for back-nav restore
-  const [search, setSearch] = useState(() => {
-    try { const s = sessionStorage.getItem("catalog_state"); if (s) return JSON.parse(s).search ?? ""; } catch {}
-    return "";
-  });
-  const [selectedSizes, setSelectedSizes] = useState<string[]>(() => {
-    try { const s = sessionStorage.getItem("catalog_state"); if (s) return JSON.parse(s).selectedSizes ?? []; } catch {}
-    return [];
-  });
+  // `catalog_state` solo vale cuando se vuelve desde el detalle de un producto.
+  // Si no se comprueba, una visita nueva desde la home hereda página, filtros y
+  // scroll de la sesión anterior.
+  const restoring = (location.state as { restoreScroll?: boolean } | null)?.restoreScroll === true;
+  const savedState = restoring ? readSavedState() : null;
 
-  // Initialize page from sessionStorage so it's correct before any effect runs
-  const [page, setPage] = useState(() => {
-    try {
-      const saved = sessionStorage.getItem("catalog_state");
-      if (saved) return JSON.parse(saved).page ?? 1;
-    } catch {}
-    return 1;
-  });
+  const [search, setSearch]               = useState<string>(savedState?.search ?? "");
+  const [selectedSizes, setSelectedSizes] = useState<string[]>(savedState?.selectedSizes ?? []);
+  const [page, setPage]                   = useState<number>(savedState?.page ?? 1);
 
   // Desktop dropdown
   const [sizeDropdownOpen, setSizeDropdownOpen] = useState(false);
@@ -88,25 +94,14 @@ export default function CatalogPage() {
   const prevSizesRef   = useRef(selectedSizes);
 
   // Pending actions after paginated re-renders
-  const pendingScrollRef      = useRef<number | null>(null);
-  const scrollToCatalogRef    = useRef(false);
+  const pendingScrollRef   = useRef<number | null>(savedState?.scrollY ?? null);
+  const scrollToGridRef    = useRef(false);
 
-  // On mount: restore scroll Y from sessionStorage, or auto-scroll to catalog on filtered links
+  // El estado guardado se consume una sola vez: si no se borra, revive en la
+  // próxima visita y devuelve al visitante a una página que ya no pidió.
+  // De dejar la vista arriba se encarga <ScrollToTop />.
   useEffect(() => {
-    try {
-      const saved = sessionStorage.getItem("catalog_state");
-      if (saved) {
-        // Back-navigation: restore exact scroll position
-        const { scrollY } = JSON.parse(saved);
-        pendingScrollRef.current = scrollY ?? null;
-        sessionStorage.removeItem("catalog_state");
-      } else if (filter) {
-        // Fresh link with a filter (e.g. /?filter=descuentos): skip hero, go to products
-        scrollToCatalogRef.current = true;
-      }
-    } catch {
-      if (filter) scrollToCatalogRef.current = true;
-    }
+    sessionStorage.removeItem("catalog_state");
   }, []);
 
   // Close desktop dropdown on outside click
@@ -145,16 +140,6 @@ export default function CatalogPage() {
     document.body.style.overflow = modalOpen ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [modalOpen]);
-
-  useEffect(() => {
-    const state = location.state as { scrollToCatalog?: boolean; restoreScroll?: boolean } | null;
-    if (state?.scrollToCatalog || state?.restoreScroll) {
-      if (!pendingScrollRef.current) {
-        document.getElementById("catalogo")?.scrollIntoView({ behavior: "smooth" });
-      }
-      window.history.replaceState({}, "");
-    }
-  }, [location.state]);
 
   const { data: products = [], isLoading, isError } = useQuery({
     queryKey: [...QUERY_KEYS.PRODUCTS, isAdmin],
@@ -217,19 +202,24 @@ export default function CatalogPage() {
     [filtered, page]
   );
 
-  // After paginated updates: run pending scroll restore OR scroll-to-catalog
+  // Restaurar la posición al volver de un producto. En layout effect y sin
+  // requestAnimationFrame: corre antes del paint, así no se ve un frame arriba
+  // del todo, y no depende de que el bucle de animación esté vivo. La grilla
+  // reserva altura con `aspect-[4/5]`, así que el documento ya mide lo que debe
+  // aunque las fotos no hayan cargado.
+  useLayoutEffect(() => {
+    if (isLoading || pendingScrollRef.current === null) return;
+    const y = pendingScrollRef.current;
+    pendingScrollRef.current = null;
+    window.scrollTo({ top: y, left: 0, behavior: "instant" });
+  }, [paginated, isLoading]);
+
+  // Al cambiar de página, volver al inicio de la grilla (no al tope: los
+  // filtros quedan a la vista).
   useEffect(() => {
-    if (isLoading) return;
-    if (pendingScrollRef.current !== null) {
-      const y = pendingScrollRef.current;
-      pendingScrollRef.current = null;
-      requestAnimationFrame(() => window.scrollTo({ top: y, behavior: "instant" }));
-    } else if (scrollToCatalogRef.current) {
-      scrollToCatalogRef.current = false;
-      requestAnimationFrame(() =>
-        document.getElementById("catalogo")?.scrollIntoView({ behavior: "smooth" })
-      );
-    }
+    if (isLoading || !scrollToGridRef.current) return;
+    scrollToGridRef.current = false;
+    document.getElementById(GRID_ANCHOR)?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [paginated, isLoading]);
 
   // Preview count inside the mobile modal
@@ -280,140 +270,152 @@ export default function CatalogPage() {
         <PromoBanner maxDiscountPercent={maxDiscountPercent} suppressed={filter === "descuentos"} />
       )}
       <Header />
-      <Hero />
 
-      <main id="catalogo" className="px-4 pt-10 pb-24 md:pb-12 max-w-7xl mx-auto">
+      <main className="px-4 sm:px-6 lg:px-10 pt-10 pb-28 md:pb-20 max-w-[1600px] mx-auto">
 
-        {/* Category filter label */}
-        {filterLabel && !isLoading && (
-          <div className="flex items-center gap-2 mb-5">
-            <h2 className="font-poppins font-semibold text-base text-brand-dark">
-              {filterLabel}
-            </h2>
-            <span className="text-xs font-poppins text-gray-400">
-              · {byCategory.length} {byCategory.length === 1 ? "producto" : "productos"}
+        {/* ── Encabezado ───────────────────────────────────────────── */}
+        <div className="flex items-end justify-between gap-6 border-b border-ink-200 pb-6 mb-8">
+          <div className="flex flex-col gap-3">
+            <span className="type-eyebrow text-ink-400">
+              {filterLabel ? (
+                <>
+                  <Link to={ROUTES.CATALOG} className="hover:text-ink-900 transition-colors">Catálogo</Link>
+                  <span className="mx-2 text-ink-300">/</span>
+                  <span className="text-ink-900">{filterLabel}</span>
+                </>
+              ) : (
+                "Todas las piezas"
+              )}
             </span>
-            <a
-              href="/"
-              className="ml-auto text-xs font-poppins text-gray-400 hover:text-brand-primary
-                         underline underline-offset-2 transition-colors"
-            >
-              Ver todo
-            </a>
+            <h1 className="type-display text-[clamp(2.25rem,7vw,4.5rem)] text-ink-900">
+              {filterLabel ?? "Catálogo"}
+            </h1>
           </div>
-        )}
 
-        {/* ── Desktop: Search + size dropdown ──────────────────────── */}
+          {!isLoading && (
+            <p className="hidden sm:block shrink-0 pb-2 text-[12px] tnum text-ink-400">
+              {filtered.length} {filtered.length === 1 ? "pieza" : "piezas"}
+            </p>
+          )}
+        </div>
+
+        {/* ── Desktop: búsqueda + tallas ───────────────────────────── */}
         {!isLoading && products.length > 0 && (
-          <div className="hidden md:flex gap-2 mb-6">
-
-            {/* Search input */}
+          <div className="hidden md:flex items-stretch gap-3 mb-10">
             <div className="relative flex-1">
               <Search
                 size={15}
-                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none"
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-300 pointer-events-none"
               />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar producto…"
-                className="w-full rounded-xl border border-gray-200 pl-9 pr-9 py-2.5 text-sm
-                           font-poppins text-brand-dark placeholder:text-gray-300 outline-none
-                           focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20
-                           transition bg-white"
+                placeholder="Buscar pieza…"
+                className="w-full h-12 rounded-btn border border-ink-200 bg-transparent pl-10 pr-10 text-[13px]
+                           text-ink-900 placeholder:text-ink-300 outline-none
+                           focus:border-ink-900 transition-colors"
               />
               {search && (
                 <button
                   type="button"
                   onClick={() => setSearch("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300
-                             hover:text-gray-500 transition-colors"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-ink-300 hover:text-ink-900 transition-colors"
+                  aria-label="Limpiar búsqueda"
                 >
                   <X size={14} />
                 </button>
               )}
             </div>
 
-            {/* Size dropdown */}
             {availableSizes.length > 1 && (
               <div className="relative shrink-0" ref={sizeDropdownRef}>
                 <button
                   type="button"
                   onClick={() => setSizeDropdownOpen((o) => !o)}
                   className={cn(
-                    "h-full flex items-center gap-1.5 px-4 rounded-xl border text-sm font-poppins transition-all whitespace-nowrap",
+                    "h-12 flex items-center gap-2 px-5 rounded-btn border text-[12px] font-display uppercase tracking-widest2 transition-colors whitespace-nowrap",
                     selectedSizes.length > 0
-                      ? "bg-brand-primary border-brand-primary text-white"
-                      : "border-gray-200 text-gray-500 bg-white hover:border-brand-primary hover:text-brand-primary"
+                      ? "bg-ink-900 border-ink-900 text-bone"
+                      : "border-ink-200 text-ink-500 hover:border-ink-900 hover:text-ink-900"
                   )}
                 >
                   {selectedSizes.length === 0
                     ? "Talla"
                     : selectedSizes.length === 1
-                      ? `Talla: ${selectedSizes[0]}`
+                      ? `Talla ${selectedSizes[0]}`
                       : `Tallas (${selectedSizes.length})`}
                   {selectedSizes.length > 0 ? (
                     <span
                       role="button"
                       onClick={(e) => { e.stopPropagation(); setSelectedSizes([]); }}
-                      className="ml-0.5 hover:opacity-70 transition-opacity"
+                      className="ml-0.5 hover:opacity-60 transition-opacity"
                     >
                       <X size={13} />
                     </span>
                   ) : (
                     <ChevronDown
                       size={14}
-                      className={cn("transition-transform duration-200", sizeDropdownOpen && "rotate-180")}
+                      className={cn("transition-transform duration-300", sizeDropdownOpen && "rotate-180")}
                     />
                   )}
                 </button>
 
-                {sizeDropdownOpen && (
-                  <div className="absolute right-0 top-full mt-1.5 bg-white border border-gray-100
-                                  rounded-2xl shadow-lg p-3 z-20 min-w-[160px]">
-                    <div className="grid grid-cols-3 gap-1.5">
-                      {availableSizes.map((size) => {
-                        const active = selectedSizes.includes(size);
-                        return (
-                          <button
-                            key={size}
-                            type="button"
-                            onClick={() => setSelectedSizes((prev) =>
-                              active ? prev.filter((s) => s !== size) : [...prev, size]
-                            )}
-                            className={cn(
-                              "relative flex items-center justify-center rounded-lg text-xs font-poppins font-medium py-2 border transition-all",
-                              active
-                                ? "bg-brand-primary border-brand-primary text-white"
-                                : "border-gray-200 text-gray-600 hover:border-brand-primary hover:text-brand-primary bg-white"
-                            )}
-                          >
-                            {active && <Check size={10} className="absolute top-1 right-1 opacity-80" strokeWidth={3} />}
-                            {size}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+                <AnimatePresence>
+                  {sizeDropdownOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -6 }}
+                      transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                      className="absolute right-0 top-full mt-1.5 bg-bone rounded-card border border-ink-200
+                                 p-2 z-20 min-w-[184px] shadow-lift"
+                    >
+                      <div className="grid grid-cols-3 gap-1">
+                        {availableSizes.map((size) => {
+                          const active = selectedSizes.includes(size);
+                          return (
+                            <button
+                              key={size}
+                              type="button"
+                              onClick={() => setSelectedSizes((prev) =>
+                                active ? prev.filter((s) => s !== size) : [...prev, size]
+                              )}
+                              className={cn(
+                                "relative flex items-center justify-center rounded-chip text-[12px] py-2.5 border transition-colors",
+                                active
+                                  ? "bg-ink-900 border-ink-900 text-bone"
+                                  : "border-ink-200 text-ink-600 hover:border-ink-900 hover:text-ink-900"
+                              )}
+                            >
+                              {active && <Check size={9} className="absolute top-1 right-1 opacity-80" strokeWidth={3} />}
+                              {size}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             )}
           </div>
         )}
 
         {isError && (
-          <p className="text-center font-poppins text-sm text-red-400 py-10">
-            No se pudieron cargar los productos. Intenta de nuevo.
+          <p className="text-center text-[13px] text-ink-500 py-20">
+            No se pudieron cargar los productos. Intentá de nuevo.
           </p>
         )}
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* ── Grilla ───────────────────────────────────────────────── */}
+        <div id={GRID_ANCHOR} className="grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-10 scroll-mt-24">
           {isLoading
             ? Array.from({ length: PAGE_SIZE }).map((_, i) => <ProductCardSkeleton key={i} />)
-            : paginated.map((product) => (
+            : paginated.map((product, i) => (
                 <ProductCard
                   key={product.id}
+                  index={i}
                   name={product.name}
                   price_sale={product.price_sale}
                   image_url={product.image_url}
@@ -424,7 +426,7 @@ export default function CatalogPage() {
                   is_reserved={product.is_reserved}
                   onClick={() => {
                     sessionStorage.setItem("catalog_state", JSON.stringify({ page, scrollY: window.scrollY, filter, search, selectedSizes }));
-                    navigate(`/product/${product.slug}`);
+                    navigate(ROUTES.PRODUCT(product.slug));
                   }}
                   isHidden={isAdmin && !product.is_active}
                   onEdit={isAdmin ? () => navigate(`/admin/products/${product.id}/edit`) : undefined}
@@ -433,17 +435,17 @@ export default function CatalogPage() {
           }
         </div>
 
-        {/* ── Pagination ──────────────────────────────────────────────── */}
+        {/* ── Paginación ───────────────────────────────────────────── */}
         {!isLoading && totalPages > 1 && (
-          <div className="flex flex-col items-center gap-3 mt-10">
-            <div className="flex items-center gap-1.5">
-              {/* Prev */}
+          <div className="flex flex-col items-center gap-4 mt-20">
+            <div className="flex items-center gap-1">
               <button
-                onClick={() => { scrollToCatalogRef.current = true; setPage((p: number) => Math.max(1, p - 1)); }}
+                onClick={() => { scrollToGridRef.current = true; setPage((p: number) => Math.max(1, p - 1)); }}
                 disabled={page === 1}
-                className="flex items-center justify-center w-9 h-9 rounded-xl border border-gray-200
-                           text-gray-400 hover:border-brand-primary hover:text-brand-primary
-                           transition-colors disabled:opacity-30 disabled:cursor-not-allowed bg-white"
+                aria-label="Página anterior"
+                className="flex items-center justify-center w-10 h-10 rounded-btn border border-ink-200 text-ink-500
+                           hover:border-ink-900 hover:text-ink-900 transition-colors
+                           disabled:opacity-25 disabled:cursor-not-allowed disabled:hover:border-ink-200"
               >
                 <ChevronLeft size={16} />
               </button>
@@ -452,19 +454,19 @@ export default function CatalogPage() {
                 item === "…" ? (
                   <span
                     key={`ellipsis-${idx}`}
-                    className="w-9 h-9 flex items-center justify-center text-sm text-gray-300 font-poppins select-none"
+                    className="w-10 h-10 flex items-center justify-center text-[13px] text-ink-300 select-none"
                   >
                     …
                   </span>
                 ) : (
                   <button
                     key={item}
-                    onClick={() => { scrollToCatalogRef.current = true; setPage(item); }}
+                    onClick={() => { scrollToGridRef.current = true; setPage(item); }}
                     className={cn(
-                      "w-9 h-9 rounded-xl text-sm font-poppins font-medium border transition-all",
+                      "w-10 h-10 rounded-btn text-[13px] tnum border transition-colors",
                       item === page
-                        ? "bg-brand-primary border-brand-primary text-white shadow-sm"
-                        : "border-gray-200 text-gray-500 hover:border-brand-primary hover:text-brand-primary bg-white"
+                        ? "bg-ink-900 border-ink-900 text-bone"
+                        : "border-ink-200 text-ink-500 hover:border-ink-900 hover:text-ink-900"
                     )}
                   >
                     {item}
@@ -472,57 +474,55 @@ export default function CatalogPage() {
                 )
               )}
 
-              {/* Next */}
               <button
-                onClick={() => { scrollToCatalogRef.current = true; setPage((p: number) => Math.min(totalPages, p + 1)); }}
+                onClick={() => { scrollToGridRef.current = true; setPage((p: number) => Math.min(totalPages, p + 1)); }}
                 disabled={page === totalPages}
-                className="flex items-center justify-center w-9 h-9 rounded-xl border border-gray-200
-                           text-gray-400 hover:border-brand-primary hover:text-brand-primary
-                           transition-colors disabled:opacity-30 disabled:cursor-not-allowed bg-white"
+                aria-label="Página siguiente"
+                className="flex items-center justify-center w-10 h-10 rounded-btn border border-ink-200 text-ink-500
+                           hover:border-ink-900 hover:text-ink-900 transition-colors
+                           disabled:opacity-25 disabled:cursor-not-allowed disabled:hover:border-ink-200"
               >
                 <ChevronRight size={16} />
               </button>
             </div>
 
-            {/* Indicador de página en mobile */}
-            <p className="sm:hidden text-xs font-poppins text-gray-400">
-              Página {page} de {totalPages}
+            <p className="sm:hidden type-eyebrow text-ink-400">
+              Página {page} / {totalPages}
             </p>
           </div>
         )}
 
+        {/* ── Vacío ────────────────────────────────────────────────── */}
         {!isLoading && !isError && filtered.length === 0 && (
-          <div className="flex flex-col items-center gap-4 py-24 text-gray-300">
-            <ShoppingBag size={48} strokeWidth={1.2} />
-            <div className="text-center">
-              <p className="font-poppins font-medium text-sm text-gray-400">
-                {hasLocalFilter
-                  ? "No hay productos con ese criterio."
-                  : filter
-                    ? "No hay productos en esta categoría."
-                    : "No hay productos disponibles."}
-              </p>
-              <p className="font-poppins text-xs text-gray-300 mt-1">
-                {hasLocalFilter ? (
-                  <button
-                    type="button"
-                    onClick={() => { setSearch(""); setSelectedSizes([]); }}
-                    className="text-brand-primary underline underline-offset-2"
-                  >
-                    Limpiar filtros
-                  </button>
-                ) : filter ? (
-                  <a href="/" className="text-brand-primary underline underline-offset-2">
-                    Ver todos los productos
-                  </a>
-                ) : "Vuelve pronto, estamos preparando algo nuevo."}
-              </p>
-            </div>
+          <div className="flex flex-col items-center gap-5 py-28 text-center">
+            <p className="type-accent text-2xl text-ink-400">
+              {hasLocalFilter
+                ? "Nada coincide con ese criterio."
+                : filter
+                  ? "Todavía no hay piezas en esta categoría."
+                  : "Estamos preparando el próximo drop."}
+            </p>
+            {hasLocalFilter ? (
+              <button
+                type="button"
+                onClick={() => { setSearch(""); setSelectedSizes([]); }}
+                className="link-underline font-display uppercase text-[11px] tracking-widest2 text-ink-900"
+              >
+                Limpiar filtros
+              </button>
+            ) : filter ? (
+              <Link
+                to={ROUTES.CATALOG}
+                className="link-underline font-display uppercase text-[11px] tracking-widest2 text-ink-900"
+              >
+                Ver todo el catálogo
+              </Link>
+            ) : null}
           </div>
         )}
       </main>
 
-      {/* ── Mobile: Floating filter button ───────────────────────────── */}
+      {/* ── Mobile: botón flotante de filtros ────────────────────────── */}
       {!isLoading && products.length > 0 && (
         <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-30">
           <motion.button
@@ -530,16 +530,14 @@ export default function CatalogPage() {
             onClick={openModal}
             whileTap={{ scale: 0.96 }}
             className={cn(
-              "flex items-center gap-2 px-5 py-3 rounded-full shadow-lg text-sm font-poppins font-medium transition-colors",
-              activeFilterCount > 0
-                ? "bg-brand-primary text-white"
-                : "bg-brand-dark text-white"
+              "flex items-center gap-2.5 px-6 py-3.5 rounded-full shadow-lift font-display uppercase text-[11px] tracking-widest2 transition-colors",
+              activeFilterCount > 0 ? "bg-ink-900 text-bone" : "bg-ink-900 text-bone"
             )}
           >
-            <SlidersHorizontal size={15} strokeWidth={2} />
+            <SlidersHorizontal size={14} strokeWidth={2} />
             Filtros
             {activeFilterCount > 0 && (
-              <span className="flex items-center justify-center w-4 h-4 rounded-full bg-white text-brand-primary text-[10px] font-bold leading-none">
+              <span className="flex items-center justify-center w-4 h-4 rounded-full bg-bone text-ink-900 text-[9px] font-semibold leading-none">
                 {activeFilterCount}
               </span>
             )}
@@ -547,70 +545,63 @@ export default function CatalogPage() {
         </div>
       )}
 
-      {/* ── Mobile: Filter bottom sheet ───────────────────────────────── */}
+      {/* ── Mobile: hoja de filtros ──────────────────────────────────── */}
       <AnimatePresence>
         {modalOpen && (
           <>
-            {/* Backdrop */}
             <motion.div
               key="backdrop"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="md:hidden fixed inset-0 bg-black/40 z-40 backdrop-blur-sm"
+              transition={{ duration: 0.25 }}
+              className="md:hidden fixed inset-0 bg-ink-950/50 z-40 backdrop-blur-sm"
               onClick={applyModal}
             />
 
-            {/* Sheet */}
             <motion.div
               key="sheet"
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
-              transition={{ type: "spring", stiffness: 320, damping: 32 }}
-              className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl
-                         shadow-2xl px-5 pt-4 pb-8 flex flex-col gap-5"
+              transition={{ type: "spring", stiffness: 340, damping: 34 }}
+              className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-bone rounded-t-panel
+                         shadow-sheet px-5 pt-4 pb-8 flex flex-col gap-6"
             >
-              {/* Handle + header */}
-              <div className="flex flex-col items-center gap-3">
-                <div className="w-10 h-1 rounded-full bg-gray-200" />
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-10 h-0.5 bg-ink-200" />
                 <div className="flex w-full items-center justify-between">
-                  <h3 className="font-poppins font-semibold text-base text-brand-dark">Filtros</h3>
+                  <h3 className="type-display text-2xl text-ink-900">Filtros</h3>
                   {(pendingSearch || pendingSizes.length > 0) && (
                     <button
                       type="button"
                       onClick={clearModal}
-                      className="text-xs font-poppins text-brand-primary underline underline-offset-2"
+                      className="link-underline font-display uppercase text-[10px] tracking-widest2 text-ink-500"
                     >
-                      Limpiar todo
+                      Limpiar
                     </button>
                   )}
                 </div>
               </div>
 
-              {/* Search input */}
-              <div className="flex flex-col gap-1.5">
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 font-poppins">
-                  Nombre
-                </p>
+              <div className="flex flex-col gap-2.5">
+                <p className="type-eyebrow text-ink-400">Nombre</p>
                 <div className="relative">
-                  <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none" />
+                  <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-300 pointer-events-none" />
                   <input
                     type="text"
                     value={pendingSearch}
                     onChange={(e) => setPendingSearch(e.target.value)}
-                    placeholder="Buscar producto…"
-                    className="w-full rounded-xl border border-gray-200 pl-9 pr-9 py-3 text-sm
-                               font-poppins text-brand-dark placeholder:text-gray-300 outline-none
-                               focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20
-                               transition bg-white"
+                    placeholder="Buscar pieza…"
+                    className="w-full h-12 rounded-btn border border-ink-200 bg-transparent pl-10 pr-10 text-[13px]
+                               text-ink-900 placeholder:text-ink-300 outline-none focus:border-ink-900 transition-colors"
                   />
                   {pendingSearch && (
                     <button
                       type="button"
                       onClick={() => setPendingSearch("")}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-ink-300 hover:text-ink-900"
+                      aria-label="Limpiar búsqueda"
                     >
                       <X size={14} />
                     </button>
@@ -618,12 +609,9 @@ export default function CatalogPage() {
                 </div>
               </div>
 
-              {/* Size grid */}
               {availableSizes.length > 1 && (
-                <div className="flex flex-col gap-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 font-poppins">
-                    Talla
-                  </p>
+                <div className="flex flex-col gap-2.5">
+                  <p className="type-eyebrow text-ink-400">Talla</p>
                   <div className="grid grid-cols-4 gap-2">
                     {availableSizes.map((size) => {
                       const active = pendingSizes.includes(size);
@@ -635,13 +623,13 @@ export default function CatalogPage() {
                             active ? prev.filter((s) => s !== size) : [...prev, size]
                           )}
                           className={cn(
-                            "relative flex items-center justify-center rounded-xl text-sm font-poppins font-medium py-3 border transition-all",
+                            "relative flex items-center justify-center rounded-btn text-[13px] py-3 border transition-colors",
                             active
-                              ? "bg-brand-primary border-brand-primary text-white"
-                              : "border-gray-200 text-gray-600 bg-white"
+                              ? "bg-ink-900 border-ink-900 text-bone"
+                              : "border-ink-200 text-ink-600"
                           )}
                         >
-                          {active && <Check size={10} className="absolute top-1.5 right-1.5 opacity-80" strokeWidth={3} />}
+                          {active && <Check size={9} className="absolute top-1.5 right-1.5 opacity-80" strokeWidth={3} />}
                           {size}
                         </button>
                       );
@@ -650,17 +638,16 @@ export default function CatalogPage() {
                 </div>
               )}
 
-              {/* Apply button */}
               <motion.button
                 type="button"
                 onClick={applyModal}
                 whileTap={{ scale: 0.98 }}
-                className="w-full py-3.5 rounded-2xl bg-brand-dark text-white text-sm font-poppins
-                           font-medium mt-1"
+                disabled={previewCount === 0}
+                className="btn-ink w-full mt-1"
               >
                 {previewCount === 0
                   ? "Sin resultados"
-                  : `Ver ${previewCount} ${previewCount === 1 ? "producto" : "productos"}`}
+                  : `Ver ${previewCount} ${previewCount === 1 ? "pieza" : "piezas"}`}
               </motion.button>
             </motion.div>
           </>

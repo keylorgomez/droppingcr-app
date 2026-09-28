@@ -31,8 +31,8 @@ function timeAgo(iso: string): string {
 }
 
 const inputCls =
-  "w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-poppins text-brand-dark " +
-  "placeholder:text-gray-300 outline-none focus:border-brand-primary " +
+  "w-full rounded-xl border border-ink-200 px-4 py-2.5 text-sm text-brand-dark " +
+  "placeholder:text-ink-300 outline-none focus:border-brand-primary " +
   "focus:ring-1 focus:ring-brand-primary/20 transition";
 
 // ── Abono General Form ─────────────────────────────────────────────────────
@@ -68,12 +68,12 @@ function AbonoGeneralForm({ client, onDone }: { client: ClientDebt; onDone: () =
   }
 
   return (
-    <div className="flex flex-col gap-3 pt-4 border-t border-gray-100">
+    <div className="flex flex-col gap-3 pt-4 border-t border-ink-100">
       <div>
-        <p className="text-[10px] font-poppins text-gray-400 uppercase tracking-widest">
+        <p className="text-[10px] text-ink-400 uppercase tracking-widest">
           Abono general — saldo pendiente: {fmt(client.remaining)}
         </p>
-        <p className="text-[11px] font-poppins text-gray-400 mt-0.5">
+        <p className="text-[11px] text-ink-400 mt-0.5">
           Se distribuirá entre las ventas más antiguas primero.
         </p>
       </div>
@@ -90,7 +90,7 @@ function AbonoGeneralForm({ client, onDone }: { client: ClientDebt; onDone: () =
             className={inputCls}
             autoFocus
           />
-          {error && <span className="text-[11px] text-red-500 font-poppins">{error}</span>}
+          {error && <span className="text-[11px] text-red-500">{error}</span>}
         </div>
         <input
           type="text"
@@ -105,8 +105,8 @@ function AbonoGeneralForm({ client, onDone }: { client: ClientDebt; onDone: () =
         <button
           type="button"
           onClick={onDone}
-          className="px-4 py-2 rounded-xl border border-gray-200 text-sm font-poppins
-                     text-gray-500 hover:border-gray-300 transition-colors"
+          className="px-4 py-2 rounded-xl border border-ink-200 text-sm
+                     text-ink-500 hover:border-ink-300 transition-colors"
         >
           Cancelar
         </button>
@@ -114,9 +114,9 @@ function AbonoGeneralForm({ client, onDone }: { client: ClientDebt; onDone: () =
           type="button"
           onClick={handleSave}
           disabled={mutation.isPending}
-          className="px-4 py-2 rounded-xl bg-brand-primary text-white text-sm font-poppins
+          className="px-4 py-2 rounded-xl bg-brand-primary text-white text-sm
                      font-medium flex items-center gap-2
-                     hover:bg-[#7a3e18] transition-colors disabled:opacity-60"
+                     hover:bg-[#2e2e2e] transition-colors disabled:opacity-60"
         >
           {mutation.isPending && <Loader2 size={13} className="animate-spin" />}
           Guardar abono
@@ -133,34 +133,34 @@ function SaleRow({ sale }: { sale: PendingSale }) {
   const isMulti   = sale.isOrder && sale.orderItems && sale.orderItems.length > 1;
 
   return (
-    <div className="flex flex-col gap-1.5 py-3 border-t border-gray-50 first:border-0">
+    <div className="flex flex-col gap-1.5 py-3 border-t border-ink-50 first:border-0">
       {/* Header row */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex flex-col gap-0.5">
           {isMulti ? (
             <div className="flex items-center gap-1.5">
-              <p className="text-xs font-poppins font-medium text-brand-dark">
+              <p className="text-xs font-medium text-brand-dark">
                 {sale.orderItems!.length} productos
               </p>
               <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5
-                               rounded-full bg-indigo-100 text-indigo-600 font-poppins">
+                               rounded-full bg-indigo-100 text-indigo-600">
                 MULTI
               </span>
             </div>
           ) : (
-            <p className="text-xs font-poppins font-medium text-brand-dark">
+            <p className="text-xs font-medium text-brand-dark">
               {sale.product_name}
-              <span className="text-gray-400 font-normal ml-1">— {sale.variant_size}</span>
+              <span className="text-ink-400 font-normal ml-1">— {sale.variant_size}</span>
             </p>
           )}
-          <p className="text-[11px] font-poppins text-gray-400">{timeAgo(sale.sold_at)}</p>
+          <p className="text-[11px] text-ink-400">{timeAgo(sale.sold_at)}</p>
           {sale.note && (
-            <p className="text-[11px] font-poppins text-gray-300 italic">{sale.note}</p>
+            <p className="text-[11px] text-ink-300 italic">{sale.note}</p>
           )}
         </div>
         <div className="text-right shrink-0">
-          <p className="text-[11px] font-poppins text-gray-400 line-through">{fmt(sale.sale_price)}</p>
-          <p className="text-xs font-poppins font-semibold text-red-500">{fmt(sale.remaining)}</p>
+          <p className="text-[11px] text-ink-400 line-through">{fmt(sale.sale_price)}</p>
+          <p className="text-xs font-semibold text-red-500">{fmt(sale.remaining)}</p>
         </div>
       </div>
 
@@ -169,14 +169,14 @@ function SaleRow({ sale }: { sale: PendingSale }) {
         <div className="flex flex-col gap-1 pl-2 border-l-2 border-indigo-100 mt-0.5">
           {sale.orderItems!.map((item, i) => (
             <div key={i} className="flex items-center justify-between gap-2">
-              <p className="text-[11px] font-poppins text-gray-500">
+              <p className="text-[11px] text-ink-500">
                 {item.product_name}
-                <span className="text-gray-300 ml-1">— {item.variant_size}</span>
+                <span className="text-ink-300 ml-1">— {item.variant_size}</span>
                 {item.quantity > 1 && (
-                  <span className="text-gray-300 ml-1">×{item.quantity}</span>
+                  <span className="text-ink-300 ml-1">×{item.quantity}</span>
                 )}
               </p>
-              <p className="text-[11px] font-poppins text-gray-400 shrink-0">
+              <p className="text-[11px] text-ink-400 shrink-0">
                 {fmt(item.sale_price * item.quantity)}
               </p>
             </div>
@@ -184,7 +184,7 @@ function SaleRow({ sale }: { sale: PendingSale }) {
         </div>
       )}
 
-      <div className="h-1 w-full bg-gray-100 rounded-full overflow-hidden">
+      <div className="h-1 w-full bg-ink-100 rounded-full overflow-hidden">
         <div
           className="h-full bg-emerald-400 rounded-full transition-all duration-500"
           style={{ width: `${paidPct}%` }}
@@ -204,16 +204,16 @@ function ClientCard({ client }: { client: ClientDebt }) {
   const name    = client.guest_name ?? "Cliente sin nombre";
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-5 flex flex-col gap-4">
+    <div className="bg-white rounded-2xl border border-ink-100 p-5 flex flex-col gap-4">
 
       {/* Top row */}
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="font-poppins font-semibold text-sm text-brand-dark">{name}</p>
+          <p className="font-semibold text-sm text-brand-dark">{name}</p>
           {client.guest_phone && (
-            <p className="font-poppins text-xs text-gray-400 mt-0.5">{client.guest_phone}</p>
+            <p className="text-xs text-ink-400 mt-0.5">{client.guest_phone}</p>
           )}
-          <p className="font-poppins text-[11px] text-gray-300 mt-0.5">
+          <p className="text-[11px] text-ink-300 mt-0.5">
             {client.sales.length} {client.sales.length === 1 ? "venta pendiente" : "ventas pendientes"}
           </p>
         </div>
@@ -222,8 +222,8 @@ function ClientCard({ client }: { client: ClientDebt }) {
             href={waLink(client.guest_phone, client.guest_name, client.remaining)}
             target="_blank"
             rel="noopener noreferrer"
-            className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#25D366]
-                       text-white text-xs font-poppins font-medium hover:bg-[#1da851] transition-colors"
+            className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#0a0a0a]
+                       text-white text-xs font-medium hover:bg-[#2e2e2e] transition-colors"
           >
             <MessageCircle size={13} strokeWidth={2} />
             Cobrar por WA
@@ -234,33 +234,33 @@ function ClientCard({ client }: { client: ClientDebt }) {
       {/* Price pills */}
       <div className="grid grid-cols-3 gap-2 text-center">
         {[
-          { label: "Total",     value: fmt(client.total_sale), cls: "bg-gray-50 text-brand-dark" },
+          { label: "Total",     value: fmt(client.total_sale), cls: "bg-ink-50 text-brand-dark" },
           { label: "Abonado",   value: fmt(client.total_paid), cls: "bg-emerald-50 text-emerald-600" },
           { label: "Pendiente", value: fmt(client.remaining),  cls: "bg-red-50 text-red-500" },
         ].map(({ label, value, cls }) => (
           <div key={label} className={`rounded-xl py-2.5 px-2 ${cls.split(" ")[0]}`}>
-            <p className="text-[10px] font-poppins text-gray-400 uppercase tracking-wider mb-0.5">{label}</p>
-            <p className={`font-poppins font-semibold text-sm ${cls.split(" ")[1]}`}>{value}</p>
+            <p className="text-[10px] text-ink-400 uppercase tracking-wider mb-0.5">{label}</p>
+            <p className={`font-semibold text-sm ${cls.split(" ")[1]}`}>{value}</p>
           </div>
         ))}
       </div>
 
       {/* Progress bar */}
       <div className="flex flex-col gap-1">
-        <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+        <div className="h-1.5 w-full bg-ink-100 rounded-full overflow-hidden">
           <div
             className="h-full bg-emerald-500 rounded-full transition-all duration-500"
             style={{ width: `${paidPct}%` }}
           />
         </div>
-        <p className="text-[10px] font-poppins text-gray-400 text-right">{paidPct}% pagado</p>
+        <p className="text-[10px] text-ink-400 text-right">{paidPct}% pagado</p>
       </div>
 
       {/* Toggle: sale detail */}
       <button
         type="button"
         onClick={() => { setShowSales((v) => !v); if (showAbono) setShowAbono(false); }}
-        className="flex items-center gap-1.5 text-xs font-poppins text-gray-400
+        className="flex items-center gap-1.5 text-xs text-ink-400
                    hover:text-brand-primary transition-colors self-start"
       >
         {showSales ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
@@ -271,7 +271,7 @@ function ClientCard({ client }: { client: ClientDebt }) {
       </button>
 
       {showSales && (
-        <div className="rounded-xl border border-gray-100 px-4 -mt-2">
+        <div className="rounded-xl border border-ink-100 px-4 -mt-2">
           {client.sales.map((sale) => (
             <SaleRow key={sale.id} sale={sale} />
           ))}
@@ -283,10 +283,10 @@ function ClientCard({ client }: { client: ClientDebt }) {
         type="button"
         onClick={() => { setShowAbono((v) => !v); if (showSales) setShowSales(false); }}
         className={cn(
-          "flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-poppins font-medium transition-colors self-start",
+          "flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-colors self-start",
           showAbono
-            ? "bg-brand-primary text-white hover:bg-[#7a3e18]"
-            : "border border-gray-200 text-brand-primary hover:border-brand-primary"
+            ? "bg-brand-primary text-white hover:bg-[#2e2e2e]"
+            : "border border-ink-200 text-brand-primary hover:border-brand-primary"
         )}
       >
         <Plus size={13} strokeWidth={2.5} />
@@ -344,7 +344,7 @@ export default function DebtPage() {
         {/* Back + title */}
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-1.5 text-xs font-poppins text-gray-400
+          className="flex items-center gap-1.5 text-xs text-ink-400
                      hover:text-brand-primary transition-colors mb-6 -ml-0.5"
         >
           <ArrowLeft size={15} strokeWidth={1.8} />
@@ -353,9 +353,9 @@ export default function DebtPage() {
 
         <div className="flex items-center gap-2.5 mb-1">
           <CreditCard size={18} className="text-brand-accent" strokeWidth={1.8} />
-          <h1 className="font-poppins font-semibold text-xl text-brand-dark">Cobros Pendientes</h1>
+          <h1 className="font-semibold text-xl text-brand-dark">Cobros Pendientes</h1>
         </div>
-        <p className="font-poppins text-xs text-gray-400 mb-8">
+        <p className="text-xs text-ink-400 mb-8">
           Agrupado por cliente. Los abonos se distribuyen de la venta más antigua a la más reciente.
         </p>
 
@@ -364,29 +364,29 @@ export default function DebtPage() {
           <div className="bg-brand-dark rounded-2xl p-5 mb-6 flex flex-col gap-4">
             <div className="flex items-center gap-2">
               <Wallet size={15} className="text-brand-bg" strokeWidth={1.8} />
-              <p className="font-poppins text-xs text-brand-bg/70 uppercase tracking-widest">
+              <p className="text-xs text-brand-bg/70 uppercase tracking-widest">
                 Resumen global
               </p>
             </div>
 
             <div className="grid grid-cols-3 gap-3 text-center">
               <div>
-                <p className="text-[10px] font-poppins text-white/50 uppercase tracking-wider mb-0.5">
+                <p className="text-[10px] text-white/50 uppercase tracking-wider mb-0.5">
                   Deudores
                 </p>
-                <p className="font-poppins font-bold text-2xl text-white">{clients.length}</p>
+                <p className="font-bold text-2xl text-white">{clients.length}</p>
               </div>
               <div>
-                <p className="text-[10px] font-poppins text-white/50 uppercase tracking-wider mb-0.5">
+                <p className="text-[10px] text-white/50 uppercase tracking-wider mb-0.5">
                   Abonado
                 </p>
-                <p className="font-poppins font-bold text-xl text-emerald-400">{fmt(grandTotalPaid)}</p>
+                <p className="font-bold text-xl text-emerald-400">{fmt(grandTotalPaid)}</p>
               </div>
               <div>
-                <p className="text-[10px] font-poppins text-white/50 uppercase tracking-wider mb-0.5">
+                <p className="text-[10px] text-white/50 uppercase tracking-wider mb-0.5">
                   Por cobrar
                 </p>
-                <p className="font-poppins font-bold text-xl text-red-400">{fmt(grandTotal)}</p>
+                <p className="font-bold text-xl text-red-400">{fmt(grandTotal)}</p>
               </div>
             </div>
 
@@ -398,7 +398,7 @@ export default function DebtPage() {
                     style={{ width: `${Math.round((grandTotalPaid / grandTotalSale) * 100)}%` }}
                   />
                 </div>
-                <p className="text-[10px] font-poppins text-white/40 text-right">
+                <p className="text-[10px] text-white/40 text-right">
                   {Math.round((grandTotalPaid / grandTotalSale) * 100)}% del total cobrado
                 </p>
               </div>
@@ -409,22 +409,22 @@ export default function DebtPage() {
         {/* ── Search ──────────────────────────────────────────────── */}
         {!isLoading && clients.length > 0 && (
           <div className="relative mb-4">
-            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none" />
+            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-300 pointer-events-none" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar por nombre o teléfono…"
-              className="w-full rounded-xl border border-gray-200 pl-9 pr-9 py-2.5 text-sm
-                         font-poppins text-brand-dark placeholder:text-gray-300 outline-none
+              className="w-full rounded-xl border border-ink-200 pl-9 pr-9 py-2.5 text-sm
+                         text-brand-dark placeholder:text-ink-300 outline-none
                          focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20 transition"
             />
             {search && (
               <button
                 type="button"
                 onClick={() => setSearch("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300
-                           hover:text-gray-500 transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-300
+                           hover:text-ink-500 transition-colors"
               >
                 <X size={14} />
               </button>
@@ -435,33 +435,33 @@ export default function DebtPage() {
         {/* ── Client list ─────────────────────────────────────────── */}
         {isError && (
           <div className="rounded-2xl border border-red-100 bg-red-50 p-4 mb-4">
-            <p className="font-poppins text-sm font-medium text-red-500 mb-0.5">Error al cargar los cobros</p>
-            <p className="font-poppins text-xs text-red-400">{(error as Error)?.message}</p>
+            <p className="text-sm font-medium text-red-500 mb-0.5">Error al cargar los cobros</p>
+            <p className="text-xs text-red-400">{(error as Error)?.message}</p>
           </div>
         )}
 
         {isLoading ? (
           <div className="flex flex-col gap-4 animate-pulse">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-52 bg-gray-100 rounded-2xl" />
+              <div key={i} className="h-52 bg-ink-100 rounded-2xl" />
             ))}
           </div>
         ) : clients.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-20 text-center">
-            <CreditCard size={40} strokeWidth={1.2} className="text-gray-200" />
-            <p className="font-poppins font-medium text-sm text-gray-400">Sin cobros pendientes</p>
-            <p className="font-poppins text-xs text-gray-300">Todas las ventas están al día.</p>
+            <CreditCard size={40} strokeWidth={1.2} className="text-ink-200" />
+            <p className="font-medium text-sm text-ink-400">Sin cobros pendientes</p>
+            <p className="text-xs text-ink-300">Todas las ventas están al día.</p>
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-16 text-center">
-            <Search size={36} strokeWidth={1.2} className="text-gray-200" />
-            <p className="font-poppins font-medium text-sm text-gray-400">
+            <Search size={36} strokeWidth={1.2} className="text-ink-200" />
+            <p className="font-medium text-sm text-ink-400">
               Sin resultados para "{search}"
             </p>
             <button
               type="button"
               onClick={() => setSearch("")}
-              className="text-xs font-poppins text-brand-primary hover:underline"
+              className="text-xs text-brand-primary hover:underline"
             >
               Limpiar búsqueda
             </button>

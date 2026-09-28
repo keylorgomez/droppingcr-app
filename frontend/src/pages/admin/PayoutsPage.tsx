@@ -39,14 +39,14 @@ function SummaryCard({
   return (
     <div className={`rounded-2xl border p-4 flex flex-col gap-2 ${colorMap[color]}`}>
       <div className="flex items-center justify-between">
-        <span className="text-xs font-poppins font-semibold uppercase tracking-wider opacity-70">
+        <span className="text-xs font-semibold uppercase tracking-wider opacity-70">
           {label}
         </span>
         <Icon size={16} strokeWidth={1.8} className="opacity-50" />
       </div>
-      <p className="text-xl font-poppins font-bold leading-none">{value}</p>
+      <p className="text-xl font-bold leading-none">{value}</p>
       {sub && (
-        <p className="text-[11px] font-poppins opacity-60">{sub}</p>
+        <p className="text-[11px] opacity-60">{sub}</p>
       )}
     </div>
   );
@@ -94,12 +94,12 @@ function PayoutModal({
       >
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h2 className="font-poppins font-semibold text-brand-dark text-base">
+          <h2 className="font-semibold text-brand-dark text-base">
             Registrar abono
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-brand-primary transition-colors"
+            className="text-ink-400 hover:text-brand-primary transition-colors"
           >
             <X size={20} />
           </button>
@@ -108,15 +108,15 @@ function PayoutModal({
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           {/* Admin selector */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-poppins font-medium text-gray-500 uppercase tracking-wider">
+            <label className="text-xs font-medium text-ink-500 uppercase tracking-wider">
               Admin destinatario
             </label>
             <div className="relative">
               <select
                 value={recipientId}
                 onChange={(e) => setRecipientId(e.target.value)}
-                className="w-full appearance-none rounded-xl border border-gray-200 px-4 py-2.5
-                           text-sm font-poppins text-brand-dark outline-none bg-white
+                className="w-full appearance-none rounded-xl border border-ink-200 px-4 py-2.5
+                           text-sm text-brand-dark outline-none bg-white
                            focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20
                            transition pr-9"
                 required
@@ -129,14 +129,14 @@ function PayoutModal({
               </select>
               <ChevronDown
                 size={15}
-                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink-400"
               />
             </div>
           </div>
 
           {/* Amount */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-poppins font-medium text-gray-500 uppercase tracking-wider">
+            <label className="text-xs font-medium text-ink-500 uppercase tracking-wider">
               Monto (₡)
             </label>
             <input
@@ -147,8 +147,8 @@ function PayoutModal({
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0"
               required
-              className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm
-                         font-poppins text-brand-dark placeholder:text-gray-300 outline-none
+              className="w-full rounded-xl border border-ink-200 px-4 py-2.5 text-sm
+                         text-brand-dark placeholder:text-ink-300 outline-none
                          focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20
                          transition"
             />
@@ -156,16 +156,16 @@ function PayoutModal({
 
           {/* Note */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-poppins font-medium text-gray-500 uppercase tracking-wider">
-              Nota <span className="normal-case text-gray-400">(opcional)</span>
+            <label className="text-xs font-medium text-ink-500 uppercase tracking-wider">
+              Nota <span className="normal-case text-ink-400">(opcional)</span>
             </label>
             <input
               type="text"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="Ej: Salario mayo, comisión, etc."
-              className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm
-                         font-poppins text-brand-dark placeholder:text-gray-300 outline-none
+              className="w-full rounded-xl border border-ink-200 px-4 py-2.5 text-sm
+                         text-brand-dark placeholder:text-ink-300 outline-none
                          focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20
                          transition"
             />
@@ -175,8 +175,8 @@ function PayoutModal({
             type="submit"
             disabled={saving || !amount || parseFloat(amount) <= 0}
             className="mt-1 w-full py-3 rounded-xl bg-brand-primary text-white text-sm
-                       font-poppins font-medium flex items-center justify-center gap-2
-                       hover:bg-[#7a3e18] transition-colors disabled:opacity-50"
+                       font-medium flex items-center justify-center gap-2
+                       hover:bg-[#2e2e2e] transition-colors disabled:opacity-50"
           >
             {saving && <Loader2 size={15} className="animate-spin" />}
             Guardar abono
@@ -205,18 +205,18 @@ function AdminBreakdown({ payouts }: { payouts: AdminPayout[] }) {
 
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-[11px] font-poppins font-semibold uppercase tracking-widest text-gray-400">
+      <p className="text-[11px] font-semibold uppercase tracking-widest text-ink-400">
         Por admin
       </p>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
         {byAdmin.map((a) => (
           <div
             key={a.name}
-            className="bg-gray-50 rounded-xl px-3 py-2.5 flex flex-col gap-0.5"
+            className="bg-ink-50 rounded-xl px-3 py-2.5 flex flex-col gap-0.5"
           >
-            <p className="text-xs font-poppins font-semibold text-brand-dark truncate">{a.name}</p>
-            <p className="text-sm font-poppins font-bold text-brand-primary">{fmt(a.total)}</p>
-            <p className="text-[10px] font-poppins text-gray-400">
+            <p className="text-xs font-semibold text-brand-dark truncate">{a.name}</p>
+            <p className="text-sm font-bold text-brand-primary">{fmt(a.total)}</p>
+            <p className="text-[10px] text-ink-400">
               {a.count} {a.count === 1 ? "abono" : "abonos"}
             </p>
           </div>
@@ -288,15 +288,15 @@ function DistributionTracker({
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="font-poppins font-semibold text-sm text-brand-dark">
+          <p className="font-semibold text-sm text-brand-dark">
             Control de distribución
           </p>
-          <p className="font-poppins text-xs text-gray-400 mt-0.5">
+          <p className="text-xs text-ink-400 mt-0.5">
             60% distribuible · 40% fondo del negocio
           </p>
         </div>
         <span className={`flex items-center gap-1.5 shrink-0 text-[10px] font-bold uppercase
-                          tracking-wider px-2.5 py-1.5 rounded-full font-poppins ${t.badgeCls}`}>
+                          tracking-wider px-2.5 py-1.5 rounded-full ${t.badgeCls}`}>
           <t.Icon size={11} strokeWidth={2.5} />
           {t.label}
         </span>
@@ -305,24 +305,24 @@ function DistributionTracker({
       {/* 60/40 split */}
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-white/60 rounded-xl px-3.5 py-3 flex flex-col gap-0.5">
-          <p className="text-[10px] font-poppins font-semibold uppercase tracking-wider text-gray-400">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-400">
             60% distribuible
           </p>
-          <p className={`text-lg font-poppins font-bold leading-tight ${t.textCls}`}>
+          <p className={`text-lg font-bold leading-tight ${t.textCls}`}>
             {fmt(target)}
           </p>
-          <p className="text-[10px] font-poppins text-gray-400">
+          <p className="text-[10px] text-ink-400">
             del total de ganancias
           </p>
         </div>
         <div className="bg-white/60 rounded-xl px-3.5 py-3 flex flex-col gap-0.5">
-          <p className="text-[10px] font-poppins font-semibold uppercase tracking-wider text-gray-400">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-400">
             40% fondo negocio
           </p>
-          <p className="text-lg font-poppins font-bold text-brand-dark leading-tight">
+          <p className="text-lg font-bold text-brand-dark leading-tight">
             {fmt(fundNegocio)}
           </p>
-          <p className="text-[10px] font-poppins text-gray-400">
+          <p className="text-[10px] text-ink-400">
             reserva del negocio
           </p>
         </div>
@@ -331,12 +331,12 @@ function DistributionTracker({
       {/* Progress bar */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-poppins text-gray-500">
+          <span className="text-xs text-ink-500">
             Distribuido: <span className="font-semibold text-brand-dark">
               {fmt(totalDistributed)}
             </span>
           </span>
-          <span className={`text-xs font-poppins font-bold ${t.textCls}`}>
+          <span className={`text-xs font-bold ${t.textCls}`}>
             {Math.min(progress, 999).toFixed(1)}%
           </span>
         </div>
@@ -356,8 +356,8 @@ function DistributionTracker({
         </div>
 
         {/* Labels under bar */}
-        <div className="flex items-center justify-between text-[11px] font-poppins">
-          <span className="text-gray-400">
+        <div className="flex items-center justify-between text-[11px]">
+          <span className="text-ink-400">
             Objetivo: {fmt(target)}
           </span>
           {exceeded ? (
@@ -379,10 +379,10 @@ function DistributionTracker({
 
 function RowSkeleton() {
   return (
-    <tr className="border-t border-gray-50">
+    <tr className="border-t border-ink-50">
       {[1, 2, 3, 4].map((i) => (
         <td key={i} className="px-4 py-3">
-          <div className="h-3 bg-gray-100 rounded animate-pulse" style={{ width: `${55 + i * 10}%` }} />
+          <div className="h-3 bg-ink-100 rounded animate-pulse" style={{ width: `${55 + i * 10}%` }} />
         </td>
       ))}
     </tr>
@@ -452,16 +452,16 @@ export default function PayoutsPage() {
         <div className="mb-6">
           <button
             onClick={() => navigate(-1)}
-            className="flex items-center gap-1.5 text-sm font-poppins text-gray-400
+            className="flex items-center gap-1.5 text-sm text-ink-400
                        hover:text-brand-primary transition-colors mb-3"
           >
             <ArrowLeft size={15} strokeWidth={2} />
             Volver
           </button>
-          <h1 className="font-poppins font-semibold italic text-brand-primary text-2xl">
+          <h1 className="font-semibold text-brand-primary text-2xl">
             Distribución de ganancias
           </h1>
-          <p className="font-poppins text-xs text-gray-400 mt-1">
+          <p className="text-xs text-ink-400 mt-1">
             Registra y controla los abonos de ganancia para cada admin.
           </p>
         </div>
@@ -512,8 +512,8 @@ export default function PayoutsPage() {
             <select
               value={filterAdmin}
               onChange={(e) => setFilterAdmin(e.target.value)}
-              className="appearance-none rounded-xl border border-gray-200 px-3 py-2 pr-8
-                         text-sm font-poppins text-brand-dark outline-none bg-white
+              className="appearance-none rounded-xl border border-ink-200 px-3 py-2 pr-8
+                         text-sm text-brand-dark outline-none bg-white
                          focus:border-brand-primary transition"
             >
               <option value="">Todos los admins</option>
@@ -525,7 +525,7 @@ export default function PayoutsPage() {
             </select>
             <ChevronDown
               size={14}
-              className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400"
+              className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-400"
             />
           </div>
 
@@ -533,7 +533,7 @@ export default function PayoutsPage() {
             onClick={() => setModalOpen(true)}
             disabled={loadingAdmins}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-primary text-white
-                       text-sm font-poppins font-medium hover:bg-[#7a3e18] transition-colors
+                       text-sm font-medium hover:bg-[#2e2e2e] transition-colors
                        disabled:opacity-50 shrink-0"
           >
             <Plus size={15} strokeWidth={2.2} />
@@ -542,23 +542,23 @@ export default function PayoutsPage() {
         </div>
 
         {/* Table */}
-        <div className="rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-          <table className="w-full text-sm font-poppins">
+        <div className="rounded-2xl border border-ink-100 overflow-hidden shadow-sm">
+          <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+              <tr className="border-b border-ink-100 bg-ink-50">
+                <th className="text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-ink-400">
                   Fecha
                 </th>
-                <th className="text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                <th className="text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-ink-400">
                   Admin
                 </th>
-                <th className="text-right px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                <th className="text-right px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-ink-400">
                   Monto
                 </th>
-                <th className="text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400 hidden sm:table-cell">
+                <th className="text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-ink-400 hidden sm:table-cell">
                   Nota
                 </th>
-                <th className="text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-400 hidden md:table-cell">
+                <th className="text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-ink-400 hidden md:table-cell">
                   Registrado por
                 </th>
               </tr>
@@ -570,15 +570,15 @@ export default function PayoutsPage() {
 
               {!loadingPayouts && filtered.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-16 text-center text-gray-400 text-sm">
+                  <td colSpan={5} className="px-4 py-16 text-center text-ink-400 text-sm">
                     No hay abonos registrados aún.
                   </td>
                 </tr>
               )}
 
               {!loadingPayouts && filtered.map((p) => (
-                <tr key={p.id} className="border-t border-gray-50 hover:bg-gray-50/60 transition-colors">
-                  <td className="px-4 py-3 text-gray-500 whitespace-nowrap text-xs">
+                <tr key={p.id} className="border-t border-ink-50 hover:bg-ink-50/60 transition-colors">
+                  <td className="px-4 py-3 text-ink-500 whitespace-nowrap text-xs">
                     {formatDate(p.paid_at)}
                   </td>
                   <td className="px-4 py-3 font-medium text-brand-dark">
@@ -587,11 +587,11 @@ export default function PayoutsPage() {
                   <td className="px-4 py-3 text-right font-semibold text-brand-primary whitespace-nowrap">
                     {fmt(p.amount)}
                   </td>
-                  <td className="px-4 py-3 text-gray-400 text-xs hidden sm:table-cell max-w-[200px] truncate">
-                    {p.note ?? <span className="text-gray-200">—</span>}
+                  <td className="px-4 py-3 text-ink-400 text-xs hidden sm:table-cell max-w-[200px] truncate">
+                    {p.note ?? <span className="text-ink-200">—</span>}
                   </td>
-                  <td className="px-4 py-3 text-gray-400 text-xs hidden md:table-cell">
-                    {p.creator_name ?? <span className="text-gray-200">—</span>}
+                  <td className="px-4 py-3 text-ink-400 text-xs hidden md:table-cell">
+                    {p.creator_name ?? <span className="text-ink-200">—</span>}
                   </td>
                 </tr>
               ))}
@@ -600,12 +600,12 @@ export default function PayoutsPage() {
 
           {/* Footer */}
           {filtered.length > 0 && (
-            <div className="border-t border-gray-100 bg-gray-50 px-4 py-2.5
+            <div className="border-t border-ink-100 bg-ink-50 px-4 py-2.5
                             flex items-center justify-between">
-              <span className="text-xs font-poppins text-gray-400">
+              <span className="text-xs text-ink-400">
                 {filtered.length} {filtered.length === 1 ? "registro" : "registros"}
               </span>
-              <span className="text-sm font-poppins font-semibold text-brand-dark">
+              <span className="text-sm font-semibold text-brand-dark">
                 Total: {fmt(filteredTotal)}
               </span>
             </div>

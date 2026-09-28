@@ -30,7 +30,7 @@ function ChartTooltip({ active, payload, label }: ChartTooltipProps) {
     <div style={{
       background: "white", border: "1px solid #f3f4f6",
       borderRadius: 12, padding: "10px 14px",
-      fontFamily: "Poppins, sans-serif", fontSize: 12,
+      fontFamily: "Inter, sans-serif", fontSize: 12,
       boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
     }}>
       {label && <p style={{ color: "#9ca3af", marginBottom: 6, fontSize: 11 }}>{label}</p>}
@@ -52,9 +52,9 @@ function KPICard({
   icon: React.ElementType; accent: string;
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col gap-3">
+    <div className="bg-white rounded-2xl border border-ink-100 shadow-sm p-5 flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <p className="text-[11px] font-poppins font-semibold uppercase tracking-widest text-gray-400">
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-ink-400">
           {title}
         </p>
         <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${accent}`}>
@@ -62,8 +62,8 @@ function KPICard({
         </div>
       </div>
       <div>
-        <p className="font-poppins font-bold text-2xl text-brand-dark leading-none">{value}</p>
-        {sub && <p className="font-poppins text-xs text-gray-400 mt-1">{sub}</p>}
+        <p className="font-bold text-2xl text-brand-dark leading-none">{value}</p>
+        {sub && <p className="text-xs text-ink-400 mt-1">{sub}</p>}
       </div>
     </div>
   );
@@ -73,8 +73,8 @@ function KPICard({
 
 function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-      <p className="font-poppins font-semibold text-sm text-brand-dark mb-5">{title}</p>
+    <div className="bg-white rounded-2xl border border-ink-100 shadow-sm p-5">
+      <p className="font-semibold text-sm text-brand-dark mb-5">{title}</p>
       {children}
     </div>
   );
@@ -83,7 +83,7 @@ function ChartCard({ title, children }: { title: string; children: React.ReactNo
 // ── Skeleton ───────────────────────────────────────────────────────────────
 
 function Skeleton({ className }: { className?: string }) {
-  return <div className={`animate-pulse rounded-xl bg-gray-100 ${className ?? ""}`} />;
+  return <div className={`animate-pulse rounded-xl bg-ink-100 ${className ?? ""}`} />;
 }
 
 // ── Page ───────────────────────────────────────────────────────────────────
@@ -114,16 +114,16 @@ export default function Dashboard() {
         <div>
           <button
             onClick={() => navigate("/")}
-            className="flex items-center gap-1.5 text-sm font-poppins text-gray-400
+            className="flex items-center gap-1.5 text-sm text-ink-400
                        hover:text-brand-primary transition-colors mb-3"
           >
             <ArrowLeft size={15} strokeWidth={2} />
             Volver al catálogo
           </button>
-          <h1 className="font-poppins font-semibold italic text-brand-primary text-2xl">
+          <h1 className="font-semibold text-brand-primary text-2xl">
             Panel Admin
           </h1>
-          <p className="font-poppins text-xs text-gray-400 mt-1">
+          <p className="text-xs text-ink-400 mt-1">
             Métricas en tiempo real · Últimos 30 días en gráficos
           </p>
         </div>
@@ -188,19 +188,19 @@ export default function Dashboard() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
                 <XAxis
                   dataKey="date"
-                  tick={{ fontSize: 10, fontFamily: "Poppins", fill: "#9ca3af" }}
+                  tick={{ fontSize: 10, fontFamily: "Inter", fill: "#9ca3af" }}
                   tickLine={false} axisLine={false}
                   interval={Math.floor((areaData?.length ?? 30) / 6)}
                 />
                 <YAxis
                   tickFormatter={fmt}
-                  tick={{ fontSize: 10, fontFamily: "Poppins", fill: "#9ca3af" }}
+                  tick={{ fontSize: 10, fontFamily: "Inter", fill: "#9ca3af" }}
                   tickLine={false} axisLine={false} width={52}
                 />
                 <Tooltip content={<ChartTooltip />} />
                 <Legend
                   iconType="circle" iconSize={8}
-                  wrapperStyle={{ fontFamily: "Poppins", fontSize: 11, paddingTop: 8 }}
+                  wrapperStyle={{ fontFamily: "Inter", fontSize: 11, paddingTop: 8 }}
                 />
                 <Area type="monotone" dataKey="ventas" name="Ventas"
                   stroke="#16a34a" strokeWidth={2}
@@ -221,7 +221,7 @@ export default function Dashboard() {
             {loadingTop ? (
               <Skeleton className="h-56" />
             ) : !topProds?.length ? (
-              <p className="text-xs font-poppins text-gray-400 text-center py-16">Sin datos aún.</p>
+              <p className="text-xs text-ink-400 text-center py-16">Sin datos aún.</p>
             ) : (
               <ResponsiveContainer width="100%" height={230}>
                 <BarChart
@@ -232,17 +232,17 @@ export default function Dashboard() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" horizontal={false} />
                   <XAxis
                     type="number" tickFormatter={fmt}
-                    tick={{ fontSize: 10, fontFamily: "Poppins", fill: "#9ca3af" }}
+                    tick={{ fontSize: 10, fontFamily: "Inter", fill: "#9ca3af" }}
                     tickLine={false} axisLine={false}
                   />
                   <YAxis
                     type="category" dataKey="name" width={90}
-                    tick={{ fontSize: 10, fontFamily: "Poppins", fill: "#6b7280" }}
+                    tick={{ fontSize: 10, fontFamily: "Inter", fill: "#6b7280" }}
                     tickLine={false} axisLine={false}
                     tickFormatter={(v: string) => v.length > 14 ? v.slice(0, 13) + "…" : v}
                   />
-                  <Tooltip content={<ChartTooltip />} cursor={{ fill: "#f9f5f2" }} />
-                  <Bar dataKey="revenue" name="Ingresos" fill="#975023" radius={[0, 6, 6, 0]} />
+                  <Tooltip content={<ChartTooltip />} cursor={{ fill: "#f5f4f2" }} />
+                  <Bar dataKey="revenue" name="Ingresos" fill="#0a0a0a" radius={[0, 6, 6, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -253,7 +253,7 @@ export default function Dashboard() {
             {loadingPie ? (
               <Skeleton className="h-56" />
             ) : !pie?.length ? (
-              <p className="text-xs font-poppins text-gray-400 text-center py-16">Sin datos aún.</p>
+              <p className="text-xs text-ink-400 text-center py-16">Sin datos aún.</p>
             ) : (
               <ResponsiveContainer width="100%" height={230}>
                 <PieChart>
@@ -272,7 +272,7 @@ export default function Dashboard() {
                   <Tooltip content={<ChartTooltip />} />
                   <Legend
                     iconType="circle" iconSize={8}
-                    wrapperStyle={{ fontFamily: "Poppins", fontSize: 11 }}
+                    wrapperStyle={{ fontFamily: "Inter", fontSize: 11 }}
                   />
                 </PieChart>
               </ResponsiveContainer>

@@ -11,8 +11,8 @@ import Header from "../../components/ui/Header";
 import { QUERY_KEYS } from "../../constants/queryKeys";
 
 const inputCls =
-  "w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-poppins text-brand-dark " +
-  "placeholder:text-gray-300 outline-none focus:border-brand-primary " +
+  "w-full rounded-xl border border-ink-200 px-4 py-2.5 text-sm text-brand-dark " +
+  "placeholder:text-ink-300 outline-none focus:border-brand-primary " +
   "focus:ring-1 focus:ring-brand-primary/20 transition";
 
 export default function CategoriesPage() {
@@ -97,7 +97,7 @@ export default function CategoriesPage() {
 
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-1.5 text-xs font-poppins text-gray-400
+          className="flex items-center gap-1.5 text-xs text-ink-400
                      hover:text-brand-primary transition-colors mb-6 -ml-0.5"
         >
           <ArrowLeft size={15} strokeWidth={1.8} />
@@ -106,17 +106,17 @@ export default function CategoriesPage() {
 
         <div className="flex items-center gap-2.5 mb-1">
           <Settings2 size={18} className="text-brand-accent" strokeWidth={1.8} />
-          <h1 className="font-poppins font-semibold text-xl text-brand-dark">
+          <h1 className="font-semibold text-xl text-brand-dark">
             Gestionar Categorías
           </h1>
         </div>
-        <p className="font-poppins text-xs text-gray-400 mb-8">
+        <p className="text-xs text-ink-400 mb-8">
           Crea y administra las categorías del catálogo.
         </p>
 
         {/* ── Create form ──────────────────────────────────────────── */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-6">
-          <h2 className="font-poppins font-semibold text-sm text-brand-dark uppercase
+        <div className="bg-white rounded-2xl border border-ink-100 p-6 mb-6">
+          <h2 className="font-semibold text-sm text-brand-dark uppercase
                          tracking-wider mb-4">
             Nueva categoría
           </h2>
@@ -131,7 +131,7 @@ export default function CategoriesPage() {
                 className={inputCls}
               />
               {nameError && (
-                <span className="text-[11px] text-red-500 font-poppins">{nameError}</span>
+                <span className="text-[11px] text-red-500">{nameError}</span>
               )}
             </div>
 
@@ -139,8 +139,8 @@ export default function CategoriesPage() {
               type="submit"
               disabled={createMut.isPending}
               className="shrink-0 px-5 py-2.5 rounded-xl bg-brand-primary text-white text-sm
-                         font-poppins font-medium flex items-center gap-2
-                         hover:bg-[#7a3e18] transition-colors disabled:opacity-60"
+                         font-medium flex items-center gap-2
+                         hover:bg-[#2e2e2e] transition-colors disabled:opacity-60"
             >
               {createMut.isPending && <Loader2 size={14} className="animate-spin" />}
               Guardar
@@ -149,25 +149,25 @@ export default function CategoriesPage() {
         </div>
 
         {/* ── List ─────────────────────────────────────────────────── */}
-        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100">
-            <h2 className="font-poppins font-semibold text-sm text-brand-dark uppercase tracking-wider">
+        <div className="bg-white rounded-2xl border border-ink-100 overflow-hidden">
+          <div className="px-6 py-4 border-b border-ink-100">
+            <h2 className="font-semibold text-sm text-brand-dark uppercase tracking-wider">
               Categorías existentes
             </h2>
           </div>
 
           {isLoading ? (
             <div className="p-6 space-y-3 animate-pulse">
-              {[1, 2, 3].map((i) => <div key={i} className="h-10 bg-gray-100 rounded-xl" />)}
+              {[1, 2, 3].map((i) => <div key={i} className="h-10 bg-ink-100 rounded-xl" />)}
             </div>
           ) : categories.length === 0 ? (
             <div className="px-6 py-10 text-center">
-              <p className="font-poppins text-sm text-gray-400">No hay categorías creadas aún.</p>
+              <p className="text-sm text-ink-400">No hay categorías creadas aún.</p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-ink-100">
               <div className="grid grid-cols-[1fr_72px] gap-4 px-6 py-2.5">
-                <span className="text-[10px] font-poppins text-gray-400 uppercase tracking-wider">Nombre / Slug</span>
+                <span className="text-[10px] text-ink-400 uppercase tracking-wider">Nombre / Slug</span>
                 <span />
               </div>
 
@@ -188,7 +188,7 @@ export default function CategoriesPage() {
                             autoFocus
                           />
                           {editError && (
-                            <span className="text-[11px] text-red-500 font-poppins">{editError}</span>
+                            <span className="text-[11px] text-red-500">{editError}</span>
                           )}
                         </div>
                         <div className="flex items-center gap-1">
@@ -206,7 +206,7 @@ export default function CategoriesPage() {
                           <button
                             onClick={() => setEditingId(null)}
                             className="h-8 w-8 flex items-center justify-center rounded-lg
-                                       text-gray-400 hover:bg-gray-100 transition-colors"
+                                       text-ink-400 hover:bg-ink-100 transition-colors"
                             title="Cancelar"
                           >
                             <X size={15} />
@@ -216,14 +216,14 @@ export default function CategoriesPage() {
                     ) : (
                       <>
                         <div>
-                          <p className="text-sm font-poppins text-brand-dark">{cat.name}</p>
-                          <p className="text-[11px] font-poppins text-gray-400">{cat.slug}</p>
+                          <p className="text-sm text-brand-dark">{cat.name}</p>
+                          <p className="text-[11px] text-ink-400">{cat.slug}</p>
                         </div>
                         <div className="flex items-center gap-1">
                           <button
                             onClick={() => startEdit(cat)}
                             className="h-8 w-8 flex items-center justify-center rounded-lg
-                                       text-gray-400 hover:text-brand-primary hover:bg-brand-bg
+                                       text-ink-400 hover:text-brand-primary hover:bg-brand-bg
                                        transition-colors"
                             title="Editar"
                           >
@@ -233,7 +233,7 @@ export default function CategoriesPage() {
                             onClick={() => handleDelete(cat.id, cat.name)}
                             disabled={deleteMut.isPending}
                             className="h-8 w-8 flex items-center justify-center rounded-lg
-                                       text-gray-400 hover:text-red-500 hover:bg-red-50
+                                       text-ink-400 hover:text-red-500 hover:bg-red-50
                                        transition-colors"
                             title="Eliminar"
                           >

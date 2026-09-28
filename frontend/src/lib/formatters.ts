@@ -49,3 +49,16 @@ export function normalizePhone(raw: string): string {
 export function normalizeText(text: string): string {
   return text.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 }
+
+/**
+ * Precio efectivo de un producto según su descuento.
+ *
+ * Este cálculo estaba repetido en la tarjeta, el detalle, la pieza destacada y
+ * el modal de venta. Al no estar en el formulario de pedidos, ese formulario
+ * cobraba el precio de lista aunque la pieza estuviera rebajada. Centralizarlo
+ * es lo que evita que vuelva a desincronizarse.
+ */
+export function discountedPrice(priceSale: number, discountPercentage: number): number {
+  if (!discountPercentage || discountPercentage <= 0) return priceSale;
+  return Math.round(priceSale * (1 - discountPercentage / 100));
+}

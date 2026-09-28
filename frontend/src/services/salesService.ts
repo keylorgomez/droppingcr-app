@@ -1,5 +1,6 @@
 import { supabase } from "../lib/supabaseClient";
 import { sendTransactionalEmail } from "../lib/emailService";
+import { getUserExternalSales } from "./externalSalesService";
 import {
   DELIVERY_STATUS, SALE_STATUS, SHIPPING_METHOD,
 } from "../constants/domain";
@@ -214,6 +215,8 @@ export interface PendingSale {
   payments:        Payment[];
   isOrder?:        boolean;
   orderItems?:     OrderItemDetail[];
+  /** Venta fuera del catálogo: sin variante, sin envío, sin foto. */
+  isExternal?:     boolean;
 }
 
 export interface ClientDebt {
@@ -242,6 +245,8 @@ export interface UserOrder {
   total_paid:      number;
   isMultiOrder?:   boolean;
   items?:          OrderItemDetail[];
+  /** Venta de algo fuera del catálogo: no tiene foto, talla ni envío. */
+  isExternal?:     boolean;
 }
 
 export interface AdminSale {
@@ -277,6 +282,20 @@ export interface RefundLog {
   amount:       number;
   reason:       string | null;
   created_at:   string;
+}
+
+interface RawExternalPaymentLogRow {
+  id:      string;
+  amount:  number;
+  note:    string | null;
+  paid_at: string;
+  external_sales: {
+    id:           string;
+    guest_name:   string | null;
+    guest_phone:  string | null;
+    sale_price:   number;
+    product_name: string;
+  } | null;
 }
 
 export interface PaymentLog {
@@ -596,7 +615,7 @@ export async function claimOrders(userId: string, whatsapp: string): Promise<num
 // ── Get orders for logged-in customer ─────────────────────────────────────
 
 export async function getUserOrders(userId: string): Promise<UserOrder[]> {
-  const [salesResult, ordersResult] = await Promise.all([
+  const [salesResult, ordersResult, externalSales] = await Promise.all([
     supabase
       .from("sales")
       .select(`
@@ -632,6 +651,7 @@ export async function getUserOrders(userId: string): Promise<UserOrder[]> {
       `)
       .eq("customer_id", userId)
       .order("sold_at", { ascending: false }),
+    getUserExternalSales(userId),
   ]);
 
   if (salesResult.error)  throw new Error(salesResult.error.message);
@@ -704,7 +724,26 @@ export async function getUserOrders(userId: string): Promise<UserOrder[]> {
     };
   });
 
-  return [...singleSales, ...multiOrders].sort(
+  // Las ventas externas se presentan como un pedido más: el cliente no tiene
+  // por qué saber que el producto no estaba en el catálogo, solo cuánto debe.
+  const externals: UserOrder[] = externalSales.map((sale) => ({
+    id:              sale.id,
+    sale_price:      sale.sale_price,
+    shipping_cost:   0,
+    shipping_method: SHIPPING_METHOD.PERSONAL_GRECIA,
+    delivery_status: DELIVERY_STATUS.DELIVERED,
+    tracking_number: null,
+    status:          sale.status,
+    sold_at:         sale.sold_at,
+    note:            sale.note,
+    product_name:    sale.product_name,
+    variant_size:    "—",
+    image_url:       "",
+    total_paid:      sale.total_paid,
+    isExternal:      true,
+  }));
+
+  return [...singleSales, ...multiOrders, ...externals].sort(
     (orderA, orderB) => new Date(orderB.sold_at).getTime() - new Date(orderA.sold_at).getTime()
   );
 }
@@ -798,7 +837,7 @@ export async function getRefundsLog(): Promise<RefundLog[]> {
 // ── Payment log (sales + orders merged) ───────────────────────────────────
 
 export async function getPaymentsLog(): Promise<PaymentLog[]> {
-  const [salesPmtsResult, orderPmtsResult] = await Promise.all([
+  const [salesPmtsResult, orderPmtsResult, externalPmtsResult] = await Promise.all([
     supabase
       .from("payments")
       .select(`
@@ -820,6 +859,14 @@ export async function getPaymentsLog(): Promise<PaymentLog[]> {
         )
       `)
       .not("order_id", "is", null)
+      .order("paid_at", { ascending: false }),
+    supabase
+      .from("payments")
+      .select(`
+        id, amount, note, paid_at,
+        external_sales ( id, guest_name, guest_phone, sale_price, product_name )
+      `)
+      .not("external_sale_id", "is", null)
       .order("paid_at", { ascending: false }),
   ]);
 
@@ -862,7 +909,28 @@ export async function getPaymentsLog(): Promise<PaymentLog[]> {
     };
   });
 
-  return [...saleLogs, ...orderLogs].sort(
+  // Un abono a una venta externa es un ingreso igual que los demás: si no
+  // apareciera acá, el log de Movimientos no cuadraría con la caja.
+  const externalLogs: PaymentLog[] = (
+    (externalPmtsResult.data ?? []) as unknown as RawExternalPaymentLogRow[]
+  ).map((paymentRow) => ({
+    id:              paymentRow.id,
+    amount:          paymentRow.amount,
+    note:            paymentRow.note ?? null,
+    paid_at:         paymentRow.paid_at,
+    sale_id:         paymentRow.external_sales?.id          ?? "",
+    guest_name:      paymentRow.external_sales?.guest_name  ?? null,
+    guest_phone:     paymentRow.external_sales?.guest_phone ?? null,
+    product_name:    paymentRow.external_sales?.product_name
+      ? `${paymentRow.external_sales.product_name} (Externa)`
+      : "Venta externa",
+    variant_size:    "—",
+    delivery_status: DELIVERY_STATUS.DELIVERED,
+    sale_price:      paymentRow.external_sales?.sale_price ?? 0,
+    shipping_cost:   0,
+  }));
+
+  return [...saleLogs, ...orderLogs, ...externalLogs].sort(
     (paymentA, paymentB) =>
       new Date(paymentB.paid_at).getTime() - new Date(paymentA.paid_at).getTime()
   );

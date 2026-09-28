@@ -63,23 +63,23 @@ export default function InstagramPublishModal({ productName, imageUrls, caption:
           transition={{ duration: 0.22, ease: "easeOut" }}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-ink-100">
             <div className="flex items-center gap-2.5">
               <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#f09433] via-[#e6683c] via-[#dc2743] via-[#cc2366] to-[#bc1888] flex items-center justify-center">
                 <IgIcon size={15} color="white" />
               </div>
               <div>
-                <p className="font-poppins font-semibold text-sm text-brand-dark leading-tight">
+                <p className="font-semibold text-sm text-brand-dark leading-tight">
                   Publicar en Instagram
                 </p>
-                <p className="font-poppins text-[10px] text-gray-400 leading-tight">{productName}</p>
+                <p className="text-[10px] text-ink-400 leading-tight">{productName}</p>
               </div>
             </div>
             {stage !== "publishing" && (
               <button
                 type="button"
                 onClick={onClose}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-brand-dark hover:bg-gray-50 transition-colors"
+                className="p-1.5 rounded-lg text-ink-400 hover:text-brand-dark hover:bg-ink-50 transition-colors"
               >
                 <X size={16} strokeWidth={2} />
               </button>
@@ -94,8 +94,8 @@ export default function InstagramPublishModal({ productName, imageUrls, caption:
                   <CheckCircle2 size={30} className="text-emerald-500" strokeWidth={1.8} />
                 </div>
                 <div className="text-center">
-                  <p className="font-poppins font-semibold text-brand-dark">¡Publicado con éxito!</p>
-                  <p className="font-poppins text-xs text-gray-400 mt-1">
+                  <p className="font-semibold text-brand-dark">¡Publicado con éxito!</p>
+                  <p className="text-xs text-ink-400 mt-1">
                     El post ya está visible en @dropping.cr
                   </p>
                 </div>
@@ -103,7 +103,7 @@ export default function InstagramPublishModal({ productName, imageUrls, caption:
                   href={`https://www.instagram.com/p/${postId}/`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 text-xs font-poppins text-brand-primary hover:underline"
+                  className="flex items-center gap-1.5 text-xs text-brand-primary hover:underline"
                 >
                   <ExternalLink size={12} strokeWidth={2} />
                   Ver publicación
@@ -111,8 +111,8 @@ export default function InstagramPublishModal({ productName, imageUrls, caption:
                 <button
                   type="button"
                   onClick={onClose}
-                  className="w-full py-2.5 rounded-xl bg-brand-primary text-white text-sm font-poppins font-medium
-                             hover:bg-[#7a3e18] transition-colors"
+                  className="w-full py-2.5 rounded-xl bg-brand-primary text-white text-sm font-medium
+                             hover:bg-[#2e2e2e] transition-colors"
                 >
                   Cerrar
                 </button>
@@ -128,7 +128,7 @@ export default function InstagramPublishModal({ productName, imageUrls, caption:
                       src={url}
                       alt=""
                       className={cn(
-                        "shrink-0 object-cover rounded-lg border border-gray-100",
+                        "shrink-0 object-cover rounded-lg border border-ink-100",
                         imageUrls.length === 1 ? "w-full max-h-40" : "w-16 h-16"
                       )}
                     />
@@ -136,31 +136,31 @@ export default function InstagramPublishModal({ productName, imageUrls, caption:
                 </div>
 
                 {imageUrls.length > 1 && (
-                  <p className="text-[11px] font-poppins text-gray-400 mb-3">
+                  <p className="text-[11px] text-ink-400 mb-3">
                     Se publicará como carrusel con {Math.min(imageUrls.length, 10)} imágenes.
                   </p>
                 )}
 
                 {/* Caption editor */}
                 <div className="flex flex-col gap-1 mb-4">
-                  <label className="text-[10px] font-poppins font-semibold uppercase tracking-widest text-gray-400">
+                  <label className="text-[10px] font-semibold uppercase tracking-widest text-ink-400">
                     Caption
                   </label>
                   <textarea
                     value={caption}
                     onChange={(e) => setCaption(e.target.value)}
                     rows={8}
-                    className="w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm font-poppins
+                    className="w-full rounded-xl border border-ink-200 px-3.5 py-2.5 text-sm
                                text-brand-dark outline-none focus:border-brand-primary resize-none
                                focus:ring-1 focus:ring-brand-primary/20 transition"
                   />
-                  <p className="text-[10px] font-poppins text-gray-300 text-right">
+                  <p className="text-[10px] text-ink-300 text-right">
                     {caption.length} / 2200 caracteres
                   </p>
                 </div>
 
                 {error && (
-                  <p className="text-xs font-poppins text-red-500 bg-red-50 rounded-xl px-3 py-2 mb-3">
+                  <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2 mb-3">
                     {error}
                   </p>
                 )}
@@ -169,8 +169,8 @@ export default function InstagramPublishModal({ productName, imageUrls, caption:
                   <button
                     type="button"
                     onClick={onClose}
-                    className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-poppins
-                               text-gray-500 hover:border-gray-300 transition-colors"
+                    className="flex-1 py-2.5 rounded-xl border border-ink-200 text-sm
+                               text-ink-500 hover:border-ink-300 transition-colors"
                   >
                     Cancelar
                   </button>
@@ -178,7 +178,7 @@ export default function InstagramPublishModal({ productName, imageUrls, caption:
                     type="button"
                     onClick={handlePublish}
                     disabled={stage === "publishing" || !caption.trim()}
-                    className="flex-1 py-2.5 rounded-xl text-white text-sm font-poppins font-medium
+                    className="flex-1 py-2.5 rounded-xl text-white text-sm font-medium
                                flex items-center justify-center gap-2 transition-colors
                                bg-gradient-to-r from-[#833ab4] via-[#fd1d1d] to-[#fcb045]
                                hover:opacity-90 disabled:opacity-50"

@@ -16,19 +16,19 @@ function PasswordField({
   const [show, setShow] = useState(false);
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-xs font-medium text-gray-500 font-poppins uppercase tracking-wider">
+      <label className="text-xs font-medium text-ink-500 uppercase tracking-wider">
         {label}
       </label>
       <div className="relative">
         <input
           type={show ? "text" : "password"} value={value}
           onChange={(e) => onChange(e.target.value)} autoComplete={autoComplete}
-          className="w-full rounded-xl border border-gray-200 px-4 py-2.5 pr-10 text-sm font-poppins
+          className="w-full rounded-btn border border-ink-200 px-4 py-2.5 pr-10 text-sm
                      text-brand-dark outline-none focus:border-brand-primary
                      focus:ring-1 focus:ring-brand-primary/20 transition"
         />
         <button type="button" onClick={() => setShow(!show)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-brand-primary transition-colors">
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-400 hover:text-brand-primary transition-colors">
           {show ? <EyeOff size={15} /> : <Eye size={15} />}
         </button>
       </div>
@@ -109,39 +109,39 @@ export default function ResetPasswordPage() {
     <>
       <Header />
       <main className="max-w-md mx-auto px-4 py-16">
-        <div className="rounded-2xl border border-gray-100 shadow-sm px-8 py-8 bg-white">
+        <div className="rounded-card border border-ink-100 shadow-sm px-8 py-8 bg-white">
 
           <div className="mb-6 text-center flex flex-col items-center gap-2">
             <div className="w-12 h-12 rounded-full bg-brand-primary/10 flex items-center justify-center">
               <KeyRound size={22} className="text-brand-primary" />
             </div>
-            <span className="font-poppins font-semibold italic text-brand-primary text-xl">
+            <span className="font-semibold text-brand-primary text-xl">
               Nueva contraseña
             </span>
-            <p className="text-xs text-gray-400 font-poppins">
+            <p className="text-xs text-ink-400">
               Elegí una contraseña nueva para tu cuenta
             </p>
           </div>
 
           {status === "checking" && (
-            <div className="flex flex-col items-center gap-3 py-8 text-gray-400">
+            <div className="flex flex-col items-center gap-3 py-8 text-ink-400">
               <Loader2 size={22} className="animate-spin" />
-              <p className="text-xs font-poppins">Validando el enlace…</p>
+              <p className="text-xs">Validando el enlace…</p>
             </div>
           )}
 
           {status === "invalid" && (
             <div className="flex flex-col items-center gap-4 py-4 text-center">
-              <p className="text-sm font-poppins text-brand-dark">
+              <p className="text-sm text-brand-dark">
                 Este enlace no es válido o ya expiró.
               </p>
-              <p className="text-xs text-gray-400 font-poppins leading-relaxed">
+              <p className="text-xs text-ink-400 leading-relaxed">
                 Los enlaces para restablecer contraseña caducan por seguridad. Volvé a solicitar
                 uno desde el inicio de sesión.
               </p>
               <button type="button" onClick={() => navigate("/", { replace: true })}
-                      className="mt-1 w-full py-3 rounded-xl bg-brand-primary text-white text-sm
-                                 font-poppins font-medium hover:bg-[#7a3e18] transition-colors">
+                      className="mt-1 w-full py-3 rounded-btn bg-brand-primary text-white text-sm
+                                 font-medium hover:bg-[#2e2e2e] transition-colors">
                 Volver al inicio
               </button>
             </div>
@@ -154,14 +154,14 @@ export default function ResetPasswordPage() {
               <PasswordField label="Confirmar contraseña" value={confirm} onChange={setConfirm}
                              autoComplete="new-password" />
               {error && (
-                <p className="text-xs text-red-500 font-poppins text-center bg-red-50 rounded-lg px-3 py-2">
+                <p className="text-xs text-ink-900 text-center bg-ink-50 rounded-btn px-3 py-2">
                   {error}
                 </p>
               )}
               <button type="submit" disabled={loading}
-                      className="mt-1 w-full py-3 rounded-xl bg-brand-primary text-white text-sm
-                                 font-poppins font-medium flex items-center justify-center gap-2
-                                 hover:bg-[#7a3e18] transition-colors disabled:opacity-60">
+                      className="mt-1 w-full py-3 rounded-btn bg-brand-primary text-white text-sm
+                                 font-medium flex items-center justify-center gap-2
+                                 hover:bg-[#2e2e2e] transition-colors disabled:opacity-60">
                 {loading ? <Loader2 size={15} className="animate-spin" /> : <ShieldCheck size={15} />}
                 Guardar contraseña
               </button>

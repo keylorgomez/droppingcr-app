@@ -6,6 +6,7 @@ import { AnimatePresence } from "framer-motion";
 import Header from "../components/ui/Header";
 import { useAuth } from "../context/AuthContext";
 import { claimOrders, getUserOrders, type UserOrder } from "../services/salesService";
+import { claimExternalSales } from "../services/externalSalesService";
 import { QUERY_KEYS } from "../constants/queryKeys";
 import { OrderSkeleton, OrderCard } from "../components/orders/UserOrderCard";
 import { OrderDetailSheet } from "../components/orders/UserOrderDetailSheet";
@@ -20,7 +21,10 @@ export default function MyOrdersPage() {
 
   useEffect(() => {
     if (!user?.id || !user?.whatsapp) return;
-    claimOrders(user.id, user.whatsapp)
+    Promise.all([
+      claimOrders(user.id, user.whatsapp),
+      claimExternalSales(user.id, user.whatsapp),
+    ]).then(([claimed, claimedExternal]) => claimed + claimedExternal)
       .then((claimed) => {
         if (claimed > 0) {
           queryClient.invalidateQueries({ queryKey: QUERY_KEYS.MY_ORDERS(user.id) });
@@ -52,17 +56,17 @@ export default function MyOrdersPage() {
         <div className="mb-6">
           <button
             onClick={() => navigate("/")}
-            className="flex items-center gap-1.5 text-sm font-poppins text-gray-400
+            className="flex items-center gap-1.5 text-sm text-ink-400
                        hover:text-brand-primary transition-colors mb-3"
           >
             <ArrowLeft size={15} strokeWidth={2} />
             Volver al catálogo
           </button>
-          <h1 className="font-poppins font-semibold italic text-brand-primary text-2xl">
+          <h1 className="type-display text-[clamp(1.9rem,7vw,3rem)] text-ink-900">
             Mis pedidos
           </h1>
           {!isLoading && orders.length > 0 && (
-            <p className="font-poppins text-xs text-gray-400 mt-1">
+            <p className="text-xs text-ink-400 mt-1">
               {orders.length} {orders.length === 1 ? "pedido" : "pedidos"} encontrados
             </p>
           )}
@@ -75,19 +79,19 @@ export default function MyOrdersPage() {
         )}
 
         {isError && (
-          <p className="text-center font-poppins text-sm text-red-400 py-10">
+          <p className="text-center text-sm text-ink-600 py-10">
             No se pudieron cargar tus pedidos. Intenta de nuevo.
           </p>
         )}
 
         {!isLoading && !isError && orders.length === 0 && (
-          <div className="flex flex-col items-center gap-4 py-24 text-gray-300">
+          <div className="flex flex-col items-center gap-4 py-24 text-ink-300">
             <ShoppingBag size={48} strokeWidth={1.2} />
             <div className="text-center">
-              <p className="font-poppins font-medium text-sm text-gray-400">
+              <p className="font-medium text-sm text-ink-400">
                 Aún no tienes pedidos registrados.
               </p>
-              <p className="font-poppins text-xs text-gray-300 mt-1">
+              <p className="text-xs text-ink-300 mt-1">
                 Asegúrate de que tu número de WhatsApp en tu perfil coincide
                 con el que usaste al hacer tu pedido.
               </p>
@@ -97,8 +101,8 @@ export default function MyOrdersPage() {
 
         {pending.length > 0 && (
           <section className="mb-8">
-            <h2 className="font-poppins text-[11px] font-semibold uppercase tracking-widest
-                           text-gray-400 mb-3">
+            <h2 className="font-display text-[11px] uppercase tracking-widest2
+                           text-ink-400 mb-3">
               En proceso
             </h2>
             <div className="flex flex-col gap-3">
@@ -111,8 +115,8 @@ export default function MyOrdersPage() {
 
         {completed.length > 0 && (
           <section>
-            <h2 className="font-poppins text-[11px] font-semibold uppercase tracking-widest
-                           text-gray-400 mb-3">
+            <h2 className="font-display text-[11px] uppercase tracking-widest2
+                           text-ink-400 mb-3">
               Comprados
             </h2>
             <div className="flex flex-col gap-3">

@@ -1,0 +1,8 @@
+Fotos del carrusel del hero.
+
+1. Poné acá los archivos: 01.jpg, 02.jpg, …
+2. Listalos en HERO_IMAGES dentro de src/constants/app.ts, con ruta "/hero/01.jpg".
+
+Recomendado: JPG horizontal, 2000px de ancho, menos de 500 KB cada una.
+Súbelas a color — el hero las pone en blanco y negro por CSS.
+Si HERO_IMAGES queda vacío, el hero usa las fotos más recientes del catálogo.

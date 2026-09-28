@@ -28,10 +28,10 @@ export default function DeleteConfirmModal({
             <PackageX size={26} className="text-red-500" strokeWidth={1.6} />
           </div>
           <div>
-            <p className="font-poppins font-semibold text-base text-brand-dark">
+            <p className="font-semibold text-base text-brand-dark">
               ¿Eliminar producto?
             </p>
-            <p className="font-poppins text-sm text-gray-500 mt-1 leading-snug">
+            <p className="text-sm text-ink-500 mt-1 leading-snug">
               Vas a eliminar{" "}
               <span className="font-semibold text-brand-dark">"{productName}"</span>{" "}
               permanentemente. Esta acción no se puede deshacer.
@@ -44,8 +44,8 @@ export default function DeleteConfirmModal({
           <button
             type="button"
             onClick={onCancel}
-            className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-poppins
-                       text-gray-500 hover:border-gray-300 hover:text-brand-dark transition-colors"
+            className="flex-1 py-2.5 rounded-xl border border-ink-200 text-sm
+                       text-ink-500 hover:border-ink-300 hover:text-brand-dark transition-colors"
           >
             Cancelar
           </button>
@@ -53,7 +53,7 @@ export default function DeleteConfirmModal({
             type="button"
             onClick={onConfirm}
             disabled={isPending}
-            className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-poppins
+            className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm
                        font-medium flex items-center justify-center gap-2
                        hover:bg-red-600 transition-colors disabled:opacity-60"
           >

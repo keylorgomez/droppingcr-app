@@ -33,6 +33,7 @@ export interface ProductDetail {
   discount_percentage: number;
   is_active: boolean;
   is_new: boolean;
+  is_featured: boolean;
   new_since: string | null;
   created_at: string;
   categories: Category[];
@@ -52,6 +53,7 @@ export interface CatalogProduct {
   categories: { name: string; slug: string }[];
   sizes: string[];
   is_new: boolean;
+  is_featured: boolean;
   is_sold_out: boolean;
   is_reserved: boolean;
   is_active: boolean;
@@ -66,6 +68,7 @@ export interface ProductInput {
   discount_percentage: number;
   is_active: boolean;
   is_new: boolean;
+  is_featured: boolean;
   new_since: string | null;
   category_ids: string[];
   images: { image_url: string; is_primary: boolean; display_order: number }[];
@@ -89,6 +92,7 @@ interface RawProductRow {
   is_new:              boolean;
   new_since:           string | null;
   is_active:           boolean;
+  is_featured:         boolean;
   product_images:      RawImageRow[];
   product_variants:    Array<{ stock: number; size: string; is_reserved: boolean }>;
   product_categories:  Array<{ categories: { name: string; slug: string } | null }>;
@@ -99,6 +103,7 @@ interface RawProductWithVariantsRow {
   name:           string;
   price_sale:     number;
   price_purchase: number;
+  discount_percentage: number | null;
   product_images:   RawImageRow[];
   product_variants: Array<{ id: string; size: string; stock: number }>;
 }
@@ -126,7 +131,7 @@ export async function getProducts(includeHidden = false): Promise<CatalogProduct
   let query = supabase
     .from("products")
     .select(`
-      id, name, slug, price_sale, discount_percentage, is_new, new_since, is_active,
+      id, name, slug, price_sale, discount_percentage, is_new, new_since, is_active, is_featured,
       product_images ( image_url, is_primary, display_order ),
       product_variants ( stock, size, is_reserved ),
       product_categories ( categories ( name, slug ) )
@@ -175,6 +180,7 @@ export async function getProducts(includeHidden = false): Promise<CatalogProduct
       categories:          productCategories,
       sizes,
       is_new:              isWithinNewBadgeWindow(p.is_new ?? false, p.new_since),
+      is_featured:         p.is_featured ?? false,
       is_sold_out:         totalStock === 0,
       is_reserved:         totalStock === 0 && anyReserved,
       is_active:           p.is_active ?? true,
@@ -198,7 +204,7 @@ export async function getProductBySlug(slug: string): Promise<ProductDetail> {
     .select(`
       id, name, slug, description,
       price_purchase, price_sale, discount_percentage,
-      is_active, is_new, new_since, created_at,
+      is_active, is_new, is_featured, new_since, created_at,
       images: product_images ( id, image_url, is_primary, display_order ),
       variants: product_variants ( id, size, stock, is_reserved ),
       product_categories ( categories ( id, name, slug ) )
@@ -228,7 +234,7 @@ export async function getProductById(id: string): Promise<ProductDetail> {
     .select(`
       id, name, slug, description,
       price_purchase, price_sale, discount_percentage,
-      is_active, is_new, new_since, created_at,
+      is_active, is_new, is_featured, new_since, created_at,
       images: product_images ( id, image_url, is_primary, display_order ),
       variants: product_variants ( id, size, stock, is_reserved ),
       product_categories ( categories ( id, name, slug ) )
@@ -261,6 +267,7 @@ export interface InventoryUpdate {
   discount_percentage: number;
   is_active:           boolean;
   is_new:              boolean;
+  is_featured:         boolean;
   new_since:           string | null;
   category_ids: string[];
   variants: { id?: string; size: string; stock: number }[];
@@ -271,6 +278,8 @@ export async function updateProductInventory(
   productId: string,
   data: InventoryUpdate
 ): Promise<void> {
+  if (data.is_featured) await clearFeatured(productId);
+
   const { error } = await supabase
     .from("products")
     .update({
@@ -281,6 +290,7 @@ export async function updateProductInventory(
       discount_percentage: data.discount_percentage,
       is_active:           data.is_active,
       is_new:              data.is_new,
+      is_featured:         data.is_featured,
       new_since:           data.new_since,
     })
     .eq("id", productId);
@@ -342,7 +352,9 @@ export async function deleteVariant(variantId: string): Promise<void> {
 export interface ProductWithVariants {
   id: string;
   name: string;
+  /** Precio de lista. El que se cobra sale de `discountedPrice()`. */
   price_sale: number;
+  discount_percentage: number;
   price_purchase: number;
   image_url: string;
   variants: { id: string; size: string; stock: number }[];
@@ -352,7 +364,7 @@ export async function getProductsWithVariants(): Promise<ProductWithVariants[]> 
   const { data, error } = await supabase
     .from("products")
     .select(`
-      id, name, price_sale, price_purchase,
+      id, name, price_sale, price_purchase, discount_percentage,
       product_images ( image_url, is_primary, display_order ),
       product_variants ( id, size, stock )
     `)
@@ -371,6 +383,7 @@ export async function getProductsWithVariants(): Promise<ProductWithVariants[]> 
         id:             p.id,
         name:           p.name,
         price_sale:     p.price_sale,
+        discount_percentage: p.discount_percentage ?? 0,
         price_purchase: p.price_purchase ?? 0,
         image_url:      images[0]?.image_url ?? "",
         variants:       (p.product_variants ?? [])
@@ -381,9 +394,23 @@ export async function getProductsWithVariants(): Promise<ProductWithVariants[]> 
     .filter((p) => p.variants.length > 0); // excluir productos agotados
 }
 
+/**
+ * Deja una sola pieza destacada. El índice parcial `products_single_featured`
+ * rechaza una segunda, así que hay que apagar la anterior antes de encender la
+ * nueva; `exceptId` evita un update redundante sobre la misma fila.
+ */
+async function clearFeatured(exceptId?: string): Promise<void> {
+  let query = supabase.from("products").update({ is_featured: false }).eq("is_featured", true);
+  if (exceptId) query = query.neq("id", exceptId);
+  const { error } = await query;
+  if (error) throw new Error(error.message);
+}
+
 // ── Mutations ──────────────────────────────────────────────────────────────
 
 export async function createProduct(input: ProductInput): Promise<string> {
+  if (input.is_featured) await clearFeatured();
+
   const { data: product, error: productError } = await supabase
     .from("products")
     .insert({
@@ -395,6 +422,7 @@ export async function createProduct(input: ProductInput): Promise<string> {
       discount_percentage: input.discount_percentage,
       is_active:           input.is_active,
       is_new:              input.is_new,
+      is_featured:         input.is_featured,
       new_since:           input.new_since,
     })
     .select("id")
@@ -428,6 +456,8 @@ export async function createProduct(input: ProductInput): Promise<string> {
 }
 
 export async function updateProduct(id: string, input: ProductInput): Promise<void> {
+  if (input.is_featured) await clearFeatured(id);
+
   const { error: productError } = await supabase
     .from("products")
     .update({
@@ -439,6 +469,7 @@ export async function updateProduct(id: string, input: ProductInput): Promise<vo
       discount_percentage: input.discount_percentage,
       is_active:           input.is_active,
       is_new:              input.is_new,
+      is_featured:         input.is_featured,
       new_since:           input.new_since,
     })
     .eq("id", id);

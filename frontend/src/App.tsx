@@ -1,5 +1,6 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useSearchParams } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
+import HomePage          from "./pages/HomePage";
 import CatalogPage       from "./pages/CatalogPage";
 import ProductDetailPage from "./pages/ProductDetailPage";
 import ProfilePage       from "./pages/ProfilePage";
@@ -18,18 +19,32 @@ import ExpensesPage      from "./pages/admin/ExpensesPage";
 import LabelsPage        from "./pages/admin/LabelsPage";
 import Footer            from "./components/ui/Footer";
 import GATracker         from "./components/GATracker";
+import ScrollToTop       from "./components/ScrollToTop";
 import SplashScreen      from "./components/ui/SplashScreen";
 import CartDrawer        from "./components/ui/CartDrawer";
 import CompleteProfileModal from "./components/ui/CompleteProfileModal";
 import { useAuth }       from "./context/AuthContext";
 import { CartProvider }  from "./context/CartContext";
+import { ROUTES }        from "./constants/app";
 
 // Redirige al catálogo si el usuario no es admin
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
   if (isLoading) return null;
-  if (!user || user.role !== "admin") return <Navigate to="/" replace />;
+  if (!user || user.role !== "admin") return <Navigate to={ROUTES.HOME} replace />;
   return <>{children}</>;
+}
+
+/**
+ * "/" era el catálogo antes del rebranding. Los links viejos con ?filter=
+ * (Instagram, WhatsApp, marcadores) siguen funcionando redirigiendo al
+ * catálogo; sin filtro, "/" es la nueva landing.
+ */
+function HomeOrLegacyCatalog() {
+  const [searchParams] = useSearchParams();
+  const filter = searchParams.get("filter");
+  if (filter) return <Navigate to={`${ROUTES.CATALOG}?filter=${filter}`} replace />;
+  return <HomePage />;
 }
 
 export default function App() {
@@ -43,12 +58,14 @@ export default function App() {
 
       {!isLoading && (
         <CartProvider>
-          <div className="min-h-screen flex flex-col bg-white font-poppins">
+          <div className="min-h-screen flex flex-col bg-bone">
             <GATracker />
+            <ScrollToTop />
             <div className="flex-1">
               <Routes>
                 {/* Public routes */}
-                <Route path="/"                        element={<CatalogPage />} />
+                <Route path="/"                        element={<HomeOrLegacyCatalog />} />
+                <Route path="/catalogo"                element={<CatalogPage />} />
                 <Route path="/product/:slug"           element={<ProductDetailPage />} />
                 <Route path="/carrito"                 element={<CartPage />} />
                 <Route path="/profile"                 element={<ProfilePage />} />
@@ -65,7 +82,10 @@ export default function App() {
                 <Route path="/admin/movimientos"       element={<AdminRoute><PaymentsPage /></AdminRoute>} />
                 <Route path="/admin/ganancias"         element={<AdminRoute><PayoutsPage /></AdminRoute>} />
                 <Route path="/admin/gastos"            element={<AdminRoute><ExpensesPage /></AdminRoute>} />
-                <Route path="/admin/etiquetas"        element={<AdminRoute><LabelsPage /></AdminRoute>} />
+                <Route path="/admin/etiquetas"         element={<AdminRoute><LabelsPage /></AdminRoute>} />
+
+                {/* Cualquier otra ruta vuelve al inicio */}
+                <Route path="*"                        element={<Navigate to={ROUTES.HOME} replace />} />
               </Routes>
             </div>
             <Footer />

@@ -48,11 +48,11 @@ function SectionCard({
       id={id}
       className={cn(
         "bg-white rounded-2xl border p-6 flex flex-col gap-4 scroll-mt-24 transition-colors",
-        hasError ? "border-red-300" : "border-gray-100"
+        hasError ? "border-red-300" : "border-ink-100"
       )}
     >
       <h2 className={cn(
-        "font-poppins font-semibold text-sm uppercase tracking-wider",
+        "font-semibold text-sm uppercase tracking-wider",
         hasError ? "text-red-500" : "text-brand-dark"
       )}>
         {title}
@@ -72,14 +72,14 @@ function Field({
   return (
     <div id={id} className="flex flex-col gap-1 scroll-mt-24">
       <label className={cn(
-        "text-xs font-medium font-poppins uppercase tracking-wider",
-        error ? "text-red-500" : "text-gray-500"
+        "text-xs font-medium uppercase tracking-wider",
+        error ? "text-red-500" : "text-ink-500"
       )}>
         {label}
       </label>
       {children}
       {error && (
-        <span className="text-[11px] text-red-500 font-poppins flex items-center gap-1">
+        <span className="text-[11px] text-red-500 flex items-center gap-1">
           {error}
         </span>
       )}
@@ -89,11 +89,11 @@ function Field({
 
 function inputCls(hasError = false) {
   return cn(
-    "w-full rounded-xl border px-4 py-2.5 text-sm font-poppins text-brand-dark",
-    "placeholder:text-gray-300 outline-none transition",
+    "w-full rounded-xl border px-4 py-2.5 text-sm text-brand-dark",
+    "placeholder:text-ink-300 outline-none transition",
     hasError
       ? "border-red-400 bg-red-50/40 focus:border-red-400 focus:ring-1 focus:ring-red-300/30"
-      : "border-gray-200 focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20"
+      : "border-ink-200 focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20"
   );
 }
 
@@ -129,8 +129,8 @@ function VariantsSection({
             key={s}
             type="button"
             onClick={() => addRow(s)}
-            className="px-3 py-1 rounded-full text-xs font-poppins border border-gray-200
-                       text-gray-500 hover:border-brand-primary hover:text-brand-primary
+            className="px-3 py-1 rounded-full text-xs border border-ink-200
+                       text-ink-500 hover:border-brand-primary hover:text-brand-primary
                        transition-colors"
           >
             + {s}
@@ -142,8 +142,8 @@ function VariantsSection({
       {rows.length > 0 && (
         <div className="flex flex-col gap-2">
           <div className="grid grid-cols-[1fr_100px_36px] gap-2 px-1">
-            <span className="text-[10px] font-poppins text-gray-400 uppercase tracking-wider">Talla</span>
-            <span className="text-[10px] font-poppins text-gray-400 uppercase tracking-wider">Stock</span>
+            <span className="text-[10px] text-ink-400 uppercase tracking-wider">Talla</span>
+            <span className="text-[10px] text-ink-400 uppercase tracking-wider">Stock</span>
             <span />
           </div>
           {rows.map((row) => (
@@ -165,7 +165,7 @@ function VariantsSection({
               <button
                 type="button"
                 onClick={() => removeRow(row._key)}
-                className="h-10 w-9 flex items-center justify-center rounded-xl text-gray-300
+                className="h-10 w-9 flex items-center justify-center rounded-xl text-ink-300
                            hover:text-red-400 hover:bg-red-50 transition-colors"
               >
                 <Trash2 size={15} />
@@ -176,8 +176,8 @@ function VariantsSection({
       )}
 
       {rows.length === 0 && (
-        <p className="text-xs text-gray-400 font-poppins text-center py-3 border border-dashed
-                      border-gray-200 rounded-xl">
+        <p className="text-xs text-ink-400 text-center py-3 border border-dashed
+                      border-ink-200 rounded-xl">
           Agrega al menos una talla
         </p>
       )}
@@ -185,13 +185,13 @@ function VariantsSection({
       <button
         type="button"
         onClick={() => addRow()}
-        className="flex items-center gap-2 text-xs font-poppins text-brand-primary
-                   hover:text-[#7a3e18] transition-colors self-start"
+        className="flex items-center gap-2 text-xs text-brand-primary
+                   hover:text-[#2e2e2e] transition-colors self-start"
       >
         <Plus size={14} /> Agregar talla personalizada
       </button>
 
-      {error && <span className="text-[11px] text-red-500 font-poppins">{error}</span>}
+      {error && <span className="text-[11px] text-red-500">{error}</span>}
     </div>
   );
 }
@@ -234,6 +234,7 @@ export default function ProductFormPage() {
   const [discount,      setDiscount]      = useState("0");
   const [isActive,      setIsActive]      = useState(true);
   const [isNew,         setIsNew]         = useState(false);
+  const [isFeatured,    setIsFeatured]    = useState(false);
   const [newSince,      setNewSince]      = useState<string | null>(null);
   const [categoryIds,   setCategoryIds]   = useState<string[]>([]);
   const [variants,      setVariants]      = useState<VariantRow[]>([]);
@@ -342,6 +343,7 @@ export default function ProductFormPage() {
       discount_percentage: Number(discount) || 0,
       is_active:           isActive,
       is_new:              isNew,
+      is_featured:         isFeatured,
       new_since:           newSince,
       category_ids:        categoryIds,
       images: images.map((img, i) => ({
@@ -367,9 +369,9 @@ export default function ProductFormPage() {
         <Header />
         <main className="max-w-2xl mx-auto px-4 py-10">
           <div className="animate-pulse space-y-4">
-            <div className="h-6 bg-gray-100 rounded-lg w-1/3" />
+            <div className="h-6 bg-ink-100 rounded-lg w-1/3" />
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-32 bg-gray-100 rounded-2xl" />
+              <div key={i} className="h-32 bg-ink-100 rounded-2xl" />
             ))}
           </div>
         </main>
@@ -385,17 +387,17 @@ export default function ProductFormPage() {
         {/* Back + title */}
         <button
           onClick={() => navigate("/")}
-          className="flex items-center gap-1.5 text-xs font-poppins text-gray-400
+          className="flex items-center gap-1.5 text-xs text-ink-400
                      hover:text-brand-primary transition-colors mb-6 -ml-0.5"
         >
           <ArrowLeft size={15} strokeWidth={1.8} />
           Volver al catálogo
         </button>
 
-        <h1 className="font-poppins font-semibold text-xl text-brand-dark mb-1">
+        <h1 className="font-semibold text-xl text-brand-dark mb-1">
           {isEdit ? "Editar producto" : "Nuevo producto"}
         </h1>
-        <p className="font-poppins text-xs text-gray-400 mb-8">
+        <p className="text-xs text-ink-400 mb-8">
           {isEdit ? "Modifica la información del producto." : "Completa los datos para agregar un producto al catálogo."}
         </p>
 
@@ -421,7 +423,7 @@ export default function ProductFormPage() {
                 placeholder="hoodie-dropping-vintage"
                 className={inputCls(!!errors.slug)}
               />
-              <span className="text-[11px] text-gray-400 font-poppins mt-0.5">
+              <span className="text-[11px] text-ink-400 mt-0.5">
                 Generado automáticamente. Solo minúsculas, números y guiones.
               </span>
             </Field>
@@ -436,17 +438,17 @@ export default function ProductFormPage() {
               />
             </Field>
 
-            <div className="flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3">
+            <div className="flex items-center justify-between rounded-xl border border-ink-200 px-4 py-3">
               <div>
-                <p className="text-sm font-poppins text-brand-dark">Visible en catálogo</p>
-                <p className="text-[11px] font-poppins text-gray-400">Activa o desactiva la visibilidad</p>
+                <p className="text-sm text-brand-dark">Visible en catálogo</p>
+                <p className="text-[11px] text-ink-400">Activa o desactiva la visibilidad</p>
               </div>
               <button
                 type="button"
                 onClick={() => setIsActive((v) => !v)}
                 className={cn(
                   "w-11 h-6 rounded-full transition-colors relative flex items-center shrink-0",
-                  isActive ? "bg-brand-primary" : "bg-gray-200"
+                  isActive ? "bg-brand-primary" : "bg-ink-200"
                 )}
               >
                 <span
@@ -458,10 +460,10 @@ export default function ProductFormPage() {
               </button>
             </div>
 
-            <div className="flex items-center justify-between rounded-xl border border-gray-200 px-4 py-3">
+            <div className="flex items-center justify-between rounded-xl border border-ink-200 px-4 py-3">
               <div>
-                <p className="text-sm font-poppins text-brand-dark">Marcar como Nuevo</p>
-                <p className="text-[11px] font-poppins text-gray-400">Muestra el badge verde "NUEVO" en el card (se quita solo a los 15 días)</p>
+                <p className="text-sm text-brand-dark">Marcar como Nuevo</p>
+                <p className="text-[11px] text-ink-400">Muestra el badge verde "NUEVO" en el card (se quita solo a los 15 días)</p>
               </div>
               <button
                 type="button"
@@ -472,13 +474,35 @@ export default function ProductFormPage() {
                 })}
                 className={cn(
                   "w-11 h-6 rounded-full transition-colors relative flex items-center shrink-0",
-                  isNew ? "bg-emerald-500" : "bg-gray-200"
+                  isNew ? "bg-emerald-500" : "bg-ink-200"
                 )}
               >
                 <span
                   className={cn(
                     "absolute w-5 h-5 bg-white rounded-full shadow transition-transform",
                     isNew ? "translate-x-5" : "translate-x-0.5"
+                  )}
+                />
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between rounded-xl border border-ink-200 px-4 py-3">
+              <div>
+                <p className="text-sm text-brand-dark">Destacar en la home</p>
+                <p className="text-[11px] text-ink-400">Ocupa la sección "01 / Pieza destacada". Solo una pieza a la vez: activarla acá se la quita a la anterior.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsFeatured((v) => !v)}
+                className={cn(
+                  "w-11 h-6 rounded-full transition-colors relative flex items-center shrink-0",
+                  isFeatured ? "bg-ink-900" : "bg-ink-200"
+                )}
+              >
+                <span
+                  className={cn(
+                    "absolute w-5 h-5 bg-white rounded-full shadow transition-transform",
+                    isFeatured ? "translate-x-5" : "translate-x-0.5"
                   )}
                 />
               </button>
@@ -555,7 +579,7 @@ export default function ProductFormPage() {
                   main.cls
                 )}>
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-poppins font-semibold uppercase tracking-wider opacity-70">
+                    <span className="text-[10px] font-semibold uppercase tracking-wider opacity-70">
                       Margen de ganancia
                     </span>
                     <span className={cn(
@@ -567,10 +591,10 @@ export default function ProductFormPage() {
                   </div>
 
                   <div className="flex items-baseline gap-2">
-                    <span className="font-poppins font-bold text-xl leading-none">
+                    <span className="font-bold text-xl leading-none">
                       {profitPct > 0 ? "+" : ""}{profitPct}%
                     </span>
-                    <span className="font-poppins text-sm font-medium">
+                    <span className="text-sm font-medium">
                       ₡{profit.toLocaleString("en-US")} por unidad
                     </span>
                   </div>
@@ -580,10 +604,10 @@ export default function ProductFormPage() {
                       "rounded-lg border px-3 py-2 flex items-center justify-between",
                       eff.cls
                     )}>
-                      <span className="text-[11px] font-poppins">
+                      <span className="text-[11px]">
                         Con {disc}% descuento aplicado:
                       </span>
-                      <span className="text-[11px] font-poppins font-semibold">
+                      <span className="text-[11px] font-semibold">
                         {effectivePct > 0 ? "+" : ""}{effectivePct}% · ₡{effectiveProfit.toLocaleString("en-US")}
                       </span>
                     </div>
@@ -599,8 +623,8 @@ export default function ProductFormPage() {
               <Tag size={15} className="text-brand-accent mt-3 shrink-0" />
               <div className="flex-1 flex flex-col gap-2">
                 {!catsLoading && categories.length === 0 ? (
-                  <p className="text-sm font-poppins text-gray-400 py-2.5 px-4 rounded-xl
-                                border border-dashed border-gray-200 text-center">
+                  <p className="text-sm text-ink-400 py-2.5 px-4 rounded-xl
+                                border border-dashed border-ink-200 text-center">
                     No hay categorías disponibles
                   </p>
                 ) : (
@@ -615,8 +639,8 @@ export default function ProductFormPage() {
                 <button
                   type="button"
                   onClick={() => navigate("/admin/categories")}
-                  className="self-start text-xs font-poppins text-brand-primary
-                             hover:text-[#7a3e18] transition-colors flex items-center gap-1"
+                  className="self-start text-xs text-brand-primary
+                             hover:text-[#2e2e2e] transition-colors flex items-center gap-1"
                 >
                   <Plus size={12} />
                   Añadir nueva categoría
@@ -648,17 +672,17 @@ export default function ProductFormPage() {
             <button
               type="button"
               onClick={() => navigate("/")}
-              className="flex-1 py-3 rounded-xl border border-gray-200 text-sm font-poppins
-                         text-gray-500 hover:border-gray-300 hover:text-brand-dark transition-colors"
+              className="flex-1 py-3 rounded-xl border border-ink-200 text-sm
+                         text-ink-500 hover:border-ink-300 hover:text-brand-dark transition-colors"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={mutation.isPending}
-              className="flex-1 py-3 rounded-xl bg-brand-primary text-white text-sm font-poppins
+              className="flex-1 py-3 rounded-xl bg-brand-primary text-white text-sm
                          font-medium flex items-center justify-center gap-2
-                         hover:bg-[#7a3e18] transition-colors disabled:opacity-60"
+                         hover:bg-[#2e2e2e] transition-colors disabled:opacity-60"
             >
               {mutation.isPending && <Loader2 size={15} className="animate-spin" />}
               {isEdit ? "Guardar cambios" : "Crear producto"}

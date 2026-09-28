@@ -1,106 +1,176 @@
 import { useState } from "react";
-import { Menu, User, ShoppingCart } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { Menu, User, ShoppingBag } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { motion, useScroll, useMotionValueEvent } from "framer-motion";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
 import { useToast } from "./Toast";
 import { t } from "../../lib/i18n";
+import { cn } from "../../lib/utils";
+import { getProducts, type CatalogProduct } from "../../services/productService";
+import { QUERY_KEYS } from "../../constants/queryKeys";
+import { ROUTES, MARQUEE_ITEMS } from "../../constants/app";
+import Logo from "./Logo";
+import Marquee from "./Marquee";
 import Sidebar from "./Sidebar";
 import UserSidebar from "./UserSidebar";
 import AuthModal from "./AuthModal";
-import TypewriterBanner from "./TypewriterBanner";
 
 function getInitials(firstName: string | null, lastName: string | null) {
   return `${firstName?.[0] ?? ""}${lastName?.[0] ?? ""}`.toUpperCase();
 }
 
-export default function Header() {
+/** `show` decide si el link aparece: un filtro sin resultados es una página vacía. */
+const navLinks = [
+  { label: "Catálogo",   href: ROUTES.CATALOG,                       show: () => true },
+  { label: "Nuevo",      href: ROUTES.catalogFilter("nuevo"),        show: (p: CatalogProduct[]) => p.some((x) => x.is_new) },
+  { label: "Descuentos", href: ROUTES.catalogFilter("descuentos"),   show: (p: CatalogProduct[]) => p.some((x) => x.discount_percentage > 0) },
+];
+
+interface HeaderProps {
+  /**
+   * El header arranca transparente sobre el hero de la home y se vuelve
+   * sólido al hacer scroll. En el resto de páginas siempre es sólido.
+   */
+  overlay?: boolean;
+}
+
+export default function Header({ overlay = false }: HeaderProps) {
   const { user, signOut } = useAuth();
+  const isAdmin           = user?.role === "admin";
   const { itemCount }     = useCart();
   const navigate          = useNavigate();
+  const location          = useLocation();
   const { showToast }     = useToast();
+
+  // Se sirve de la caché que ya llenaron el catálogo y el sidebar
+  const { data: products = [] } = useQuery({
+    queryKey: [...QUERY_KEYS.PRODUCTS, isAdmin],
+    queryFn:  () => getProducts(isAdmin),
+  });
 
   const [sidebarOpen, setSidebarOpen]         = useState(false);
   const [userSidebarOpen, setUserSidebarOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen]     = useState(false);
 
+  const [scrolled, setScrolled] = useState(false);
+  const [hidden,   setHidden]   = useState(false);
+
+  const { scrollY } = useScroll();
+  useMotionValueEvent(scrollY, "change", (y) => {
+    const prev = scrollY.getPrevious() ?? 0;
+    setScrolled(y > 40);
+    // Se esconde al bajar (más área para el producto) y reaparece al subir.
+    setHidden(y > 160 && y > prev);
+  });
+
+  const solid = !overlay || scrolled;
+
   function handleUserClick() {
-    if (user) {
-      setUserSidebarOpen(true);
-    } else {
-      setAuthModalOpen(true);
-    }
+    if (user) setUserSidebarOpen(true);
+    else      setAuthModalOpen(true);
+  }
+
+  function isActive(href: string) {
+    return location.pathname + location.search === href;
   }
 
   return (
     <>
-      <header className="sticky top-0 z-30 w-full bg-white border-b border-gray-100">
-        <TypewriterBanner />
+      {/* La cinta solo vive en el tope del documento, no en el header sticky:
+          así no roba altura permanente a la ventana. */}
+      {!overlay && <Marquee items={[...MARQUEE_ITEMS]} />}
 
-        <div className="relative flex items-center justify-center h-16 px-4 max-w-7xl mx-auto">
+      <motion.header
+        className={cn(
+          "sticky top-0 z-30 w-full transition-colors duration-500",
+          solid
+            ? "bg-bone/85 backdrop-blur-xl border-b border-ink-100 text-ink-900"
+            : "bg-transparent border-b border-transparent text-bone"
+        )}
+        animate={{ y: hidden ? "-100%" : 0 }}
+        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      >
+        <div className="relative flex items-center h-14 px-4 sm:px-6 max-w-[1600px] mx-auto">
 
-          {/* Menu — left */}
+          {/* ── Izquierda: menú + nav desktop ───────────────────────── */}
+          <div className="flex items-center gap-7 flex-1">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="hover:opacity-60 transition-opacity"
+              aria-label="Abrir menú"
+            >
+              <Menu size={20} strokeWidth={1.6} />
+            </button>
+
+            <nav className="hidden md:flex items-center gap-7">
+              {navLinks.filter(({ show }) => show(products)).map(({ label, href }) => (
+                <button
+                  key={label}
+                  onClick={() => navigate(href)}
+                  className={cn(
+                    "link-underline font-display uppercase text-[11px] tracking-widest2 leading-none",
+                    isActive(href) ? "opacity-100 after:scale-x-100" : "opacity-70 hover:opacity-100"
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </nav>
+          </div>
+
+          {/* ── Centro: logo ─────────────────────────────────────────── */}
           <button
-            onClick={() => setSidebarOpen(true)}
-            className="absolute left-4 text-brand-dark hover:text-brand-primary transition-colors"
-            aria-label="Abrir menú"
+            onClick={() => navigate(ROUTES.HOME)}
+            aria-label="Dropping CR — inicio"
+            className="absolute left-1/2 -translate-x-1/2 hover:opacity-70 transition-opacity"
           >
-            <Menu size={22} strokeWidth={1.8} />
+            <Logo compact className="h-[21px] sm:h-[23px] w-auto" />
           </button>
 
-          {/* Logo */}
-          <a href="/" className="flex flex-col items-center leading-none select-none gap-0.5">
-            {/* Desktop */}
-            <span className="hidden sm:block font-poppins font-semibold italic text-brand-primary text-2xl tracking-tight">
-              Dropping
-            </span>
-            <span className="hidden sm:block font-poppins font-medium text-brand-primary text-sm tracking-tight uppercase">
-              CR
-            </span>
-            {/* Mobile */}
-            <span className="sm:hidden font-poppins font-semibold italic text-brand-primary text-xl tracking-tight">
-              Dropping{" "}
-              <span className="font-medium not-italic tracking-tight text-base">CR</span>
-            </span>
-          </a>
-
-          {/* Cart + User — right */}
-          <div className="absolute right-4 flex items-center gap-3">
-            {/* Cart icon with badge */}
+          {/* ── Derecha: carrito + cuenta ────────────────────────────── */}
+          <div className="flex items-center justify-end gap-4 sm:gap-5 flex-1">
             <button
-              onClick={() => navigate("/carrito")}
-              className="relative text-brand-dark hover:text-brand-primary transition-colors"
+              onClick={() => navigate(ROUTES.CART)}
+              className="relative hover:opacity-60 transition-opacity"
               aria-label="Ver carrito"
             >
-              <ShoppingCart size={22} strokeWidth={1.8} />
+              <ShoppingBag size={19} strokeWidth={1.6} />
               {itemCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 min-w-[17px] h-[17px] px-1
-                                 bg-brand-primary text-white text-[10px] font-bold font-poppins
-                                 rounded-full flex items-center justify-center leading-none">
+                <span
+                  className={cn(
+                    "absolute -top-1.5 -right-2 min-w-[16px] h-[16px] px-1 text-[9px] font-semibold tnum",
+                    "flex items-center justify-center leading-none rounded-full",
+                    solid ? "bg-ink-900 text-bone" : "bg-bone text-ink-900"
+                  )}
+                >
                   {itemCount > 99 ? "99+" : itemCount}
                 </span>
               )}
             </button>
 
-            {/* User avatar / icon */}
             <button
               onClick={handleUserClick}
-              className="text-brand-dark hover:text-brand-primary transition-colors"
+              className="hover:opacity-60 transition-opacity"
               aria-label="Cuenta de usuario"
             >
               {user ? (
-                <div className="w-8 h-8 rounded-full bg-brand-primary flex items-center justify-center
-                                text-white font-poppins font-semibold text-xs">
+                <span
+                  className={cn(
+                    "w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-semibold tracking-wide",
+                    solid ? "bg-ink-900 text-bone" : "bg-bone text-ink-900"
+                  )}
+                >
                   {getInitials(user.first_name, user.last_name)}
-                </div>
+                </span>
               ) : (
-                <User size={22} strokeWidth={1.8} />
+                <User size={19} strokeWidth={1.6} />
               )}
             </button>
           </div>
-
         </div>
-      </header>
+      </motion.header>
 
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 

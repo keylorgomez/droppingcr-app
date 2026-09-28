@@ -46,7 +46,7 @@ export default function UserSidebar({ open, onClose, user, onLogout }: UserSideb
         <>
           {/* Backdrop */}
           <motion.div
-            className="fixed inset-0 bg-black/30 z-40"
+            className="fixed inset-0 bg-ink-950/40 backdrop-blur-[2px] z-40"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -56,36 +56,34 @@ export default function UserSidebar({ open, onClose, user, onLogout }: UserSideb
 
           {/* Panel */}
           <motion.aside
-            className="fixed top-0 right-0 h-full w-72 bg-white z-50 flex flex-col shadow-xl"
+            className="fixed top-0 right-0 h-full w-[300px] max-w-[85vw] bg-ink-950 text-bone z-50 flex flex-col"
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", stiffness: 320, damping: 32 }}
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-5 border-b border-gray-100">
-              <span className="font-poppins font-semibold italic text-brand-primary text-base leading-none">
-                Mi cuenta
-              </span>
-              <button onClick={onClose} className="text-gray-400 hover:text-brand-primary transition-colors" aria-label="Cerrar">
-                <X size={20} />
+            <div className="flex items-center justify-between px-6 h-14 border-b border-bone/12 shrink-0">
+              <span className="type-eyebrow text-bone">Mi cuenta</span>
+              <button onClick={onClose} className="text-bone/50 hover:text-bone transition-colors" aria-label="Cerrar">
+                <X size={19} strokeWidth={1.6} />
               </button>
             </div>
 
             {user && (
-              <div className="flex flex-col flex-1 px-4 py-6 gap-2 overflow-y-auto min-h-0">
+              <div className="flex flex-col flex-1 px-6 py-7 overflow-y-auto min-h-0 no-scrollbar">
                 {/* Avatar + info */}
-                <div className="flex items-center gap-3 px-2 pb-5 border-b border-gray-100">
-                  <div className="w-11 h-11 rounded-full bg-brand-primary flex items-center justify-center
-                                  text-white font-poppins font-semibold text-sm shrink-0">
+                <div className="flex items-center gap-3.5 pb-6 border-b border-bone/12">
+                  <div className="w-11 h-11 rounded-full bg-bone text-ink-900 flex items-center
+                                  justify-center font-semibold text-[13px] shrink-0">
                     {getInitials(user.name)}
                   </div>
                   <div className="min-w-0">
-                    <p className="font-poppins font-semibold text-sm text-brand-dark truncate">{user.name}</p>
-                    <p className="font-poppins text-xs text-gray-400 truncate">{user.email}</p>
+                    <p className="text-[13.5px] text-bone truncate">{user.name}</p>
+                    <p className="text-[12px] text-bone/45 truncate">{user.email}</p>
                     {user.role === "admin" && (
-                      <span className="inline-block mt-1 text-[10px] font-bold uppercase tracking-wider
-                                       bg-brand-accent/10 text-brand-accent px-2 py-0.5 rounded-full">
+                      <span className="inline-block mt-1.5 font-display uppercase text-[9px] tracking-widest2
+                                       border border-bone/35 text-bone/70 px-1.5 py-1 leading-none">
                         Admin
                       </span>
                     )}
@@ -93,7 +91,7 @@ export default function UserSidebar({ open, onClose, user, onLogout }: UserSideb
                 </div>
 
                 {/* Role-based nav */}
-                <nav className="flex flex-col gap-1 pt-2">
+                <nav className="flex flex-col pt-6">
                   {links.map(({ label, icon: Icon, href }) => (
                     <button
                       key={label}
@@ -101,25 +99,24 @@ export default function UserSidebar({ open, onClose, user, onLogout }: UserSideb
                         if (href) { onClose(); navigate(href); }
                       }}
                       disabled={!href}
-                      className="flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-poppins
-                                 text-brand-dark hover:bg-brand-bg hover:text-brand-primary
-                                 transition-colors text-left w-full
-                                 disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="flex items-center gap-3 py-3 text-[13.5px]
+                                 text-bone/60 hover:text-bone transition-colors text-left w-full
+                                 disabled:opacity-30 disabled:cursor-not-allowed"
                     >
-                      <Icon size={17} strokeWidth={1.8} className="text-brand-accent" />
+                      <Icon size={16} strokeWidth={1.6} className="shrink-0" />
                       {label}
                     </button>
                   ))}
                 </nav>
 
                 {/* Logout */}
-                <div className="mt-auto pt-4 border-t border-gray-100">
+                <div className="mt-auto pt-6 border-t border-bone/12">
                   <button
                     onClick={onLogout}
-                    className="flex items-center gap-3 px-3 py-3 w-full rounded-xl text-sm
-                               font-poppins text-red-500 hover:bg-red-50 transition-colors"
+                    className="flex items-center gap-3 py-3 w-full text-[13.5px]
+                               text-bone/60 hover:text-bone transition-colors"
                   >
-                    <LogOut size={17} strokeWidth={1.8} />
+                    <LogOut size={16} strokeWidth={1.6} />
                     Cerrar sesión
                   </button>
                 </div>

@@ -6,6 +6,9 @@ import {
   type PendingSale, type ClientDebt, type Payment,
 } from "./salesService";
 import { addOrderPayment } from "./ordersService";
+import {
+  getPendingExternalSales, addExternalSalePayment,
+} from "./externalSalesService";
 
 // ── Raw Supabase row types (internal) ────────────────────────────────────
 
@@ -56,7 +59,7 @@ function normalizePhoneForDisplay(phone: string | null): string | null {
 // ── Get debts grouped by client ────────────────────────────────────────────
 
 export async function getGroupedDebts(): Promise<ClientDebt[]> {
-  const [pendingSales, ordersResult] = await Promise.all([
+  const [pendingSales, ordersResult, pendingExternals] = await Promise.all([
     getPendingSales(),
     supabase
       .from("orders")
@@ -67,33 +70,69 @@ export async function getGroupedDebts(): Promise<ClientDebt[]> {
         payments ( id, amount, note, paid_at )
       `)
       .eq("status", SALE_STATUS.PENDING),
+    getPendingExternalSales(),
   ]);
 
   const clientMap = new Map<string, ClientDebt>();
 
-  for (const sale of pendingSales) {
-    const groupKey = sale.guest_phone?.replace(/\D/g, "").slice(-8) || sale.guest_name || sale.id;
+  /** Crea o recupera el grupo del cliente. Se agrupa por los últimos 8 dígitos
+   *  del teléfono porque el formato guardado no es consistente. */
+  function groupFor(phone: string | null, name: string | null, fallbackKey: string): ClientDebt {
+    const groupKey = phone?.replace(/\D/g, "").slice(-8) || name || fallbackKey;
 
-    if (!clientMap.has(groupKey)) {
-      clientMap.set(groupKey, {
+    let entry = clientMap.get(groupKey);
+    if (!entry) {
+      entry = {
         key:         groupKey,
-        guest_name:  sale.guest_name,
-        guest_phone: normalizePhoneForDisplay(sale.guest_phone),
+        guest_name:  name,
+        guest_phone: normalizePhoneForDisplay(phone),
         sales:       [],
         total_sale:  0,
         total_paid:  0,
         remaining:   0,
-      });
+      };
+      clientMap.set(groupKey, entry);
     }
 
-    const entry = clientMap.get(groupKey)!;
+    if (!entry.guest_name)  entry.guest_name  = name;
+    if (!entry.guest_phone) entry.guest_phone = normalizePhoneForDisplay(phone);
+    return entry;
+  }
+
+  for (const sale of pendingSales) {
+    const entry = groupFor(sale.guest_phone, sale.guest_name, sale.id);
     entry.sales.push(sale);
     entry.total_sale += sale.sale_price + sale.shipping_cost;
     entry.total_paid += sale.total_paid;
     entry.remaining  += sale.remaining;
+  }
 
-    if (!entry.guest_name)  entry.guest_name  = sale.guest_name;
-    if (!entry.guest_phone) entry.guest_phone = normalizePhoneForDisplay(sale.guest_phone);
+  // Ventas externas a pagos: son deuda igual que cualquier otra, así que
+  // entran al mismo grupo del cliente y suman al mismo saldo.
+  for (const external of pendingExternals) {
+    const entry = groupFor(external.guest_phone, external.guest_name, external.id);
+
+    entry.sales.push({
+      id:              external.id,
+      sale_price:      external.sale_price,
+      shipping_cost:   0,
+      guest_name:      external.guest_name,
+      guest_phone:     external.guest_phone,
+      note:            external.note,
+      sold_at:         external.sold_at,
+      product_name:    `${external.product_name} (Externa)`,
+      variant_size:    "—",
+      variant_id:      "",
+      delivery_status: DELIVERY_STATUS.DELIVERED,
+      total_paid:      external.total_paid,
+      remaining:       external.remaining,
+      payments:        [],
+      isExternal:      true,
+    });
+
+    entry.total_sale += external.sale_price;
+    entry.total_paid += external.total_paid;
+    entry.remaining  += external.remaining;
   }
 
   for (const orderRow of (ordersResult.data ?? []) as unknown as RawDebtOrderRow[]) {
@@ -206,6 +245,12 @@ export async function addGeneralPayment(
     if (sale.isOrder) {
       const orderTotal = sale.sale_price + sale.shipping_cost;
       await addOrderPayment(sale.id, orderTotal, amountToApply, note, true);
+      leftover -= amountToApply;
+      continue;
+    }
+
+    if (sale.isExternal) {
+      await addExternalSalePayment(sale.id, sale.sale_price, amountToApply, note);
       leftover -= amountToApply;
       continue;
     }

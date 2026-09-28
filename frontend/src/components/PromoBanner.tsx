@@ -3,11 +3,20 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { X, ArrowRight } from "lucide-react";
 import { FEATURES } from "../constants/featureFlags";
+import { ROUTES } from "../constants/app";
 import { t } from "../lib/i18n";
 
 const SESSION_KEY = "promo_seen";
-const ENTRANCE_DELAY_MS = 1100;
-const DIGIT_STEP_EM = 0.8;
+// Aparece cuando el visitante ya pasó el hero: en móvil la tarjeta tapa media
+// pantalla, y sobre el hero arruina la primera impresión de la landing.
+const SCROLL_TRIGGER_RATIO = 0.75;
+const FALLBACK_DELAY_MS = 20000;
+// Los dígitos de Anton miden 0.882em de tinta (medido con TextMetrics: 0.870
+// sobre la línea base y 0.012 bajo ella). La celda del carrete tiene que ser
+// mayor que eso o el número sale recortado. 0.95em deja el dígito centrado y,
+// sobre todo, deja hueco suficiente para que el dígito de la celda vecina no
+// asome por redondeo a subpíxel (0.95em de 56px cae en 53.2px).
+const DIGIT_CELL_EM = 0.95;
 
 interface PromoBannerProps {
   /** Descuento más alto entre los productos activos — 0 oculta el banner. */
@@ -19,17 +28,17 @@ interface PromoBannerProps {
 function DigitReel({ digit, delay, reduceMotion }: { digit: number; delay: number; reduceMotion: boolean }) {
   const start = (digit + 6) % 10;
   return (
-    <span className="relative inline-block h-[0.8em] overflow-hidden align-top
-                      font-poppins font-semibold italic text-[56px] leading-[0.8] text-promo-blush
+    <span className="relative inline-block h-[0.95em] overflow-hidden align-bottom
+                      font-display text-[48px] sm:text-[56px] leading-[0.95] text-bone
                       [font-variant-numeric:proportional-nums]">
       <motion.span
         className="flex flex-col items-center"
-        initial={{ y: `-${start * DIGIT_STEP_EM}em` }}
-        animate={{ y: `-${digit * DIGIT_STEP_EM}em` }}
+        initial={{ y: `-${start * DIGIT_CELL_EM}em` }}
+        animate={{ y: `-${digit * DIGIT_CELL_EM}em` }}
         transition={reduceMotion ? { duration: 0 } : { duration: 0.85, ease: [0.16, 1, 0.3, 1], delay }}
       >
         {Array.from({ length: 10 }, (_, d) => (
-          <span key={d} className="block h-[0.8em] leading-[0.8]">{d}</span>
+          <span key={d} className="block h-[0.95em] leading-[0.95]">{d}</span>
         ))}
       </motion.span>
     </span>
@@ -47,9 +56,29 @@ export default function PromoBanner({ maxDiscountPercent, suppressed = false }: 
     if (!shouldOffer) return;
     if (sessionStorage.getItem(SESSION_KEY)) return;
 
-    const timer = setTimeout(() => setEntered(true), reduceMotion ? 150 : ENTRANCE_DELAY_MS);
-    return () => clearTimeout(timer);
-  }, [shouldOffer, reduceMotion]);
+    let done = false;
+    const reveal = () => {
+      if (done) return;
+      done = true;
+      setEntered(true);
+      window.removeEventListener("scroll", onScroll);
+      clearTimeout(timer);
+    };
+
+    const onScroll = () => {
+      if (window.scrollY > window.innerHeight * SCROLL_TRIGGER_RATIO) reveal();
+    };
+
+    // Red de seguridad para páginas cortas donde nunca hay scroll suficiente
+    const timer = setTimeout(reveal, FALLBACK_DELAY_MS);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      clearTimeout(timer);
+    };
+  }, [shouldOffer]);
 
   function dismiss() {
     sessionStorage.setItem(SESSION_KEY, "1");
@@ -58,7 +87,7 @@ export default function PromoBanner({ maxDiscountPercent, suppressed = false }: 
 
   function goToPromos() {
     dismiss();
-    navigate("/?filter=descuentos", { state: { scrollToCatalog: true } });
+    navigate(ROUTES.catalogFilter("descuentos"));
   }
 
   const digits = String(maxDiscountPercent).split("").map(Number);
@@ -72,58 +101,53 @@ export default function PromoBanner({ maxDiscountPercent, suppressed = false }: 
           exit={{ y: 40, opacity: 0 }}
           transition={{ duration: reduceMotion ? 0.3 : 0.62, ease: [0.16, 1, 0.3, 1] }}
           onClick={goToPromos}
-          className="group fixed z-40 left-4 right-4 bottom-4 sm:left-auto sm:right-6 sm:bottom-6 sm:w-72
-                     bg-promo-bg border-[1.5px] border-red-500 rounded-[10px]
-                     px-4 pt-4 pb-4 shadow-2xl cursor-pointer"
+          className="group fixed z-40 left-4 right-4 bottom-4 max-w-[320px] mx-auto sm:mx-0 sm:left-auto sm:right-6 sm:bottom-6 sm:w-[286px]
+                     rounded-card bg-ink-950 text-bone border border-bone/15
+                     px-5 pt-4 pb-5 shadow-lift cursor-pointer"
         >
-          <div className="flex items-start justify-between mb-3.5">
-            <span className="font-poppins font-bold text-[9.5px] tracking-[0.14em] uppercase text-promo-blush">
-              {t.promoBanner.tag}
-            </span>
+          <div className="flex items-start justify-between mb-4">
+            <span className="type-eyebrow text-bone/50">{t.promoBanner.tag}</span>
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); dismiss(); }}
-              className="text-white/75 hover:text-white transition-colors -mt-0.5"
+              className="text-bone/50 hover:text-bone transition-colors -mt-0.5"
               aria-label={t.actions.close}
             >
-              <X size={13} strokeWidth={2.2} />
+              <X size={13} strokeWidth={2} />
             </button>
           </div>
 
-          <p className="font-poppins italic text-xs text-white mb-0.5">{t.promoBanner.lede}</p>
+          <p className="type-accent text-base text-bone/70 mb-1">{t.promoBanner.lede}</p>
 
-          <div className="flex items-end gap-[5px] mb-2.5">
+          <div className="flex items-end gap-1.5 mb-3">
             <span className="flex">
               {digits.map((d, i) => (
-                <span key={i} className={i > 0 ? "-ml-[0.09em]" : ""}>
+                <span key={i} className={i > 0 ? "-ml-[0.04em]" : ""}>
                   <DigitReel digit={d} delay={reduceMotion ? 0 : i * 0.1} reduceMotion={reduceMotion} />
                 </span>
               ))}
             </span>
-            <span className="flex flex-col items-center gap-px pb-[0.06em]">
-              <span className="font-poppins font-semibold italic text-3xl leading-[0.85] text-promo-blush opacity-90">%</span>
-              <span className="font-poppins font-bold text-[10px] tracking-[0.14em] uppercase text-white">
-                {t.promoBanner.off}
-              </span>
+            <span className="flex flex-col items-start gap-0.5 pb-[0.1em]">
+              <span className="font-display text-3xl leading-[0.95] text-bone">%</span>
+              <span className="type-eyebrow text-bone/60">{t.promoBanner.off}</span>
             </span>
           </div>
 
-          <div className="w-[30px] h-[1.5px] bg-promo-blush opacity-90 mb-2.5" />
+          <div className="w-8 h-px bg-bone/40 mb-3" />
 
-          <p className="font-poppins text-[11.5px] leading-[1.5] text-white mb-3.5 max-w-[30ch]">
+          <p className="text-[12px] leading-[1.55] text-bone/65 mb-5 max-w-[30ch]">
             {t.promoBanner.subtext}
           </p>
 
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); goToPromos(); }}
-            className="inline-flex items-center gap-[7px] font-poppins font-medium text-xs
-                       px-3.5 py-2 rounded-full border border-white/30 text-white
-                       transition-colors
-                       group-hover:bg-promo-coral group-hover:border-promo-coral group-hover:text-white group-hover:font-bold"
+            className="inline-flex items-center gap-2 font-display uppercase text-[10px] tracking-widest2
+                       px-4 py-2.5 rounded-btn border border-bone/40 text-bone transition-colors
+                       group-hover:bg-bone group-hover:text-ink-900 group-hover:border-bone"
           >
             {t.promoBanner.cta}
-            <ArrowRight size={11} strokeWidth={2.6} />
+            <ArrowRight size={11} strokeWidth={2.4} />
           </button>
         </motion.div>
       )}

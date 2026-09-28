@@ -59,21 +59,19 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               animate={{ opacity: 1, y: 0,   scale: 1    }}
               exit={{    opacity: 0, y: -8,   scale: 0.95 }}
               transition={{ type: "spring", stiffness: 400, damping: 28 }}
-              className={`pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-2xl shadow-lg
-                          font-poppins text-sm font-medium min-w-[260px] max-w-xs
-                          ${toast.type === "success"
-                            ? "bg-white border border-emerald-100 text-emerald-700"
-                            : "bg-white border border-red-100 text-red-600"
-                          }`}
+              className={`pointer-events-auto flex items-center gap-3 pl-4 pr-3 py-3.5 rounded-btn shadow-lift
+                          bg-ink-950 text-bone text-[13px] min-w-[268px] max-w-sm
+                          ${toast.type === "error" ? "border-l-2 border-bone" : ""}`}
             >
               {toast.type === "success"
-                ? <CheckCircle2 size={18} className="shrink-0 text-emerald-500" />
-                : <XCircle      size={18} className="shrink-0 text-red-400" />
+                ? <CheckCircle2 size={16} strokeWidth={1.8} className="shrink-0 text-bone" />
+                : <XCircle      size={16} strokeWidth={1.8} className="shrink-0 text-bone" />
               }
-              <span className="flex-1 text-brand-dark font-normal">{toast.message}</span>
+              <span className="flex-1 leading-snug">{toast.message}</span>
               <button
                 onClick={() => dismiss(toast.id)}
-                className="text-gray-300 hover:text-gray-500 transition-colors shrink-0"
+                aria-label="Cerrar"
+                className="text-bone/45 hover:text-bone transition-colors shrink-0"
               >
                 <X size={14} />
               </button>

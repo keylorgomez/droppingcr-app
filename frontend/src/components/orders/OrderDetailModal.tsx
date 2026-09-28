@@ -22,8 +22,8 @@ import { cn } from "../../lib/utils";
 import { formatDate, formatTime } from "../../lib/formatters";
 
 const inputCls =
-  "w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-poppins text-brand-dark " +
-  "placeholder:text-gray-300 outline-none focus:border-brand-primary " +
+  "w-full rounded-xl border border-ink-200 px-4 py-2.5 text-sm text-brand-dark " +
+  "placeholder:text-ink-300 outline-none focus:border-brand-primary " +
   "focus:ring-1 focus:ring-brand-primary/20 transition";
 
 interface OrderDetailModalProps {
@@ -52,32 +52,32 @@ function PaymentHistoryRow({
   return (
     <div className={cn(
       "flex items-center gap-2 px-3 py-2 rounded-xl transition-colors",
-      isConfirming ? "bg-red-50 border border-red-200" : "bg-gray-50"
+      isConfirming ? "bg-red-50 border border-red-200" : "bg-ink-50"
     )}>
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-poppins font-semibold text-brand-dark">
+        <p className="text-xs font-semibold text-brand-dark">
           ₡{payment.amount.toLocaleString("en-US")}
         </p>
-        <p className="text-[10px] font-poppins text-gray-400 truncate">
+        <p className="text-[10px] text-ink-400 truncate">
           {formatDate(payment.paid_at)} {formatTime(payment.paid_at)}
-          {payment.note && <span className="ml-1 text-gray-300">· {payment.note}</span>}
+          {payment.note && <span className="ml-1 text-ink-300">· {payment.note}</span>}
         </p>
       </div>
       {isConfirming ? (
         <div className="flex items-center gap-1.5 shrink-0">
-          <span className="text-[10px] font-poppins text-red-500">¿Eliminar?</span>
+          <span className="text-[10px] text-red-500">¿Eliminar?</span>
           <button
             onClick={onConfirm}
             disabled={isDeleting}
-            className="text-[10px] font-poppins font-bold px-2 py-1 rounded-lg
+            className="text-[10px] font-bold px-2 py-1 rounded-lg
                        bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-60"
           >
             {isDeleting ? <Loader2 size={10} className="animate-spin" /> : "Sí"}
           </button>
           <button
             onClick={onCancel}
-            className="text-[10px] font-poppins px-2 py-1 rounded-lg border border-gray-200
-                       text-gray-500 hover:bg-gray-100 transition-colors"
+            className="text-[10px] px-2 py-1 rounded-lg border border-ink-200
+                       text-ink-500 hover:bg-ink-100 transition-colors"
           >
             No
           </button>
@@ -85,7 +85,7 @@ function PaymentHistoryRow({
       ) : (
         <button
           onClick={() => onDelete(payment.id)}
-          className="p-1.5 rounded-lg text-gray-300 hover:text-red-400 hover:bg-red-50
+          className="p-1.5 rounded-lg text-ink-300 hover:text-red-400 hover:bg-red-50
                      transition-colors shrink-0"
           title="Eliminar este pago"
         >
@@ -239,29 +239,29 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-start gap-3 px-5 pt-5 pb-4 border-b border-gray-100">
+        <div className="flex items-start gap-3 px-5 pt-5 pb-4 border-b border-ink-100">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <p className="font-poppins font-semibold text-sm italic text-brand-primary leading-snug">
+              <p className="font-semibold text-sm italic text-brand-primary leading-snug">
                 {order.guest_name ?? "Cliente sin nombre"}
               </p>
               {order.items.length > 1 && (
                 <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5
-                                 rounded-full bg-indigo-100 text-indigo-600 font-poppins">
+                                 rounded-full bg-indigo-100 text-indigo-600">
                   MULTI
                 </span>
               )}
             </div>
             {order.guest_phone && (
-              <p className="font-poppins text-xs text-gray-400 mt-0.5">
+              <p className="text-xs text-ink-400 mt-0.5">
                 {order.guest_phone}
               </p>
             )}
-            <p className="font-poppins text-xs text-gray-300 mt-0.5">
+            <p className="text-xs text-ink-300 mt-0.5">
               {formatDate(order.sold_at)}
             </p>
           </div>
-          <button onClick={onClose} className="text-gray-300 hover:text-gray-500 transition-colors shrink-0 mt-0.5">
+          <button onClick={onClose} className="text-ink-300 hover:text-ink-500 transition-colors shrink-0 mt-0.5">
             <X size={18} />
           </button>
         </div>
@@ -271,32 +271,32 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
 
           {/* Items list */}
           <div className="flex flex-col gap-1.5">
-            <p className="text-xs font-medium text-gray-500 font-poppins uppercase tracking-wider">
+            <p className="text-xs font-medium text-ink-500 uppercase tracking-wider">
               Productos ({order.items.length})
             </p>
-            <div className="rounded-xl border border-gray-100 overflow-hidden divide-y divide-gray-50">
+            <div className="rounded-xl border border-ink-100 overflow-hidden divide-y divide-ink-50">
               {order.items.map((item) => (
                 <div key={item.id} className="flex items-center gap-3 px-3 py-2.5">
-                  <div className="w-8 h-8 rounded-lg overflow-hidden bg-gray-50 border border-gray-100 shrink-0">
+                  <div className="w-8 h-8 rounded-lg overflow-hidden bg-ink-50 border border-ink-100 shrink-0">
                     {item.image_url
                       ? <img src={cloudinaryUrl(item.image_url, "thumb")} alt={item.product_name} className="w-full h-full object-cover" />
-                      : <Package size={12} className="m-auto mt-1.5 text-gray-200" />
+                      : <Package size={12} className="m-auto mt-1.5 text-ink-200" />
                     }
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-poppins text-xs font-medium text-brand-dark truncate">
+                    <p className="text-xs font-medium text-brand-dark truncate">
                       {item.product_name}
                     </p>
                     <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="text-[10px] font-poppins bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-md font-medium">
+                      <span className="text-[10px] bg-ink-100 text-ink-500 px-1.5 py-0.5 rounded-md font-medium">
                         {item.variant_size}
                       </span>
-                      <span className="text-[10px] font-poppins text-gray-400">
+                      <span className="text-[10px] text-ink-400">
                         x{item.quantity}
                       </span>
                     </div>
                   </div>
-                  <p className="font-poppins text-xs font-semibold text-brand-dark shrink-0">
+                  <p className="text-xs font-semibold text-brand-dark shrink-0">
                     ₡{(item.sale_price * item.quantity).toLocaleString("en-US")}
                   </p>
                 </div>
@@ -305,26 +305,26 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
           </div>
 
           {/* Payment summary */}
-          <div className="rounded-xl bg-gray-50 px-4 py-3 grid grid-cols-3 gap-2 text-center">
+          <div className="rounded-xl bg-ink-50 px-4 py-3 grid grid-cols-3 gap-2 text-center">
             <div>
-              <p className="text-[10px] font-poppins text-gray-400 uppercase tracking-wider mb-0.5">Total</p>
-              <p className="font-poppins font-semibold text-sm text-brand-dark">
+              <p className="text-[10px] text-ink-400 uppercase tracking-wider mb-0.5">Total</p>
+              <p className="font-semibold text-sm text-brand-dark">
                 ₡{order.order_total.toLocaleString("en-US")}
               </p>
-              <p className="text-[10px] font-poppins text-gray-300">
+              <p className="text-[10px] text-ink-300">
                 +₡{order.shipping_cost.toLocaleString("en-US")} envío
               </p>
             </div>
-            <div className="border-x border-gray-200">
-              <p className="text-[10px] font-poppins text-gray-400 uppercase tracking-wider mb-0.5">Abonado</p>
-              <p className="font-poppins font-semibold text-sm text-green-600">
+            <div className="border-x border-ink-200">
+              <p className="text-[10px] text-ink-400 uppercase tracking-wider mb-0.5">Abonado</p>
+              <p className="font-semibold text-sm text-green-600">
                 ₡{totalPaid.toLocaleString("en-US")}
               </p>
             </div>
             <div>
-              <p className="text-[10px] font-poppins text-gray-400 uppercase tracking-wider mb-0.5">Saldo</p>
+              <p className="text-[10px] text-ink-400 uppercase tracking-wider mb-0.5">Saldo</p>
               <p className={cn(
-                "font-poppins font-semibold text-sm",
+                "font-semibold text-sm",
                 remaining > 0 ? "text-red-500" : "text-green-600"
               )}>
                 {remaining > 0 ? `₡${remaining.toLocaleString("en-US")}` : "Pagado ✓"}
@@ -335,7 +335,7 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
           {/* Payment history */}
           {payments.length > 0 && (
             <div className="flex flex-col gap-1.5">
-              <p className="text-xs font-medium text-gray-500 font-poppins uppercase tracking-wider">
+              <p className="text-xs font-medium text-ink-500 uppercase tracking-wider">
                 Historial de pagos
               </p>
               <div className="flex flex-col gap-1.5">
@@ -351,7 +351,7 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
                   />
                 ))}
               </div>
-              <p className="text-[10px] font-poppins text-gray-300 pl-1">
+              <p className="text-[10px] text-ink-300 pl-1">
                 Eliminar un pago lo quita de movimientos y deja la orden como pendiente si queda saldo.
               </p>
             </div>
@@ -364,7 +364,7 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
                 <button
                   type="button"
                   onClick={() => setShowAbono(true)}
-                  className="w-full py-2.5 rounded-xl border border-green-200 text-sm font-poppins
+                  className="w-full py-2.5 rounded-xl border border-green-200 text-sm
                              text-green-600 hover:bg-green-50 transition-colors flex items-center justify-center gap-2"
                 >
                   <Plus size={14} strokeWidth={2.5} />
@@ -372,7 +372,7 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
                 </button>
               ) : (
                 <div className="flex flex-col gap-2 p-3 rounded-xl border border-green-200 bg-green-50/40">
-                  <p className="text-xs font-poppins font-medium text-green-700">
+                  <p className="text-xs font-medium text-green-700">
                     Monto del abono (₡)
                   </p>
                   <div className="flex gap-2">
@@ -389,7 +389,7 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
                       type="button"
                       onClick={handleAbono}
                       disabled={abonoMutation.isPending}
-                      className="px-4 py-2.5 rounded-xl bg-green-600 text-white text-sm font-poppins
+                      className="px-4 py-2.5 rounded-xl bg-green-600 text-white text-sm
                                  font-medium hover:bg-green-700 transition-colors disabled:opacity-60
                                  flex items-center gap-1.5 shrink-0"
                     >
@@ -402,7 +402,7 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
                     <button
                       type="button"
                       onClick={() => { setShowAbono(false); setAbonoAmount(""); }}
-                      className="p-2.5 rounded-xl border border-gray-200 text-gray-400 hover:text-gray-600
+                      className="p-2.5 rounded-xl border border-ink-200 text-ink-400 hover:text-ink-600
                                  transition-colors shrink-0"
                     >
                       <X size={14} />
@@ -415,7 +415,7 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
 
           {/* Delivery status */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-gray-500 font-poppins uppercase tracking-wider">
+            <label className="text-xs font-medium text-ink-500 uppercase tracking-wider">
               Estado de entrega
             </label>
             <div className="grid grid-cols-1 gap-1.5">
@@ -427,19 +427,19 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
                     "flex items-center gap-3 rounded-xl border px-3.5 py-2.5 cursor-pointer transition-all",
                     deliveryStatus === statusOption.value
                       ? "border-brand-primary bg-brand-primary/5"
-                      : "border-gray-200 hover:border-gray-300"
+                      : "border-ink-200 hover:border-ink-300"
                   )}
                 >
                   <span className={cn(
                     "w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors",
-                    deliveryStatus === statusOption.value ? "border-brand-primary" : "border-gray-300"
+                    deliveryStatus === statusOption.value ? "border-brand-primary" : "border-ink-300"
                   )}>
                     {deliveryStatus === statusOption.value && (
                       <span className="w-2 h-2 rounded-full bg-brand-primary" />
                     )}
                   </span>
                   <span className={cn(
-                    "text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-full font-poppins",
+                    "text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-full",
                     statusOption.bgCls
                   )}>
                     {statusOption.label}
@@ -451,11 +451,11 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
 
           {/* Tracking number */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-gray-500 font-poppins uppercase tracking-wider">
+            <label className="text-xs font-medium text-ink-500 uppercase tracking-wider">
               N.° de guía
               {isShipped && isCorreos
                 ? <span className="ml-1 text-red-400 normal-case font-normal">(requerido)</span>
-                : <span className="ml-1 text-gray-300 normal-case font-normal">(opcional)</span>
+                : <span className="ml-1 text-ink-300 normal-case font-normal">(opcional)</span>
               }
             </label>
             <input
@@ -466,15 +466,15 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
               className={cn(inputCls, trackingError && "border-red-300 focus:border-red-400 focus:ring-red-100")}
             />
             {trackingError && (
-              <span className="text-[11px] text-red-500 font-poppins">{trackingError}</span>
+              <span className="text-[11px] text-red-500">{trackingError}</span>
             )}
           </div>
 
           {/* Notes */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-medium text-gray-500 font-poppins uppercase tracking-wider">
+            <label className="text-xs font-medium text-ink-500 uppercase tracking-wider">
               Notas internas
-              <span className="ml-1 text-gray-300 normal-case font-normal">(solo admin)</span>
+              <span className="ml-1 text-ink-300 normal-case font-normal">(solo admin)</span>
             </label>
             <textarea
               value={note}
@@ -490,7 +490,7 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
             type="button"
             onClick={handlePrintLabel}
             className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl
-                       border border-gray-200 text-sm font-poppins text-gray-500
+                       border border-ink-200 text-sm text-ink-500
                        hover:border-brand-primary hover:text-brand-primary transition-colors"
           >
             <Printer size={15} strokeWidth={1.8} />
@@ -504,8 +504,8 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center justify-center gap-2 w-full py-3 rounded-xl
-                         bg-[#25D366] text-white text-sm font-poppins font-medium
-                         hover:bg-[#1da851] transition-colors"
+                         bg-[#0a0a0a] text-white text-sm font-medium
+                         hover:bg-[#2e2e2e] transition-colors"
             >
               <MessageCircle size={16} strokeWidth={2} />
               Notificar envío por WhatsApp
@@ -514,12 +514,12 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
         </div>
 
         {/* Footer */}
-        <div className="flex gap-3 px-5 py-4 border-t border-gray-100">
+        <div className="flex gap-3 px-5 py-4 border-t border-ink-100">
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-poppins
-                       text-gray-500 hover:border-gray-300 transition-colors"
+            className="flex-1 py-2.5 rounded-xl border border-ink-200 text-sm
+                       text-ink-500 hover:border-ink-300 transition-colors"
           >
             Cancelar
           </button>
@@ -527,9 +527,9 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
             type="button"
             onClick={handleSave}
             disabled={saveMutation.isPending}
-            className="flex-1 py-2.5 rounded-xl bg-brand-primary text-white text-sm font-poppins
+            className="flex-1 py-2.5 rounded-xl bg-brand-primary text-white text-sm
                        font-medium flex items-center justify-center gap-2
-                       hover:bg-[#7a3e18] transition-colors disabled:opacity-60"
+                       hover:bg-[#2e2e2e] transition-colors disabled:opacity-60"
           >
             {saveMutation.isPending
               ? <Loader2 size={14} className="animate-spin" />
