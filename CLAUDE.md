@@ -386,7 +386,8 @@ Todo lo que es un objeto discreto sí lo lleva:
 
 **Hero de la home (`HeroDrop`)**
 - `h-[100svh]`, fondo `ink-950` con `grain`
-- Rota hasta 5 fotos en escala de grises con ken-burns lento — nunca banco de imágenes
+- Rota hasta `MAX_HERO_SLIDES` (6) fotos en escala de grises con ken-burns lento, una cada
+  4 s — nunca banco de imágenes
 - Las fotos salen de `HERO_IMAGES` (`constants/app.ts`, archivos en `public/hero/`). Si
   la lista está vacía cae a las fotos más recientes del catálogo, para que la portada
   nunca quede en negro

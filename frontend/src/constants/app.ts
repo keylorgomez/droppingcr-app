@@ -40,7 +40,16 @@ export const HERO_IMAGES: string[] = [
   "/hero/02-olise.jpg",
   "/hero/03-noche.jpg",
   "/hero/04-gimenez.jpg",
+  "/hero/05-keeptrying.jpg",
+  "/hero/06-coldculture.jpg",
 ];
+
+/**
+ * Tope de fotos del carrusel. Vive acá y no dentro del hero porque el recorte
+ * se aplica en dos lugares (la lista curada y el respaldo del inventario); con
+ * el número suelto en cada uno, agregar una foto la descartaba en silencio.
+ */
+export const MAX_HERO_SLIDES = 6;
 
 /** Foto fija por categoría (slug → ruta). Lo que falte usa la foto de un producto. */
 export const CATEGORY_IMAGES: Record<string, string> = {

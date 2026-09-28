@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { cloudinaryUrl } from "../../lib/cloudinary";
-import { ROUTES } from "../../constants/app";
+import { ROUTES, MAX_HERO_SLIDES } from "../../constants/app";
 import Logo from "../ui/Logo";
 
-const SLIDE_MS = 5200;
+// 4 s deja ~2.6 s de foto asentada después del crossfade de 1.4 s: se siente
+// vivo sin volverse un parpadeo.
+const SLIDE_MS = 4000;
 
 interface HeroDropProps {
   /** Fotos reales del inventario — evita el look de banco de imágenes. */
@@ -17,7 +19,7 @@ export default function HeroDrop({ images }: HeroDropProps) {
   const reduceMotion = useReducedMotion() ?? false;
   const [index, setIndex] = useState(0);
 
-  const slides = images.slice(0, 5);
+  const slides = images.slice(0, MAX_HERO_SLIDES);
 
   useEffect(() => {
     if (slides.length < 2 || reduceMotion) return;

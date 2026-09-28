@@ -13,7 +13,7 @@ import SectionHeading from "../components/home/SectionHeading";
 import CategoryTiles, { type CategoryTile } from "../components/home/CategoryTiles";
 import { getProducts, type CatalogProduct } from "../services/productService";
 import { QUERY_KEYS } from "../constants/queryKeys";
-import { ROUTES, MARQUEE_ITEMS, HERO_IMAGES, CATEGORY_IMAGES } from "../constants/app";
+import { ROUTES, MARQUEE_ITEMS, HERO_IMAGES, CATEGORY_IMAGES, MAX_HERO_SLIDES } from "../constants/app";
 import { useAuth } from "../context/AuthContext";
 
 const CURATED_COUNT = 8;
@@ -28,7 +28,7 @@ function heroImages(products: CatalogProduct[]): string[] {
   if (HERO_IMAGES.length > 0) return HERO_IMAGES;
   return products
     .filter((p) => p.image_url)
-    .slice(0, 5)
+    .slice(0, MAX_HERO_SLIDES)
     .map((p) => p.image_url);
 }
 
