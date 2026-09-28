@@ -16,6 +16,7 @@ import { useToast } from "../../components/ui/Toast";
 import { QUERY_KEYS } from "../../constants/queryKeys";
 import Header from "../../components/ui/Header";
 import { cn } from "../../lib/utils";
+import { discountedPrice } from "../../lib/formatters";
 
 // ── Slug helper ────────────────────────────────────────────────────────────
 
@@ -554,7 +555,7 @@ export default function ProductFormPage() {
               const disc        = Number(discount) || 0;
               if (!cost || !sale) return null;
 
-              const effectiveSale   = disc > 0 ? Math.round(sale * (1 - disc / 100)) : sale;
+              const effectiveSale   = discountedPrice(sale, disc);
               const profit          = sale - cost;
               const profitPct       = Math.round((profit / cost) * 100);
               const effectiveProfit = effectiveSale - cost;

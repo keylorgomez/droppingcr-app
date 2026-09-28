@@ -1,4 +1,5 @@
 import { supabase } from "../lib/supabaseClient";
+import { discountedPrice } from "../lib/formatters";
 import type { ProductDetail } from "./productService";
 
 export function buildInstagramCaption(product: Pick<
@@ -23,7 +24,7 @@ export function buildInstagramCaption(product: Pick<
 
   const discPct = product.discount_percentage ?? 0;
   if (discPct > 0) {
-    const discounted = Math.round(product.price_sale * (1 - discPct / 100));
+    const discounted = discountedPrice(product.price_sale, discPct);
     lines.push(`Precio: ₡${product.price_sale.toLocaleString("en-US")} → ₡${discounted.toLocaleString("en-US")} (${discPct}% OFF)`);
   } else {
     lines.push(`Precio: ₡${product.price_sale.toLocaleString("en-US")}`);

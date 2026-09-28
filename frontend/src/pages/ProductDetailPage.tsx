@@ -16,6 +16,7 @@ import { CLOTHING_SIZES } from "../constants/domain";
 import { QUERY_KEYS } from "../constants/queryKeys";
 import { STORE_WHATSAPP, ROUTES } from "../constants/app";
 import { cn } from "../lib/utils";
+import { discountedPrice } from "../lib/formatters";
 
 const RELATED_COUNT = 4;
 
@@ -256,9 +257,7 @@ function ProductContent({ product }: { product: ProductDetail }) {
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
 
   const hasDiscount = product.discount_percentage > 0;
-  const discountedPrice = hasDiscount
-    ? Math.round(product.price_sale * (1 - product.discount_percentage / 100))
-    : product.price_sale;
+  const finalPrice = discountedPrice(product.price_sale, product.discount_percentage);
 
   // Stock per size
   const stockBySize = product.variants.reduce<Record<string, number>>((acc, v) => {
@@ -304,7 +303,7 @@ function ProductContent({ product }: { product: ProductDetail }) {
         product_name: product.name,
         variant_size: selectedSize,
         image_url:    sortedImages[0]?.image_url ?? "",
-        price:        discountedPrice,
+        price:        finalPrice,
         slug:         product.slug,
         stock:        variant.stock,
       });
@@ -455,7 +454,7 @@ function ProductContent({ product }: { product: ProductDetail }) {
           {/* Precio */}
           <div className="flex items-baseline flex-wrap gap-x-3 gap-y-1 mt-6">
             <span className={cn("text-2xl font-semibold tnum", hasDiscount ? "text-sale" : "text-ink-900")}>
-              ₡{discountedPrice.toLocaleString("en-US")}
+              ₡{finalPrice.toLocaleString("en-US")}
             </span>
             {hasDiscount && (
               <>

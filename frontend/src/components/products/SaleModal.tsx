@@ -17,6 +17,7 @@ import {
 } from "../../config/shipping";
 import { useToast } from "../ui/Toast";
 import { cn } from "../../lib/utils";
+import { discountedPrice } from "../../lib/formatters";
 import { type ProductVariant } from "../../services/productService";
 import { lookupCustomerByPhone } from "../../services/customerService";
 
@@ -88,7 +89,7 @@ export default function SaleModal({
   onSuccess,
 }: SaleModalProps) {
   const effectivePrice    = discountPercentage > 0
-    ? Math.round(priceSale * (1 - discountPercentage / 100))
+    ? discountedPrice(priceSale, discountPercentage)
     : priceSale;
   const { showToast }     = useToast();
   const navigate          = useNavigate();

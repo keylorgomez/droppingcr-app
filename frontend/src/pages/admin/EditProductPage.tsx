@@ -11,6 +11,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../components/ui/Toast";
 import Header from "../../components/ui/Header";
 import { cn } from "../../lib/utils";
+import { discountedPrice } from "../../lib/formatters";
 import SaleModal              from "../../components/products/SaleModal";
 import DeleteConfirmModal      from "../../components/products/DeleteConfirmModal";
 import InstagramPublishModal   from "../../components/products/InstagramPublishModal";
@@ -422,7 +423,7 @@ export default function EditProductPage() {
               const discountPct   = Number(discount) || 0;
               if (!purchaseCost || !salePrice) return null;
 
-              const effectiveSalePrice = discountPct > 0 ? Math.round(salePrice * (1 - discountPct / 100)) : salePrice;
+              const effectiveSalePrice = discountedPrice(salePrice, discountPct);
               const profit             = salePrice - purchaseCost;
               const profitPct          = Math.round((profit / purchaseCost) * 100);
               const effectiveProfit    = effectiveSalePrice - purchaseCost;

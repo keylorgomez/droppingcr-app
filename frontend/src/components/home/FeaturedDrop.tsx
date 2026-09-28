@@ -6,6 +6,7 @@ import { cloudinaryUrl } from "../../lib/cloudinary";
 import { ROUTES } from "../../constants/app";
 import type { CatalogProduct } from "../../services/productService";
 import Reveal from "../ui/Reveal";
+import { discountedPrice } from "../../lib/formatters";
 
 interface FeaturedDropProps {
   product: CatalogProduct;
@@ -20,9 +21,7 @@ export default function FeaturedDrop({ product }: FeaturedDropProps) {
   const [hovered, setHovered] = useState(false);
 
   const hasDiscount = product.discount_percentage > 0;
-  const price = hasDiscount
-    ? Math.round(product.price_sale * (1 - product.discount_percentage / 100))
-    : product.price_sale;
+  const price = discountedPrice(product.price_sale, product.discount_percentage);
 
   const goToProduct = () => navigate(ROUTES.PRODUCT(product.slug));
 
@@ -30,9 +29,17 @@ export default function FeaturedDrop({ product }: FeaturedDropProps) {
     <section className="bg-ink-950 text-bone">
       <div className="grid grid-cols-1 lg:grid-cols-2 items-stretch">
 
-        {/* ── Imagen ──────────────────────────────────────────────── */}
+        {/* ── Imagen ────────────────────────────────────────────────
+            `min-h-[125vw]` no es decorativo: en móvil la caja ocupa el ancho
+            completo, así que 125vw es exactamente lo que da `aspect-[4/5]`.
+            Duplicarlo como min-height es el piso de seguridad — todos los hijos
+            son `absolute`, o sea que sin contenido en flujo la altura depende
+            solo de `aspect-ratio`, y WebKit lo colapsa a 0 en un grid item
+            estirado. Donde `aspect-ratio` sí funciona, ambos valores coinciden
+            y no cambia nada. */}
         <div
-          className="relative aspect-[4/5] lg:aspect-auto lg:min-h-[76vh] overflow-hidden cursor-pointer grain"
+          className="relative aspect-[4/5] min-h-[125vw] lg:aspect-auto lg:min-h-[76vh]
+                     overflow-hidden cursor-pointer grain"
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
           onClick={goToProduct}

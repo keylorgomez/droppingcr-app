@@ -589,6 +589,14 @@ Evita duplicar lógica de loading/error/caché en cada componente. Las query key
 **¿Por qué no Redux/Zustand?**
 El estado global genuinamente global es mínimo: usuario autenticado y carrito. Context API es suficiente. Zustand o Redux agregarían complejidad sin beneficio real en este scope.
 
+**¿Por qué el precio con descuento se calcula en `discountedPrice()` y no donde se usa?**
+Estaba repetido idéntico en la tarjeta, el detalle, la pieza destacada, el carrito, el
+modal de venta, los dos formularios de producto y el post de Instagram. El formulario de
+pedidos del admin era el único sitio que no lo tenía —su consulta ni siquiera pedía
+`discount_percentage`— así que cobraba el precio de lista en piezas rebajadas. Un único
+helper en `lib/formatters.ts` es lo que impide que un consumidor nuevo vuelva a quedarse
+fuera.
+
 **¿Por qué los abonos de una venta externa viven en `payments` y no en su propia tabla?**
 `payments` es lo que alimenta el log de Movimientos, el saldo de Cobros pendientes y lo
 que el cliente ve en "Mis pedidos". Una tabla aparte habría obligado a duplicar esas tres

@@ -1,4 +1,5 @@
 import { supabase } from "../lib/supabaseClient";
+import { discountedPrice } from "../lib/formatters";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -87,7 +88,7 @@ export async function getUserCart(userId: string): Promise<CartItem[]> {
       return imgA.display_order - imgB.display_order;
     });
     const price = (pr?.discount_percentage ?? 0) > 0
-      ? Math.round((pr?.price_sale ?? 0) * (1 - (pr?.discount_percentage ?? 0) / 100))
+      ? discountedPrice(pr?.price_sale ?? 0, pr?.discount_percentage ?? 0)
       : (pr?.price_sale ?? 0);
 
     return {
