@@ -26,8 +26,8 @@ function welcomeHtml(firstName: string): string {
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
   <title>Bienvenido a Dropping CR</title>
 </head>
-<body style="margin:0;padding:0;background:#f2f2f2;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f2f2f2;padding:40px 16px;">
+<body style="margin:0;padding:0;background:#f5f4f2;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f4f2;padding:40px 16px;">
     <tr><td align="center">
       <table width="100%" style="max-width:540px;" cellpadding="0" cellspacing="0">
 
@@ -35,7 +35,7 @@ function welcomeHtml(firstName: string): string {
         <tr>
           <td style="background:#0a0a0a;border-radius:16px 16px 0 0;padding:32px 40px;text-align:center;">
             <p style="margin:0;font-size:20px;font-weight:700;letter-spacing:0.15em;color:#ffffff;text-transform:uppercase;">DROPPING CR</p>
-            <p style="margin:6px 0 0;font-size:10px;letter-spacing:0.22em;color:#975023;text-transform:uppercase;">Streetwear · Costa Rica</p>
+            <p style="margin:6px 0 0;font-size:10px;letter-spacing:0.22em;color:#909090;text-transform:uppercase;">Streetwear · Costa Rica</p>
           </td>
         </tr>
 
@@ -55,9 +55,9 @@ function welcomeHtml(firstName: string): string {
               <tr>
                 <td align="center">
                   <a href="https://droppingcr.com"
-                     style="display:inline-block;background:#975023;color:#ffffff;text-decoration:none;
+                     style="display:inline-block;background:#0a0a0a;color:#faf9f7;text-decoration:none;
                             font-size:13px;font-weight:700;letter-spacing:0.1em;padding:14px 40px;
-                            border-radius:50px;text-transform:uppercase;">
+                            border-radius:10px;text-transform:uppercase;">
                     Ver catálogo
                   </a>
                 </td>
@@ -71,7 +71,7 @@ function welcomeHtml(firstName: string): string {
           <td style="background:#fafafa;border-radius:0 0 16px 16px;padding:20px 40px;text-align:center;border-top:1px solid #eeeeee;">
             <p style="margin:0;font-size:12px;color:#bbb;line-height:1.7;">
               ¿Preguntas? Escribinos por
-              <a href="https://wa.me/50688364879" style="color:#975023;text-decoration:none;">WhatsApp</a>.<br/>
+              <a href="https://wa.me/50688364879" style="color:#0a0a0a;text-decoration:underline;">WhatsApp</a>.<br/>
               © ${new Date().getFullYear()} Dropping CR · Costa Rica
             </p>
           </td>
@@ -124,8 +124,8 @@ function orderHtml(
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
   <title>Comprobante — Dropping CR</title>
 </head>
-<body style="margin:0;padding:0;background:#f2f2f2;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f2f2f2;padding:40px 16px;">
+<body style="margin:0;padding:0;background:#f5f4f2;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f4f2;padding:40px 16px;">
     <tr><td align="center">
       <table width="100%" style="max-width:540px;" cellpadding="0" cellspacing="0">
 
@@ -133,7 +133,7 @@ function orderHtml(
         <tr>
           <td style="background:#0a0a0a;border-radius:16px 16px 0 0;padding:32px 40px;text-align:center;">
             <p style="margin:0;font-size:20px;font-weight:700;letter-spacing:0.15em;color:#ffffff;text-transform:uppercase;">DROPPING CR</p>
-            <p style="margin:6px 0 0;font-size:10px;letter-spacing:0.22em;color:#975023;text-transform:uppercase;">Comprobante de compra</p>
+            <p style="margin:6px 0 0;font-size:10px;letter-spacing:0.22em;color:#909090;text-transform:uppercase;">Comprobante de compra</p>
           </td>
         </tr>
 
@@ -156,7 +156,7 @@ function orderHtml(
               <!-- Total -->
               <tr>
                 <td style="padding:18px 0 0;font-size:15px;font-weight:700;color:#0a0a0a;">Total a pagar</td>
-                <td style="padding:18px 0 0;text-align:right;font-size:22px;font-weight:700;color:#975023;">
+                <td style="padding:18px 0 0;text-align:right;font-size:22px;font-weight:700;color:#0a0a0a;">
                   ₡${total.toLocaleString("en-US")}
                 </td>
               </tr>
@@ -170,7 +170,7 @@ function orderHtml(
                      text-align:center;border-top:1px solid #eeeeee;">
             <p style="margin:0;font-size:12px;color:#bbb;line-height:1.7;">
               ¿Preguntas? Escribinos por
-              <a href="https://wa.me/50688364879" style="color:#975023;text-decoration:none;">WhatsApp</a>.<br/>
+              <a href="https://wa.me/50688364879" style="color:#0a0a0a;text-decoration:underline;">WhatsApp</a>.<br/>
               © ${new Date().getFullYear()} Dropping CR · Costa Rica
             </p>
           </td>
@@ -200,8 +200,8 @@ function paymentReceiptHtml(
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
   <title>Abono recibido — Dropping CR</title>
 </head>
-<body style="margin:0;padding:0;background:#f2f2f2;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f2f2f2;padding:40px 16px;">
+<body style="margin:0;padding:0;background:#f5f4f2;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f4f2;padding:40px 16px;">
     <tr><td align="center">
       <table width="100%" style="max-width:540px;" cellpadding="0" cellspacing="0">
 
@@ -209,7 +209,7 @@ function paymentReceiptHtml(
         <tr>
           <td style="background:#0a0a0a;border-radius:16px 16px 0 0;padding:32px 40px;text-align:center;">
             <p style="margin:0;font-size:20px;font-weight:700;letter-spacing:0.15em;color:#ffffff;text-transform:uppercase;">DROPPING CR</p>
-            <p style="margin:6px 0 0;font-size:10px;letter-spacing:0.22em;color:#975023;text-transform:uppercase;">Comprobante de abono</p>
+            <p style="margin:6px 0 0;font-size:10px;letter-spacing:0.22em;color:#909090;text-transform:uppercase;">Comprobante de abono</p>
           </td>
         </tr>
 
@@ -229,7 +229,7 @@ function paymentReceiptHtml(
               <tr>
                 <td style="padding:16px 20px;border-bottom:1px solid #eeeeee;">
                   <span style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:0.1em;">Abono recibido</span><br/>
-                  <span style="font-size:24px;font-weight:700;color:#975023;">₡${amountPaid.toLocaleString("en-US")}</span>
+                  <span style="font-size:24px;font-weight:700;color:#0a0a0a;">₡${amountPaid.toLocaleString("en-US")}</span>
                 </td>
               </tr>
               <tr>
@@ -241,7 +241,7 @@ function paymentReceiptHtml(
               <tr>
                 <td style="padding:16px 20px;">
                   <span style="font-size:12px;color:#999;text-transform:uppercase;letter-spacing:0.1em;">Saldo pendiente</span><br/>
-                  <span style="font-size:20px;font-weight:700;color:${isPaidOff ? "#22c55e" : "#dc2626"};">
+                  <span style="font-size:20px;font-weight:700;color:#0a0a0a;">
                     ${isPaidOff ? "✓ Pagado completo" : `₡${remaining.toLocaleString("en-US")}`}
                   </span>
                 </td>
@@ -249,8 +249,8 @@ function paymentReceiptHtml(
             </table>
 
             ${note ? `
-            <div style="margin-top:20px;background:#ffefd1;border-radius:12px;padding:14px 18px;">
-              <p style="margin:0;font-size:13px;color:#975023;line-height:1.65;">
+            <div style="margin-top:20px;background:#f5f4f2;border-radius:10px;padding:14px 18px;">
+              <p style="margin:0;font-size:13px;color:#4a4a4a;line-height:1.65;">
                 📝 Nota: ${note}
               </p>
             </div>` : ""}
@@ -266,7 +266,7 @@ function paymentReceiptHtml(
           <td style="background:#fafafa;border-radius:0 0 16px 16px;padding:20px 40px;
                      text-align:center;border-top:1px solid #eeeeee;">
             <p style="margin:0;font-size:12px;color:#bbb;line-height:1.7;">
-              <a href="https://wa.me/50688364879" style="color:#975023;text-decoration:none;">WhatsApp</a> · ¿Preguntas? Con gusto te ayudamos.<br/>
+              <a href="https://wa.me/50688364879" style="color:#0a0a0a;text-decoration:underline;">WhatsApp</a> · ¿Preguntas? Con gusto te ayudamos.<br/>
               © ${new Date().getFullYear()} Dropping CR · Costa Rica
             </p>
           </td>

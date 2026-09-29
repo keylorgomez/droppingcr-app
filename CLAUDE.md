@@ -604,6 +604,41 @@ pedidos del admin era el único sitio que no lo tenía —su consulta ni siquier
 helper en `lib/formatters.ts` es lo que impide que un consumidor nuevo vuelva a quedarse
 fuera.
 
+**Correos transaccionales**
+Tres tipos, todos en la Edge Function `send-email`: `welcome`, `new_order` (venta manual,
+pedido del carrito y venta externa) y `payment_receipt` (al registrar un abono desde
+Cobros pendientes). La función resuelve el correo **por el WhatsApp**: busca el perfil con
+ese número y, si no existe, omite el envío en silencio — por eso se puede llamar siempre
+que haya teléfono, sin preguntar antes si la persona tiene cuenta. Los correos de auth
+(confirmación, recuperación) viven aparte, en `auth-email-hook`.
+
+**En correo no hay webfonts.** Gmail y Outlook las ignoran, así que Anton no llega: las
+plantillas usan Helvetica/Arial y aproximan el display con caja alta y `letter-spacing`.
+Lo que sí se rebrandeó es el color (negro tinta sobre hueso, botones `#0a0a0a`, enlaces
+negros **subrayados** porque sin color el subrayado es la única señal de que son enlaces)
+y los radios (10px en botones, igual que `rounded-btn`). Los estados del recibo también
+son monocromos: el saldo se entiende por la etiqueta y el peso, no por verde/rojo.
+
+**Las Edge Functions no se despliegan con el frontend.** Van por
+`npx supabase functions deploy <nombre>`; es fácil cambiar una plantilla y que nunca
+llegue a producción.
+
+**Caja vs. devengado: el backoffice usa los dos, y no se mezclan**
+- **Movimientos** es un log de **caja**: cada fila es plata que entró o salió, y
+  "Balance neto" = ingresos − salidas reales. Una venta a crédito no aporta nada hasta
+  que se abona.
+- **Dashboard** y **Ganancias** son **devengado**: el ingreso se reconoce al vender,
+  aunque no se haya cobrado, y lo que falta aparece en "deuda pendiente".
+
+Las ventas externas obligaron a explicitar esta diferencia. De contado no generan filas
+en `payments`, así que en caja su ingreso solo se puede leer de la venta misma; a pagos
+sí las generan, y ahí el precio de la venta **no debe sumarse** o se cuenta dos veces.
+Eso es lo que hace `externalSaleCashIn()`: devuelve el precio solo si la venta no es a
+plazos. El discriminante incluye `total_paid > 0` y no solo el estado, porque al quedar
+saldada la venta pasa a `completed` — mirando solo el estado, volvería a contarse doble.
+**En una vista de caja, nunca sumar el precio de una venta externa sin pasar por ese
+helper.**
+
 **¿Por qué los abonos de una venta externa viven en `payments` y no en su propia tabla?**
 `payments` es lo que alimenta el log de Movimientos, el saldo de Cobros pendientes y lo
 que el cliente ve en "Mis pedidos". Una tabla aparte habría obligado a duplicar esas tres

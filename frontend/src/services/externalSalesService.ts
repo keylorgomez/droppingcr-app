@@ -1,5 +1,6 @@
 import { supabase } from "../lib/supabaseClient";
 import { SALE_STATUS } from "../constants/domain";
+import { sendTransactionalEmail } from "../lib/emailService";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -76,6 +77,28 @@ function toExternalSale(row: RawExternalSaleRow): ExternalSale {
   };
 }
 
+/**
+ * ¿La venta se cobra a plazos? Sus abonos viven en `payments`, así que en una
+ * vista de caja el dinero ya lo aporta el log de pagos.
+ */
+export function isInstallmentExternalSale(sale: ExternalSale): boolean {
+  return sale.status === SALE_STATUS.PENDING || sale.total_paid > 0;
+}
+
+/**
+ * Lo que una venta externa aporta a una vista **de caja** (Movimientos).
+ *
+ * De contado no genera filas en `payments`, así que el ingreso solo se puede
+ * leer de la venta misma. A pagos sí las genera: sumarle además el precio la
+ * contaría dos veces, y contarla sin abonos registraría plata que no entró.
+ *
+ * Ojo: el Dashboard usa el modelo contrario (devengado, reconoce el ingreso al
+ * vender, igual que con `sales`). Los dos son correctos, pero no se mezclan.
+ */
+export function externalSaleCashIn(sale: ExternalSale): number {
+  return isInstallmentExternalSale(sale) ? 0 : sale.sale_price;
+}
+
 // ── Mutations ──────────────────────────────────────────────────────────────
 
 export async function createExternalSale(
@@ -109,6 +132,27 @@ export async function createExternalSale(
       note:             "Abono inicial",
     });
     if (payError) throw new Error(payError.message);
+  }
+
+  // Misma confirmación que recibe quien compra del catálogo. La Edge Function
+  // resuelve el correo por el WhatsApp y no hace nada si la persona no tiene
+  // cuenta, así que mandarlo siempre que haya teléfono es seguro.
+  if (input.guest_phone) {
+    sendTransactionalEmail({
+      type: "new_order",
+      data: {
+        guest_phone:   input.guest_phone,
+        guest_name:    input.guest_name?.trim() || null,
+        items: [{
+          product_name: input.product_name.trim(),
+          variant_size: "—",
+          quantity:     1,
+          sale_price:   input.sale_price,
+        }],
+        shipping_cost: 0,
+        total:         input.sale_price,
+      },
+    });
   }
 }
 

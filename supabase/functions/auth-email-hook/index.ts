@@ -8,7 +8,9 @@ import { Webhook } from "https://esm.sh/standardwebhooks@1.0.0";
 // branded generic email so no auth flow breaks.
 
 const WHATSAPP = "https://wa.me/50688364879";
-const BRAND     = "#975023";
+const INK   = "#0a0a0a";  // negro tinta — botones y cifras
+const BONE  = "#faf9f7";  // blanco hueso — texto sobre negro
+const MUTED = "#909090";  // gris del eyebrow sobre el header negro
 
 // ── Shared HTML shell ────────────────────────────────────────────────────────
 
@@ -28,8 +30,8 @@ function shell(opts: {
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
   <title>Dropping CR</title>
 </head>
-<body style="margin:0;padding:0;background:#f2f2f2;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f2f2f2;padding:40px 16px;">
+<body style="margin:0;padding:0;background:#f5f4f2;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f4f2;padding:40px 16px;">
     <tr><td align="center">
       <table width="100%" style="max-width:540px;" cellpadding="0" cellspacing="0">
 
@@ -37,7 +39,7 @@ function shell(opts: {
         <tr>
           <td style="background:#0a0a0a;border-radius:16px 16px 0 0;padding:32px 40px;text-align:center;">
             <p style="margin:0;font-size:20px;font-weight:700;letter-spacing:0.15em;color:#ffffff;text-transform:uppercase;">DROPPING CR</p>
-            <p style="margin:6px 0 0;font-size:10px;letter-spacing:0.22em;color:${BRAND};text-transform:uppercase;">Streetwear · Costa Rica</p>
+            <p style="margin:6px 0 0;font-size:10px;letter-spacing:0.22em;color:${MUTED};text-transform:uppercase;">Streetwear · Costa Rica</p>
           </td>
         </tr>
 
@@ -51,9 +53,9 @@ function shell(opts: {
               <tr>
                 <td align="center">
                   <a href="${ctaLink}"
-                     style="display:inline-block;background:${BRAND};color:#ffffff;text-decoration:none;
+                     style="display:inline-block;background:${INK};color:${BONE};text-decoration:none;
                             font-size:13px;font-weight:700;letter-spacing:0.1em;padding:14px 40px;
-                            border-radius:50px;text-transform:uppercase;">
+                            border-radius:10px;text-transform:uppercase;">
                     ${ctaLabel}
                   </a>
                 </td>
@@ -68,7 +70,7 @@ function shell(opts: {
           <td style="background:#fafafa;border-radius:0 0 16px 16px;padding:20px 40px;text-align:center;border-top:1px solid #eeeeee;">
             <p style="margin:0;font-size:12px;color:#bbb;line-height:1.7;">
               ¿Preguntas? Escribinos por
-              <a href="${WHATSAPP}" style="color:${BRAND};text-decoration:none;">WhatsApp</a>.<br/>
+              <a href="${WHATSAPP}" style="color:${INK};text-decoration:underline;">WhatsApp</a>.<br/>
               © ${new Date().getFullYear()} Dropping CR · Costa Rica
             </p>
           </td>

@@ -1,4 +1,5 @@
 import { supabase } from "../lib/supabaseClient";
+import { SALE_STATUS } from "../constants/domain";
 import { DELIVERY_STATUSES } from "./salesService";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -93,6 +94,13 @@ function startOfDayOffset(daysAgo: number): string {
 
 // ── Queries ────────────────────────────────────────────────────────────────
 
+interface RawStatsExternal {
+  sale_price: number;
+  cost_price: number;
+  status:     string | null;
+  payments:   Array<{ amount: number }> | null;
+}
+
 export async function getDashboardStats(): Promise<DashboardStats> {
   const [salesResult, ordersResult, externalResult] = await Promise.all([
     supabase
@@ -105,7 +113,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       .neq("status", "cancelled"),
     supabase
       .from("external_sales")
-      .select("sale_price, cost_price"),
+      .select("sale_price, cost_price, status, payments ( amount )"),
   ]);
 
   if (salesResult.error) throw new Error(salesResult.error.message);
@@ -140,9 +148,18 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     }
   }
 
-  for (const ext of (externalResult.data ?? []) as { sale_price: number; cost_price: number }[]) {
+  // Modelo devengado, igual que con sales y orders: el ingreso se reconoce al
+  // vender y lo que falta cobrar va a deuda pendiente. Sin esta última parte,
+  // una venta externa a pagos sumaba al ingreso pero su saldo no aparecía por
+  // ningún lado.
+  for (const ext of (externalResult.data ?? []) as RawStatsExternal[]) {
     totalRevenue += ext.sale_price;
     netProfit    += ext.sale_price - ext.cost_price;
+
+    if (ext.status === SALE_STATUS.PENDING) {
+      const paid = (ext.payments ?? []).reduce((total, payment) => total + payment.amount, 0);
+      pendingDebt += Math.max(0, ext.sale_price - paid);
+    }
   }
 
   return {

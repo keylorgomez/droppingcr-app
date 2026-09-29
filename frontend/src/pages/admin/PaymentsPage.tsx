@@ -17,6 +17,7 @@ import { getAllPayouts, type AdminPayout } from "../../services/payoutsService";
 import { getExpensePaymentsLog, type ExpensePaymentLog } from "../../services/expensesService";
 import {
   getExternalSalesLog, createExternalSale,
+  isInstallmentExternalSale, externalSaleCashIn,
   type ExternalSale, type ExternalSaleInput,
 } from "../../services/externalSalesService";
 import { lookupCustomerProfileByPhone } from "../../services/customerService";
@@ -459,7 +460,10 @@ export default function PaymentsPage() {
   }, [movements, search]);
 
   // ── Summary stats ──────────────────────────────────────────────────────────
-  const externalTotal = externalSales.reduce((s, e) => s + e.sale_price, 0);
+  // Caja, no devengado: una venta externa a pagos aporta 0 acá porque sus
+  // abonos ya entran por el log de pagos. Sumar además su precio la contaría
+  // dos veces, y sin abonos registraría plata que no entró.
+  const externalTotal = externalSales.reduce((s, e) => s + externalSaleCashIn(e), 0);
   const totalIn  = logs.reduce((s, l) => s + l.amount, 0) + externalTotal;
   const totalOut = payouts.reduce((s, p) => s + p.amount, 0)
                  + expensePayments.reduce((s, e) => s + e.amount, 0)
@@ -492,14 +496,14 @@ export default function PaymentsPage() {
   });
 
   const thisMonthIn  = thisMonth.reduce((s, l) => s + l.amount, 0)
-                     + thisMonthExternals.reduce((s, e) => s + e.sale_price, 0);
+                     + thisMonthExternals.reduce((s, e) => s + externalSaleCashIn(e), 0);
   const thisMonthOut = thisMonthPayouts.reduce((s, p) => s + p.amount, 0)
                      + thisMonthExpenses.reduce((s, e) => s + e.amount, 0)
                      + thisMonthRefunds.reduce((s, r) => s + r.amount, 0);
 
   const filteredIn = filtered.reduce((s, m) => {
     if (m.kind === "in")       return s + (m.data as PaymentLog).amount;
-    if (m.kind === "external") return s + (m.data as ExternalSale).sale_price;
+    if (m.kind === "external") return s + externalSaleCashIn(m.data as ExternalSale);
     return s;
   }, 0);
   const filteredOut = filtered.reduce((s, m) => {
@@ -554,7 +558,7 @@ export default function PaymentsPage() {
             icon={ArrowDownLeft}
             label="Ingresos totales"
             value={`₡${totalIn.toLocaleString("en-US")}`}
-            sub={`${logs.length + externalSales.length} pagos recibidos`}
+            sub={`${logs.length + externalSales.filter((e) => !isInstallmentExternalSale(e)).length} pagos recibidos`}
             textCls="text-green-600"
             bgCls="bg-green-50"
           />

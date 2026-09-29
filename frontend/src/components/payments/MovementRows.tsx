@@ -6,7 +6,10 @@ import { cn } from "../../lib/utils";
 import type { PaymentLog, RefundLog } from "../../services/salesService";
 import type { AdminPayout } from "../../services/payoutsService";
 import type { ExpensePaymentLog } from "../../services/expensesService";
-import type { ExternalSale } from "../../services/externalSalesService";
+import {
+  isInstallmentExternalSale,
+  type ExternalSale,
+} from "../../services/externalSalesService";
 
 // ── Unified movement entry (shared with PaymentsPage) ─────────────────────
 
@@ -481,6 +484,10 @@ export function MobileRefundCard({ refund }: { refund: RefundLog }) {
 
 export function ExternalSaleRow({ sale }: { sale: ExternalSale }) {
   const profit = sale.sale_price - sale.cost_price;
+  // A pagos la fila es un registro de la venta, no un ingreso: la plata entra
+  // por los abonos, que aparecen como filas de pago aparte. Mostrarla con la
+  // flecha verde y el monto en fuerte haría creer que ya entró.
+  const aPagos = isInstallmentExternalSale(sale);
   return (
     <motion.tr
       initial={{ opacity: 0 }}
@@ -530,16 +537,24 @@ export function ExternalSaleRow({ sale }: { sale: ExternalSale }) {
       </td>
       <td className="px-4 py-3 align-top text-right shrink-0">
         <div className="flex items-center justify-end gap-1">
-          <ArrowDownLeft size={12} className="text-purple-500" strokeWidth={2.2} />
-          <p className="text-sm font-bold text-purple-600 whitespace-nowrap">
+          {!aPagos && <ArrowDownLeft size={12} className="text-purple-500" strokeWidth={2.2} />}
+          <p className={cn(
+            "text-sm whitespace-nowrap",
+            aPagos ? "text-ink-400 font-medium" : "text-purple-600 font-bold"
+          )}>
             ₡{sale.sale_price.toLocaleString("en-US")}
           </p>
         </div>
+        {aPagos && (
+          <p className="text-[10px] text-ink-300 mt-0.5">no suma a caja</p>
+        )}
       </td>
       <td className="px-4 py-3 align-top text-center shrink-0">
-        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5
-                         rounded-full whitespace-nowrap bg-purple-100 text-purple-600">
-          Reventa
+        <span className={cn(
+          "text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full whitespace-nowrap",
+          aPagos ? "bg-amber-100 text-amber-700" : "bg-purple-100 text-purple-600"
+        )}>
+          {aPagos ? "A pagos" : "Reventa"}
         </span>
       </td>
       <td className="px-4 py-3 align-top min-w-0">
@@ -555,6 +570,7 @@ export function ExternalSaleRow({ sale }: { sale: ExternalSale }) {
 
 export function MobileExternalSaleCard({ sale }: { sale: ExternalSale }) {
   const profit = sale.sale_price - sale.cost_price;
+  const aPagos = isInstallmentExternalSale(sale);
   return (
     <motion.div
       initial={{ opacity: 0, y: 6 }}
@@ -564,8 +580,11 @@ export function MobileExternalSaleCard({ sale }: { sale: ExternalSale }) {
     >
       <div className="flex flex-col items-center gap-1 shrink-0 min-w-[80px]">
         <div className="flex items-center gap-0.5">
-          <ArrowDownLeft size={11} className="text-purple-500" strokeWidth={2.2} />
-          <p className="text-sm font-bold text-purple-600 whitespace-nowrap">
+          {!aPagos && <ArrowDownLeft size={11} className="text-purple-500" strokeWidth={2.2} />}
+          <p className={cn(
+            "text-sm whitespace-nowrap",
+            aPagos ? "text-ink-400 font-medium" : "text-purple-600 font-bold"
+          )}>
             ₡{sale.sale_price.toLocaleString("en-US")}
           </p>
         </div>
@@ -579,9 +598,11 @@ export function MobileExternalSaleCard({ sale }: { sale: ExternalSale }) {
                         line-clamp-2 flex-1">
             {sale.product_name}
           </p>
-          <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider
-                           px-2 py-0.5 rounded-full bg-purple-100 text-purple-600">
-            Reventa
+          <span className={cn(
+            "shrink-0 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full",
+            aPagos ? "bg-amber-100 text-amber-700" : "bg-purple-100 text-purple-600"
+          )}>
+            {aPagos ? "A pagos" : "Reventa"}
           </span>
         </div>
         <p className="text-[11px] text-purple-500">
