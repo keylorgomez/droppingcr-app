@@ -8,7 +8,7 @@ import PromoBanner from "../components/PromoBanner";
 import ProductCard from "../components/catalog/ProductCard";
 import { getProducts } from "../services/productService";
 import { CLOTHING_SIZES } from "../constants/domain";
-import { normalizeText } from "../lib/formatters";
+import { matchesSearch } from "../lib/formatters";
 import { QUERY_KEYS } from "../constants/queryKeys";
 import { ROUTES } from "../constants/app";
 import { useAuth } from "../context/AuthContext";
@@ -220,8 +220,7 @@ export default function CatalogPage() {
   const filtered = useMemo(() => {
     let result = byCategory;
     if (search.trim()) {
-      const q = normalizeText(search.trim());
-      result = result.filter((p) => normalizeText(p.name).includes(q));
+      result = result.filter((p) => matchesSearch(p.name, search));
     }
     if (selectedSizes.length > 0) {
       result = result.filter((p) => selectedSizes.some((s) => p.sizes.includes(s)));
@@ -265,8 +264,7 @@ export default function CatalogPage() {
   const previewCount = useMemo(() => {
     let result = byCategory;
     if (pendingSearch.trim()) {
-      const q = normalizeText(pendingSearch.trim());
-      result = result.filter((p) => normalizeText(p.name).includes(q));
+      result = result.filter((p) => matchesSearch(p.name, pendingSearch));
     }
     if (pendingSizes.length > 0) {
       result = result.filter((p) => pendingSizes.some((s) => p.sizes.includes(s)));

@@ -62,3 +62,21 @@ export function discountedPrice(priceSale: number, discountPercentage: number): 
   if (!discountPercentage || discountPercentage <= 0) return priceSale;
   return Math.round(priceSale * (1 - discountPercentage / 100));
 }
+
+/**
+ * ¿El texto contiene **todas** las palabras buscadas, en cualquier orden?
+ *
+ * Buscar la frase completa como una sola cadena obligaba a escribir el nombre
+ * tal cual: "Brasil Player" no encontraba "Neymar Brasil visita Player" porque
+ * las dos palabras no están pegadas. Partiendo la consulta y exigiendo que
+ * aparezcan todas, se puede describir la pieza en vez de recordar su nombre.
+ *
+ * Cada palabra se busca por substring, así que "bras play" también sirve.
+ */
+export function matchesSearch(text: string, query: string): boolean {
+  const terms = normalizeText(query).split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return true;
+
+  const haystack = normalizeText(text);
+  return terms.every((term) => haystack.includes(term));
+}

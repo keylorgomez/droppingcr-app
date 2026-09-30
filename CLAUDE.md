@@ -612,6 +612,15 @@ pedidos del admin era el único sitio que no lo tenía —su consulta ni siquier
 helper en `lib/formatters.ts` es lo que impide que un consumidor nuevo vuelva a quedarse
 fuera.
 
+**La búsqueda del catálogo exige todas las palabras, en cualquier orden**
+`matchesSearch()` en `lib/formatters.ts` parte la consulta y pide que cada palabra
+aparezca en el nombre. Buscar la frase completa como una sola cadena obligaba a escribir
+el nombre tal cual: "Brasil Player" no encontraba "Neymar Brasil visita Player" porque
+las palabras no están pegadas. Con nombres del estilo
+`<país> <jugador> <casa|visita> <fan|player>`, lo natural es describir la pieza por dos o
+tres atributos sueltos, no recordar el orden exacto. Cada palabra se busca por substring,
+así que "bras play" también funciona.
+
 **El catálogo es compartible: su estado vive en la URL**
 `/catalogo?filter=camisetas&q=tank&tallas=M,L`. Los tres parámetros están en la constante
 `PARAM` de `CatalogPage` — **renombrarlos rompe links ya compartidos por WhatsApp**, así
