@@ -327,9 +327,11 @@ function ProductContent({ product }: { product: ProductDetail }) {
 
   function goBackToCatalog() {
     try {
+      // Se repone la query completa —categoría, búsqueda y tallas— y no solo el
+      // filtro: si no, volver de un producto vacía la búsqueda que traía.
       const saved = sessionStorage.getItem("catalog_state");
-      const savedFilter = saved ? (JSON.parse(saved).filter ?? "") : "";
-      navigate(savedFilter ? ROUTES.catalogFilter(savedFilter) : ROUTES.CATALOG, { state: { restoreScroll: true } });
+      const query = saved ? (JSON.parse(saved).query ?? "") : "";
+      navigate(`${ROUTES.CATALOG}${query}`, { state: { restoreScroll: true } });
     } catch {
       navigate(ROUTES.CATALOG, { state: { restoreScroll: true } });
     }

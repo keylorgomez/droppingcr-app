@@ -445,6 +445,14 @@ Todo lo que es un objeto discreto sí lo lleva:
 - Deliberadamente escueto: logo chico (22px), una frase, cuatro links y las redes.
   El menú completo vive en el header y en el sidebar — repetirlo abajo solo satura
 
+**Banner de promociones (`PromoBanner`)**
+- **Solo el botón "Ver promos" navega.** La tarjeta entera fue clickeable y era una
+  trampa: el objetivo real de tocarla suele ser cerrarla, y terminabas en descuentos.
+  La regla general: si un contenedor lleva un botón de cerrar, el contenedor no se hace
+  clickeable
+- Aparece al pasar el 75% del alto de la pantalla, no por temporizador: sobre el hero
+  tapaba media pantalla en móvil
+
 **Toasts**
 - Siempre `ink-950` con texto `bone`. El error se distingue por una barra izquierda de
   2px, no por color
@@ -603,6 +611,22 @@ pedidos del admin era el único sitio que no lo tenía —su consulta ni siquier
 `discount_percentage`— así que cobraba el precio de lista en piezas rebajadas. Un único
 helper en `lib/formatters.ts` es lo que impide que un consumidor nuevo vuelva a quedarse
 fuera.
+
+**El catálogo es compartible: su estado vive en la URL**
+`/catalogo?filter=camisetas&q=tank&tallas=M,L`. Los tres parámetros están en la constante
+`PARAM` de `CatalogPage` — **renombrarlos rompe links ya compartidos por WhatsApp**, así
+que se tratan como contrato público. La escritura va con `replace: true` y 400 ms de
+espera: sin eso, cada letra tecleada dejaría una entrada en el historial y el botón
+"atrás" habría que pulsarlo una vez por carácter.
+
+Al abrir un link, **la URL gana sobre `catalog_state`**: quien recibe el link tiene que
+ver ese filtro y no el de su propia visita anterior. Y `catalog_state` guarda la query
+completa (no solo la categoría) porque "Volver al catálogo" desde un producto debe
+reponer también búsqueda y tallas.
+
+El botón **Compartir** usa `navigator.share` cuando existe —en móvil abre el menú nativo,
+que es por donde sale a WhatsApp— y cae a copiar al portapapeles en escritorio. Solo se
+muestra si hay algún filtro activo: un link al catálogo entero no necesita botón.
 
 **Correos transaccionales**
 Tres tipos, todos en la Edge Function `send-email`: `welcome`, `new_order` (venta manual,

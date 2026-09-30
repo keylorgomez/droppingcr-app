@@ -100,16 +100,15 @@ export default function PromoBanner({ maxDiscountPercent, suppressed = false }: 
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 40, opacity: 0 }}
           transition={{ duration: reduceMotion ? 0.3 : 0.62, ease: [0.16, 1, 0.3, 1] }}
-          onClick={goToPromos}
-          className="group fixed z-40 left-4 right-4 bottom-4 max-w-[320px] mx-auto sm:mx-0 sm:left-auto sm:right-6 sm:bottom-6 sm:w-[286px]
+          className="fixed z-40 left-4 right-4 bottom-4 max-w-[320px] mx-auto sm:mx-0 sm:left-auto sm:right-6 sm:bottom-6 sm:w-[286px]
                      rounded-card bg-ink-950 text-bone border border-bone/15
-                     px-5 pt-4 pb-5 shadow-lift cursor-pointer"
+                     px-5 pt-4 pb-5 shadow-lift"
         >
           <div className="flex items-start justify-between mb-4">
             <span className="type-eyebrow text-bone/50">{t.promoBanner.tag}</span>
             <button
               type="button"
-              onClick={(e) => { e.stopPropagation(); dismiss(); }}
+              onClick={dismiss}
               className="text-bone/50 hover:text-bone transition-colors -mt-0.5"
               aria-label={t.actions.close}
             >
@@ -141,10 +140,10 @@ export default function PromoBanner({ maxDiscountPercent, suppressed = false }: 
 
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); goToPromos(); }}
+            onClick={goToPromos}
             className="inline-flex items-center gap-2 font-display uppercase text-[10px] tracking-widest2
                        px-4 py-2.5 rounded-btn border border-bone/40 text-bone transition-colors
-                       group-hover:bg-bone group-hover:text-ink-900 group-hover:border-bone"
+                       hover:bg-bone hover:text-ink-900 hover:border-bone"
           >
             {t.promoBanner.cta}
             <ArrowRight size={11} strokeWidth={2.4} />

@@ -1,7 +1,7 @@
 import { useMemo, useEffect, useLayoutEffect, useState, useRef } from "react";
 import { useNavigate, useSearchParams, useLocation, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Search, X, ChevronDown, Check, SlidersHorizontal, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, X, ChevronDown, Check, SlidersHorizontal, ChevronLeft, ChevronRight, Share2 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import Header from "../components/ui/Header";
 import PromoBanner from "../components/PromoBanner";
@@ -12,6 +12,7 @@ import { normalizeText } from "../lib/formatters";
 import { QUERY_KEYS } from "../constants/queryKeys";
 import { ROUTES } from "../constants/app";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../components/ui/Toast";
 import { cn } from "../lib/utils";
 
 const PAGE_SIZE = 12;
@@ -34,8 +35,15 @@ function getPageItems(current: number, total: number): (number | "…")[] {
   return items;
 }
 
+/** Nombres de los parámetros de URL. Cambiarlos rompe links ya compartidos. */
+const PARAM = { FILTER: "filter", QUERY: "q", SIZES: "tallas" } as const;
+
+/** Espera a que la persona deje de escribir antes de reescribir la URL. */
+const URL_SYNC_DELAY_MS = 400;
+
 interface SavedCatalogState {
   page?:          number;
+  query?:         string;
   scrollY?:       number;
   filter?:        string;
   search?:        string;
@@ -63,11 +71,12 @@ function ProductCardSkeleton() {
 
 export default function CatalogPage() {
   const navigate       = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const location       = useLocation();
   const { user }       = useAuth();
+  const { showToast }  = useToast();
   const isAdmin        = user?.role === "admin";
-  const filter         = searchParams.get("filter") ?? "";
+  const filter         = searchParams.get(PARAM.FILTER) ?? "";
 
   // `catalog_state` solo vale cuando se vuelve desde el detalle de un producto.
   // Si no se comprueba, una visita nueva desde la home hereda página, filtros y
@@ -75,8 +84,16 @@ export default function CatalogPage() {
   const restoring = (location.state as { restoreScroll?: boolean } | null)?.restoreScroll === true;
   const savedState = restoring ? readSavedState() : null;
 
-  const [search, setSearch]               = useState<string>(savedState?.search ?? "");
-  const [selectedSizes, setSelectedSizes] = useState<string[]>(savedState?.selectedSizes ?? []);
+  // La URL manda sobre el estado guardado: si alguien abre un link compartido,
+  // tiene que ver ese filtro y no el de su visita anterior.
+  const [search, setSearch] = useState<string>(
+    () => searchParams.get(PARAM.QUERY) ?? savedState?.search ?? ""
+  );
+  const [selectedSizes, setSelectedSizes] = useState<string[]>(() => {
+    const fromUrl = searchParams.get(PARAM.SIZES);
+    if (fromUrl) return fromUrl.split(",").map((size) => size.trim()).filter(Boolean);
+    return savedState?.selectedSizes ?? [];
+  });
   const [page, setPage]                   = useState<number>(savedState?.page ?? 1);
 
   // Desktop dropdown
@@ -134,6 +151,28 @@ export default function CatalogPage() {
     prevSizesRef.current  = selectedSizes;
     setPage(1);
   }, [search, selectedSizes]);
+
+  // Reflejar búsqueda y tallas en la URL para que el link sea compartible.
+  // `replace` y no `push`: cada letra tecleada no debe dejar una entrada en el
+  // historial, o el botón "atrás" tendría que pulsarse una vez por carácter.
+  // El retraso evita reescribir la URL en cada pulsación.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const next = new URLSearchParams(window.location.search);
+
+      if (search.trim()) next.set(PARAM.QUERY, search.trim());
+      else               next.delete(PARAM.QUERY);
+
+      if (selectedSizes.length) next.set(PARAM.SIZES, selectedSizes.join(","));
+      else                      next.delete(PARAM.SIZES);
+
+      if (next.toString() !== window.location.search.replace(/^\?/, "")) {
+        setSearchParams(next, { replace: true });
+      }
+    }, URL_SYNC_DELAY_MS);
+
+    return () => clearTimeout(timer);
+  }, [search, selectedSizes, setSearchParams]);
 
   // Lock body scroll when modal is open
   useEffect(() => {
@@ -246,6 +285,28 @@ export default function CatalogPage() {
 
   const hasLocalFilter = search.trim() || selectedSizes.length > 0;
   const activeFilterCount = (search.trim() ? 1 : 0) + selectedSizes.length;
+
+  /**
+   * Comparte la vista tal cual se ve. En móvil abre el menú nativo —que es por
+   * donde va a salir a WhatsApp— y si no existe, copia el link al portapapeles.
+   */
+  async function shareCurrentView() {
+    const url   = window.location.href;
+    const title = filterLabel ? `Dropping CR — ${filterLabel}` : "Dropping CR";
+
+    if (navigator.share) {
+      // Cancelar el menú lanza AbortError: no es un fallo que valga reportar.
+      try { await navigator.share({ title, url }); } catch { /* cancelado */ }
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast("Link copiado", "success");
+    } catch {
+      showToast("No se pudo copiar el link", "error");
+    }
+  }
 
   function openModal() {
     setPendingSearch(search);
@@ -399,6 +460,22 @@ export default function CatalogPage() {
                 </AnimatePresence>
               </div>
             )}
+
+            {/* Solo aparece cuando hay algo que compartir: un link al catálogo
+                entero no necesita botón. */}
+            {(hasLocalFilter || filter) && (
+              <button
+                type="button"
+                onClick={shareCurrentView}
+                title="Compartir esta búsqueda"
+                className="h-12 shrink-0 flex items-center gap-2 px-5 rounded-btn border border-ink-200
+                           text-[12px] font-display uppercase tracking-widest2 text-ink-500
+                           hover:border-ink-900 hover:text-ink-900 transition-colors whitespace-nowrap"
+              >
+                <Share2 size={14} strokeWidth={2} />
+                Compartir
+              </button>
+            )}
           </div>
         )}
 
@@ -425,7 +502,12 @@ export default function CatalogPage() {
                   is_sold_out={product.is_sold_out}
                   is_reserved={product.is_reserved}
                   onClick={() => {
-                    sessionStorage.setItem("catalog_state", JSON.stringify({ page, scrollY: window.scrollY, filter, search, selectedSizes }));
+                    sessionStorage.setItem("catalog_state", JSON.stringify({
+                      page, scrollY: window.scrollY, filter, search, selectedSizes,
+                      // La query entera: al volver hay que reponer también
+                      // búsqueda y tallas, no solo la categoría.
+                      query: window.location.search,
+                    }));
                     navigate(ROUTES.PRODUCT(product.slug));
                   }}
                   isHidden={isAdmin && !product.is_active}
@@ -570,17 +652,30 @@ export default function CatalogPage() {
             >
               <div className="flex flex-col items-center gap-4">
                 <div className="w-10 h-0.5 bg-ink-200" />
-                <div className="flex w-full items-center justify-between">
+                <div className="flex w-full items-center justify-between gap-4">
                   <h3 className="type-display text-2xl text-ink-900">Filtros</h3>
-                  {(pendingSearch || pendingSizes.length > 0) && (
-                    <button
-                      type="button"
-                      onClick={clearModal}
-                      className="link-underline font-display uppercase text-[10px] tracking-widest2 text-ink-500"
-                    >
-                      Limpiar
-                    </button>
-                  )}
+                  <div className="flex items-center gap-4">
+                    {(hasLocalFilter || filter) && (
+                      <button
+                        type="button"
+                        onClick={shareCurrentView}
+                        className="flex items-center gap-1.5 font-display uppercase text-[10px]
+                                   tracking-widest2 text-ink-500"
+                      >
+                        <Share2 size={12} strokeWidth={2} />
+                        Compartir
+                      </button>
+                    )}
+                    {(pendingSearch || pendingSizes.length > 0) && (
+                      <button
+                        type="button"
+                        onClick={clearModal}
+                        className="link-underline font-display uppercase text-[10px] tracking-widest2 text-ink-500"
+                      >
+                        Limpiar
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 
