@@ -49,13 +49,14 @@ export default function ProductCard({
   const unavailable = is_sold_out || is_reserved;
   const interactive = !unavailable && !isHidden;
 
-  // Un solo badge de estado: prioridad APARTADA > AGOTADO > NUEVO.
+  // Un solo badge de estado: prioridad APARTADA > AGOTADO > NUEVO. Cada uno con
+  // su propio tratamiento — apartada y agotado se veían iguales y no lo son.
   const statusBadge = is_reserved
-    ? { text: "Apartada", solid: false }
+    ? { text: "Apartada", cls: "bg-reserved text-ink-900" }
     : is_sold_out
-      ? { text: "Agotado", solid: false }
+      ? { text: "Agotado",  cls: "bg-bone/90 text-ink-900 border border-ink-900 backdrop-blur-sm" }
       : is_new
-        ? { text: "Nuevo", solid: true }
+        ? { text: "Nuevo",   cls: "bg-ink-900 text-bone" }
         : null;
 
   return (
@@ -91,7 +92,7 @@ export default function ProductCard({
           loading="lazy"
           className={cn(
             "absolute inset-0 w-full h-full object-cover",
-            (unavailable || isHidden) && "grayscale"
+            (is_sold_out && !is_reserved) || isHidden ? "grayscale" : ""
           )}
           animate={{ scale: interactive && isHovered ? 1.07 : 1 }}
           transition={{ duration: 1.1, ease: EASE }}
@@ -124,9 +125,7 @@ export default function ProductCard({
           <span
             className={cn(
               "absolute top-3 left-3 z-10 rounded-chip font-display uppercase text-[9px] tracking-widest2 leading-none px-2 py-1.5",
-              statusBadge.solid
-                ? "bg-ink-900 text-bone"
-                : "bg-bone/90 text-ink-900 border border-ink-900 backdrop-blur-sm"
+              statusBadge.cls
             )}
           >
             {statusBadge.text}

@@ -11,7 +11,7 @@ import HeroDrop from "../components/home/HeroDrop";
 import FeaturedDrop from "../components/home/FeaturedDrop";
 import SectionHeading from "../components/home/SectionHeading";
 import CategoryTiles, { type CategoryTile } from "../components/home/CategoryTiles";
-import { getProducts, type CatalogProduct } from "../services/productService";
+import { getProducts, catalogSortRank, type CatalogProduct } from "../services/productService";
 import { QUERY_KEYS } from "../constants/queryKeys";
 import { ROUTES, MARQUEE_ITEMS, HERO_IMAGES, CATEGORY_IMAGES, MAX_HERO_SLIDES } from "../constants/app";
 import { useAuth } from "../context/AuthContext";
@@ -82,15 +82,9 @@ export default function HomePage() {
 
   // Selección: novedades y rebajas primero, el destacado no se repite.
   const curated = useMemo(() => {
-    const rank = (p: CatalogProduct) => {
-      if (p.is_sold_out || p.is_reserved) return 3;
-      if (p.is_new)                       return 0;
-      if (p.discount_percentage > 0)      return 1;
-      return 2;
-    };
     return [...visible]
       .filter((p) => p.id !== featured?.id)
-      .sort((a, b) => rank(a) - rank(b))
+      .sort((a, b) => catalogSortRank(a) - catalogSortRank(b))
       .slice(0, CURATED_COUNT);
   }, [visible, featured]);
 

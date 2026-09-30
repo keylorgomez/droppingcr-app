@@ -518,7 +518,7 @@ function ProductContent({ product }: { product: ProductDetail }) {
                     >
                       {size}
                       {isApartada && (
-                        <span className="absolute -top-1.5 -right-1 bg-ink-900 text-bone
+                        <span className="absolute -top-1.5 -right-1 bg-reserved text-ink-900
                                          text-[7px] rounded-chip font-display uppercase tracking-wider px-1 py-0.5 leading-none">
                           Apt
                         </span>

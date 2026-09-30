@@ -32,6 +32,12 @@ export default {
         // Contraste: 5.9:1 con blanco encima, 5.6:1 como texto sobre `bone`.
         sale: "#c8102e",
 
+        // Segundo y último color con significado propio: pieza apartada. No es
+        // decoración — sin él, "Apartada" y "Agotado" se veían idénticos y son
+        // cosas distintas: una todavía es una venta viva. Ámbar apagado a
+        // propósito, y siempre con texto `ink-900` encima (11.8:1).
+        reserved: "#e8c468",
+
         // ── Alias de compatibilidad ──────────────────────────────────────
         // Mapean los tokens de la marca anterior a la paleta monocromática
         // para que las 40+ pantallas ya existentes se rebrandeen sin tocarlas.

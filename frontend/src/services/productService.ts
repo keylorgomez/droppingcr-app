@@ -59,6 +59,24 @@ export interface CatalogProduct {
   is_active: boolean;
 }
 
+/**
+ * Orden de la grilla, de más a menos vendible.
+ *
+ * Apartada va **antes** que agotada: las dos tienen stock 0, pero una apartada
+ * sigue siendo una venta viva —puede caerse el apartado— y una agotada no.
+ * Antes compartían posición y se veían igual, que era justo la confusión.
+ *
+ * Ojo con el orden de los `if`: `is_reserved` implica `is_sold_out`, así que
+ * hay que preguntar por la apartada primero o nunca se distingue.
+ */
+export function catalogSortRank(product: CatalogProduct): number {
+  if (product.is_reserved)             return 3;
+  if (product.is_sold_out)             return 4;
+  if (product.is_new)                  return 0;
+  if (product.discount_percentage > 0) return 1;
+  return 2;
+}
+
 export interface ProductInput {
   name: string;
   slug: string;

@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import Header from "../components/ui/Header";
 import PromoBanner from "../components/PromoBanner";
 import ProductCard from "../components/catalog/ProductCard";
-import { getProducts } from "../services/productService";
+import { getProducts, catalogSortRank } from "../services/productService";
 import { CLOTHING_SIZES } from "../constants/domain";
 import { matchesSearch } from "../lib/formatters";
 import { QUERY_KEYS } from "../constants/queryKeys";
@@ -225,13 +225,7 @@ export default function CatalogPage() {
     if (selectedSizes.length > 0) {
       result = result.filter((p) => selectedSizes.some((s) => p.sizes.includes(s)));
     }
-    const rank = (p: typeof result[0]) => {
-      if (p.is_sold_out)             return 3;
-      if (p.is_new)                  return 0;
-      if (p.discount_percentage > 0) return 1;
-      return 2;
-    };
-    return [...result].sort((a, b) => rank(a) - rank(b));
+    return [...result].sort((a, b) => catalogSortRank(a) - catalogSortRank(b));
   }, [byCategory, search, selectedSizes]);
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);

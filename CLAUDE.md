@@ -298,10 +298,15 @@ blanco y deja `ink-950` (`#000`) libre para overlays y secciones a sangre.
 | `ink-400` | `#909090` | Texto terciario, eyebrows, placeholders |
 | `ink-300` / `ink-200` | `#b8b8b8` / `#d9d9d9` | Bordes de inputs y separadores |
 | `ink-100` / `ink-50` | `#ebeae8` / `#f5f4f2` | Fondos de imagen, skeletons, hovers sutiles |
-| `sale` | `#c8102e` | **Un solo color, un solo significado: precio rebajado** |
+| `sale` | `#c8102e` | Precio rebajado — y nada más |
+| `reserved` | `#e8c468` | Pieza apartada — y nada más. Siempre con texto `ink-900` (11.8:1) |
 
-**La regla del acento.** `sale` es el único color del storefront y solo puede aparecer
-donde hay una rebaja: el chip de la foto, el precio con descuento y el chip del detalle.
+**La regla del acento.** El storefront tiene exactamente **dos** colores y cada uno
+significa una sola cosa. Un tercero solo se justifica si hay un estado que hoy se está
+confundiendo con otro — que fue el caso de `reserved`: "Apartada" y "Agotado" se veían
+idénticos y no lo son.
+
+`sale` solo puede aparecer donde hay una rebaja: el chip de la foto, el precio con descuento y el chip del detalle.
 Funciona justamente porque es escaso — hoy ~27% del catálogo está rebajado, o sea 1 de
 cada 4 tarjetas. Si algún día se rebaja medio catálogo deja de ser señal y hay que
 volverlo negro: se cambia un token. **Sobre fondo oscuro el acento es relleno, nunca
@@ -375,8 +380,11 @@ Todo lo que es un objeto discreto sí lo lleva:
 - Sin borde, sin sombra, sin fondo — se apoya directo en `bone`
 - Imagen `aspect-[4/5]` sobre `bg-ink-50`; al hover se eleva 6px con sombra, hace zoom
   `1.07`, revela la segunda foto y sube la pastilla "VER PIEZA"
-- Badge de estado arriba a la **izquierda** (APARTADA > AGOTADO > NUEVO): outline o negro
-  sólido. Chip de descuento arriba a la **derecha**: sólido en `sale`. Nunca compiten
+- Badge de estado arriba a la **izquierda**, prioridad APARTADA > AGOTADO > NUEVO, cada
+  uno con su propio tratamiento: apartada en `reserved` sólido, agotado en outline negro,
+  nuevo en negro sólido. Chip de descuento arriba a la **derecha** en `sale`. Nunca compiten
+- **Una apartada no va en escala de grises.** Solo la agotada. Apartada sigue siendo una
+  venta viva —el apartado se puede caer— y apagarle la foto la daba por muerta
 - **El nombre reserva siempre dos líneas** (`line-clamp-2 min-h-[34px]`) y la fila de
   precio tiene alto fijo. Sin eso, un título de una línea sube el precio y la fila de la
   grilla queda escalonada — es el defecto que más delata una tienda improvisada
@@ -434,6 +442,12 @@ Todo lo que es un objeto discreto sí lo lleva:
 - El estado del cliente encontrado se guarda junto al teléfono que lo produjo
   (`{ phone, customer_id }`), así una búsqueda lenta no puede aplicarse a un número que
   ya cambió
+
+**Orden de la grilla**
+`catalogSortRank()` en `productService.ts`, usado por el catálogo y por la selección de la
+home. **Apartada (3) va antes que agotada (4)**: las dos tienen stock 0, pero una apartada
+todavía se puede vender. Cuidado con el orden de los `if`: `is_reserved` implica
+`is_sold_out`, así que hay que preguntar por la apartada primero o nunca se distingue.
 
 **Badge "NUEVO"**
 - Se activa con el check al publicar y **expira solo a los 30 días** (`NEW_BADGE_DAYS`),
