@@ -1,18 +1,21 @@
 import { supabase } from "../lib/supabaseClient";
 import { sendTransactionalEmail } from "../lib/emailService";
 import { getUserExternalSales } from "./externalSalesService";
+import { SHIPPING_RATES } from "../config/shipping";
 import {
   DELIVERY_STATUS, SALE_STATUS, SHIPPING_METHOD,
 } from "../constants/domain";
 
 // ── Shipping & Delivery UI arrays ──────────────────────────────────────────
 
+// `legacy` entries are no longer offered for new sales but stay here so
+// historical orders still render their label.
 export const SHIPPING_OPTIONS = [
-  { value: "personal_grecia",   label: "Entrega personal (Grecia)",    cost: 0    },
-  { value: "mensajero_sjo",     label: "Mensajero — SJO / HER / ALA", cost: 3000 },
-  { value: "mensajero_cartago", label: "Mensajero — Cartago",          cost: 4000 },
-  { value: "correos_gam",       label: "Correos CR — GAM",             cost: 2500 },
-  { value: "correos_fuera_gam", label: "Correos CR — Fuera GAM",       cost: 3000 },
+  { value: "personal_grecia",   label: "Entrega personal (Grecia)", cost: 0                                },
+  { value: "mensajero_sjo",     label: "Mensajero privado",         cost: SHIPPING_RATES.MENSAJERO         },
+  { value: "mensajero_cartago", label: "Mensajero — Cartago",       cost: SHIPPING_RATES.MENSAJERO, legacy: true },
+  { value: "correos_gam",       label: "Correos CR — GAM",          cost: SHIPPING_RATES.CORREOS_GAM       },
+  { value: "correos_fuera_gam", label: "Correos CR — Fuera GAM",    cost: SHIPPING_RATES.CORREOS_FUERA_GAM },
 ] as const;
 
 export type ShippingMethod = typeof SHIPPING_OPTIONS[number]["value"];
@@ -27,10 +30,6 @@ export const DELIVERY_STATUSES = [
 ] as const;
 
 export type DeliveryStatus = typeof DELIVERY_STATUSES[number]["value"];
-
-export function shippingCostFor(method: ShippingMethod): number {
-  return SHIPPING_OPTIONS.find((option) => option.value === method)?.cost ?? 0;
-}
 
 export function deliveryStatusMeta(value: string) {
   return (

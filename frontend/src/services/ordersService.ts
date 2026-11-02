@@ -26,6 +26,9 @@ export interface OrderInput {
   delivery_status: DeliveryStatus;
   tracking_number: string | null;
   note:            string | null;
+  province?:       string | null;
+  canton?:         string | null;
+  district?:       string | null;
 }
 
 export interface AdminOrderItem {
@@ -50,6 +53,9 @@ export interface AdminOrder {
   tracking_number: string | null;
   status:          "pending" | "completed" | "cancelled";
   note:            string | null;
+  province:        string | null;
+  canton:          string | null;
+  district:        string | null;
   items:           AdminOrderItem[];
   items_total:     number;
   order_total:     number;
@@ -75,6 +81,9 @@ interface RawOrderRow {
   tracking_number: string | null;
   status:          string;
   note:            string | null;
+  province:        string | null;
+  canton:          string | null;
+  district:        string | null;
   order_items: Array<{
     id:         string;
     sale_price: number;
@@ -128,6 +137,9 @@ export async function recordManualOrder(data: OrderInput): Promise<void> {
       tracking_number: data.tracking_number,
       status:          data.status,
       note:            data.note,
+      province:        data.province ?? null,
+      canton:          data.canton   ?? null,
+      district:        data.district ?? null,
     })
     .select("id")
     .single();
@@ -195,7 +207,7 @@ export async function getAllOrders(): Promise<AdminOrder[]> {
     .select(`
       id, sold_at, guest_name, guest_phone,
       shipping_method, shipping_cost, delivery_status,
-      tracking_number, status, note,
+      tracking_number, status, note, province, canton, district,
       order_items (
         id, quantity, sale_price,
         product_variants (
@@ -249,6 +261,9 @@ export async function getAllOrders(): Promise<AdminOrder[]> {
       tracking_number: orderRow.tracking_number ?? null,
       status:          orderRow.status          as AdminOrder["status"],
       note:            orderRow.note            ?? null,
+      province:        orderRow.province        ?? null,
+      canton:          orderRow.canton          ?? null,
+      district:        orderRow.district        ?? null,
       items,
       items_total:     itemsTotal,
       order_total:     itemsTotal + (orderRow.shipping_cost ?? 0),

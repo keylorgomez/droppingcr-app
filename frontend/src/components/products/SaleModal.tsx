@@ -5,16 +5,10 @@ import { X, Check, Loader2, ShoppingCart } from "lucide-react";
 import {
   recordManualSale,
   DELIVERY_STATUSES,
-  type ShippingMethod,
   type DeliveryStatus,
 } from "../../services/salesService";
-import {
-  calculateShipping,
-  getAvailableCarriers,
-  getDefaultCarrier,
-  isGAMCanton,
-  type Carrier,
-} from "../../config/shipping";
+import { ShippingFields } from "../shipping/ShippingFields";
+import { useShippingForm } from "../shipping/useShippingForm";
 import { useToast } from "../ui/Toast";
 import { cn } from "../../lib/utils";
 import { discountedPrice } from "../../lib/formatters";
@@ -27,43 +21,6 @@ const inputCls =
   "w-full rounded-xl border border-ink-200 px-4 py-2.5 text-sm text-brand-dark " +
   "placeholder:text-ink-300 outline-none focus:border-brand-primary " +
   "focus:ring-1 focus:ring-brand-primary/20 transition";
-
-// ── Costa Rica geography ───────────────────────────────────────────────────
-
-const CR_CANTONS: Record<string, string[]> = {
-  "San José": [
-    "San José", "Escazú", "Desamparados", "Puriscal", "Tarrazú", "Aserrí",
-    "Mora", "Goicoechea", "Santa Ana", "Alajuelita", "Vásquez de Coronado",
-    "Acosta", "Tibás", "Moravia", "Montes de Oca", "Turrubares", "Dota",
-    "Curridabat", "Pérez Zeledón", "León Cortés",
-  ],
-  "Alajuela": [
-    "Alajuela", "San Ramón", "Grecia", "San Mateo", "Atenas", "Naranjo",
-    "Palmares", "Poás", "Orotina", "San Carlos", "Zarcero", "Valverde Vega",
-    "Upala", "Los Chiles", "Guatuso", "Río Cuarto",
-  ],
-  "Cartago": [
-    "Cartago", "Paraíso", "La Unión", "Jiménez", "Turrialba",
-    "Alvarado", "Oreamuno", "El Guarco",
-  ],
-  "Heredia": [
-    "Heredia", "Barva", "Santo Domingo", "Santa Bárbara", "San Rafael",
-    "San Isidro", "Belén", "Flores", "San Pablo", "Sarapiquí",
-  ],
-  "Guanacaste": [
-    "Liberia", "Nicoya", "Santa Cruz", "Bagaces", "Carrillo", "Cañas",
-    "Abangares", "Tilarán", "Nandayure", "La Cruz", "Hojancha",
-  ],
-  "Puntarenas": [
-    "Puntarenas", "Esparza", "Buenos Aires", "Montes de Oro", "Osa",
-    "Quepos", "Golfito", "Coto Brus", "Parrita", "Corredores", "Garabito",
-  ],
-  "Limón": [
-    "Limón", "Pococí", "Siquirres", "Talamanca", "Matina", "Guácimo",
-  ],
-};
-
-const CR_PROVINCES = Object.keys(CR_CANTONS);
 
 // ── Props ──────────────────────────────────────────────────────────────────
 
@@ -106,17 +63,12 @@ export default function SaleModal({
   const [initialPayment,    setInitialPayment]    = useState("");
   const [note,              setNote]              = useState("");
   const [deliveryStatus,    setDeliveryStatus]    = useState<DeliveryStatus>("validating");
-  const [trackingNumber,    setTrackingNumber]    = useState("");
   const [errors,            setErrors]            = useState<Record<string, string>>({});
   const [saleConfirmed,     setSaleConfirmed]     = useState(false);
   const [confirmedSaleData, setConfirmedSaleData] = useState<{ name: string; phone: string } | null>(null);
 
-  // Shipping form state
-  const [deliveryType,  setDeliveryType]  = useState<"personal" | "envio">("personal");
-  const [province,      setProvince]      = useState("");
-  const [canton,        setCanton]        = useState("");
-  const [district,      setDistrict]      = useState("");
-  const [carrierChoice, setCarrierChoice] = useState<"mensajero" | "correos">("mensajero");
+  const shipping = useShippingForm();
+  const { shippingMethod, shippingCost } = shipping;
 
   // Auto-fill the name from a matching profile / past sale when the phone is complete.
   useEffect(() => {
@@ -134,18 +86,7 @@ export default function SaleModal({
 
   const selectedVariant    = availableVariants.find((variant) => variant.id === variantId);
   const priceNum           = Number(priceSold) || 0;
-  const cantonIsGAM        = canton ? isGAMCanton(canton) : false;
-  const availableCarriers: Carrier[] = canton ? getAvailableCarriers(canton) : [];
-
-  const { method: shippingMethod, cost: shippingCost }: { method: ShippingMethod; cost: number } =
-    deliveryType === "personal" || canton === "Grecia"
-      ? { method: "personal_grecia", cost: 0 }
-      : canton
-        ? calculateShipping(province, canton, carrierChoice)
-        : { method: "personal_grecia", cost: 0 };
-
-  const totalNum     = priceNum + shippingCost;
-  const showTracking = deliveryType === "envio" && carrierChoice === "correos" && canton !== "Grecia";
+  const totalNum           = priceNum + shippingCost;
 
   const saleMutation = useMutation({
     mutationFn: recordManualSale,
@@ -161,12 +102,11 @@ export default function SaleModal({
   });
 
   function validate(): boolean {
-    const validationErrors: Record<string, string> = {};
+    const validationErrors: Record<string, string> = shipping.validate();
     if (!variantId)                                              validationErrors.variant        = "Selecciona una talla.";
     if (quantity < 1)                                            validationErrors.quantity       = "Mínimo 1 unidad.";
     if (selectedVariant && quantity > selectedVariant.stock)     validationErrors.quantity       = `Máximo ${selectedVariant.stock} en stock.`;
     if (!priceSold || priceNum <= 0)                             validationErrors.priceSold      = "Ingresa un precio válido.";
-    if (deliveryType === "envio" && !province)                   validationErrors.province       = "Selecciona una provincia.";
     if (isPagos && initialPayment) {
       const abonoAmount = Number(initialPayment);
       if (abonoAmount <= 0)         validationErrors.initialPayment = "El abono debe ser mayor a 0.";
@@ -192,10 +132,8 @@ export default function SaleModal({
       shipping_method: shippingMethod,
       shipping_cost:   shippingCost,
       delivery_status: deliveryStatus,
-      tracking_number: trackingNumber.trim() || null,
-      province:        deliveryType === "envio" ? (province  || null) : null,
-      canton:          deliveryType === "envio" ? (canton    || null) : null,
-      district:        deliveryType === "envio" ? (district  || null) : null,
+      tracking_number: shipping.tracking,
+      ...shipping.address,
     });
   }
 
@@ -379,183 +317,7 @@ export default function SaleModal({
                 Método de entrega
               </p>
 
-              {(["personal", "envio"] as const).map((deliveryTypeOption) => (
-                <label
-                  key={deliveryTypeOption}
-                  onClick={() => setDeliveryType(deliveryTypeOption)}
-                  className={cn(
-                    "flex items-center gap-3 rounded-xl border px-4 py-3 cursor-pointer transition-all",
-                    deliveryType === deliveryTypeOption
-                      ? "border-brand-primary bg-brand-primary/5"
-                      : "border-ink-200 hover:border-ink-300"
-                  )}
-                >
-                  <span className={cn(
-                    "w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors",
-                    deliveryType === deliveryTypeOption ? "border-brand-primary" : "border-ink-300"
-                  )}>
-                    {deliveryType === deliveryTypeOption && (
-                      <span className="w-2 h-2 rounded-full bg-brand-primary" />
-                    )}
-                  </span>
-                  <div>
-                    <p className="text-sm text-brand-dark">
-                      {deliveryTypeOption === "personal" ? "Entrega personal (Grecia)" : "Envío"}
-                    </p>
-                    {deliveryTypeOption === "personal" && (
-                      <p className="text-[11px] text-ink-400">Gratis</p>
-                    )}
-                  </div>
-                </label>
-              ))}
-
-              {deliveryType === "envio" && (
-                <div className="flex flex-col gap-3 pt-1">
-
-                  {/* Province */}
-                  <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-ink-500 uppercase tracking-wider">
-                      Provincia
-                    </label>
-                    <select
-                      value={province}
-                      onChange={(e) => {
-                        setProvince(e.target.value);
-                        setCanton("");
-                        setDistrict("");
-                        setCarrierChoice("mensajero");
-                      }}
-                      className={inputCls}
-                    >
-                      <option value="">Seleccionar provincia…</option>
-                      {CR_PROVINCES.map((provinceName) => (
-                        <option key={provinceName} value={provinceName}>{provinceName}</option>
-                      ))}
-                    </select>
-                    {errors.province && (
-                      <span className="text-[11px] text-red-500">{errors.province}</span>
-                    )}
-                  </div>
-
-                  {/* Canton — appears after province is selected */}
-                  {province && (
-                    <div className="flex flex-col gap-1">
-                      <label className="text-xs font-medium text-ink-500 uppercase tracking-wider">
-                        Cantón
-                      </label>
-                      <select
-                        value={canton}
-                        onChange={(e) => {
-                          const selectedCanton = e.target.value;
-                          setCanton(selectedCanton);
-                          setDistrict("");
-                          if (selectedCanton === "Grecia") {
-                            setDeliveryType("personal");
-                          } else if (selectedCanton) {
-                            setCarrierChoice(getDefaultCarrier(selectedCanton));
-                          }
-                        }}
-                        className={inputCls}
-                      >
-                        <option value="">Seleccionar cantón…</option>
-                        {(CR_CANTONS[province] ?? []).map((cantonName) => (
-                          <option key={cantonName} value={cantonName}>{cantonName}</option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-
-                  {/* District — text input, appears after canton */}
-                  {canton && (
-                    <div className="flex flex-col gap-1">
-                      <label className="text-xs font-medium text-ink-500 uppercase tracking-wider">
-                        Distrito
-                      </label>
-                      <input
-                        type="text"
-                        value={district}
-                        onChange={(e) => setDistrict(e.target.value)}
-                        placeholder="Ej: San Francisco"
-                        className={inputCls}
-                      />
-                    </div>
-                  )}
-
-                  {/* Shipping carrier — appears after canton (except Grecia) */}
-                  {canton && canton !== "Grecia" && (
-                    <div className="flex flex-col gap-2">
-                      <label className="text-xs font-medium text-ink-500 uppercase tracking-wider">
-                        Servicio de envío
-                      </label>
-
-                      {cantonIsGAM ? (
-                        /* GAM zone: Mensajero or Correos */
-                        <div className="flex flex-col gap-2">
-                          {availableCarriers.map((carrier) => {
-                            const shippingResult = calculateShipping(province, canton, carrier);
-                            const carrierLabel   = carrier === "mensajero" ? "Mensajero privado" : "Correos CR";
-                            return (
-                              <label
-                                key={carrier}
-                                onClick={() => setCarrierChoice(carrier)}
-                                className={cn(
-                                  "flex items-center justify-between rounded-xl border px-4 py-3 cursor-pointer transition-all",
-                                  carrierChoice === carrier
-                                    ? "border-brand-primary bg-brand-primary/5"
-                                    : "border-ink-200 hover:border-ink-300"
-                                )}
-                              >
-                                <div className="flex items-center gap-3">
-                                  <span className={cn(
-                                    "w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors",
-                                    carrierChoice === carrier ? "border-brand-primary" : "border-ink-300"
-                                  )}>
-                                    {carrierChoice === carrier && (
-                                      <span className="w-2 h-2 rounded-full bg-brand-primary" />
-                                    )}
-                                  </span>
-                                  <span className="text-sm text-brand-dark">{carrierLabel}</span>
-                                </div>
-                                <span className="text-xs font-semibold text-brand-primary">
-                                  ₡{shippingResult.cost.toLocaleString("en-US")}
-                                </span>
-                              </label>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        /* Outside GAM: Correos only */
-                        <div className="flex flex-col gap-1">
-                          <div className="flex items-center justify-between rounded-xl border border-ink-200 px-4 py-3 bg-ink-50">
-                            <span className="text-sm text-ink-600">Correos CR</span>
-                            <span className="text-xs font-semibold text-brand-primary">₡3,000</span>
-                          </div>
-                          <p className="text-[11px] text-ink-400 px-1">
-                            Zona rural — solo disponible Correos CR.
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Tracking number — Correos only */}
-                  {showTracking && (
-                    <div className="flex flex-col gap-1">
-                      <label className="text-xs font-medium text-ink-500 uppercase tracking-wider">
-                        N.° de seguimiento{" "}
-                        <span className="normal-case text-ink-300">(opcional)</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={trackingNumber}
-                        onChange={(e) => setTrackingNumber(e.target.value)}
-                        placeholder="Ej: CR123456789"
-                        className={inputCls}
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
+              <ShippingFields form={shipping} errors={errors} />
             </div>
 
             {/* Total breakdown */}

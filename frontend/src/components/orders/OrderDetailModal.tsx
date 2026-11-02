@@ -196,6 +196,9 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
         qty:  item.quantity,
       })),
       trackingNumber: trackingNumber.trim() || undefined,
+      province:       order.province ?? undefined,
+      canton:         order.canton   ?? undefined,
+      district:       order.district ?? undefined,
       cashOnDelivery: remaining,
       date: formatDate(order.sold_at),
     });

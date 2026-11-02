@@ -111,7 +111,7 @@ export const es = {
   // ── Métodos de envío ───────────────────────────────────────────────────────
   shippingMethod: {
     personal_grecia:   "Entrega personal (Grecia)",
-    mensajero_sjo:     "Mensajero — SJO / HER / ALA",
+    mensajero_sjo:     "Mensajero privado",
     mensajero_cartago: "Mensajero — Cartago",
     correos_gam:       "Correos CR — GAM",
     correos_fuera_gam: "Correos CR — Fuera GAM",

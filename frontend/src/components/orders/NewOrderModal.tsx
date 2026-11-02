@@ -8,11 +8,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "../ui/Toast";
 import {
   DELIVERY_STATUSES,
-  SHIPPING_OPTIONS,
-  shippingCostFor,
   type DeliveryStatus,
-  type ShippingMethod,
 } from "../../services/salesService";
+import { ShippingFields } from "../shipping/ShippingFields";
+import { useShippingForm } from "../shipping/useShippingForm";
 import { recordManualOrder } from "../../services/ordersService";
 import { lookupCustomerByPhone } from "../../services/customerService";
 import { discountedPrice } from "../../lib/formatters";
@@ -103,8 +102,9 @@ export default function NewOrderModal({ onClose }: NewOrderModalProps) {
   const [pickerProduct, setPickerProduct] = useState<ProductWithVariants | null>(null);
 
   // Shipping
-  const [shippingMethod, setShippingMethod] = useState<ShippingMethod>("personal_grecia");
-  const shippingCost = shippingCostFor(shippingMethod);
+  const shipping = useShippingForm();
+  const { shippingMethod, shippingCost } = shipping;
+  const [shippingErrors, setShippingErrors] = useState<Record<string, string>>({});
 
   // Payment
   const [initialPayment, setInitialPayment] = useState("");
@@ -186,7 +186,8 @@ export default function NewOrderModal({ onClose }: NewOrderModalProps) {
       shipping_method: shippingMethod,
       shipping_cost:   shippingCost,
       delivery_status: deliveryStatus,
-      tracking_number: null,
+      tracking_number: shipping.tracking,
+      ...shipping.address,
       note:            note.trim() || null,
     }),
     onSuccess: () => {
@@ -201,6 +202,12 @@ export default function NewOrderModal({ onClose }: NewOrderModalProps) {
   function handleSubmit() {
     if (cartItems.length === 0) {
       showToast("Agregá al menos un producto.", "error");
+      return;
+    }
+    const addressErrors = shipping.validate();
+    setShippingErrors(addressErrors);
+    if (Object.keys(addressErrors).length > 0) {
+      showToast("Completá la dirección de envío.", "error");
       return;
     }
     submitMutation.mutate();
@@ -514,22 +521,7 @@ export default function NewOrderModal({ onClose }: NewOrderModalProps) {
             <p className="text-xs font-medium text-ink-500 uppercase tracking-wider">
               Envío
             </p>
-            <select
-              value={shippingMethod}
-              onChange={(e) => setShippingMethod(e.target.value as ShippingMethod)}
-              className={inputCls}
-            >
-              {SHIPPING_OPTIONS.map((shippingOption) => (
-                <option key={shippingOption.value} value={shippingOption.value}>
-                  {shippingOption.label} — ₡{shippingOption.cost.toLocaleString("en-US")}
-                </option>
-              ))}
-            </select>
-            {shippingCost > 0 && (
-              <p className="text-[11px] text-ink-400">
-                Costo de envío: ₡{shippingCost.toLocaleString("en-US")}
-              </p>
-            )}
+            <ShippingFields form={shipping} errors={shippingErrors} />
           </section>
 
           {/* 4. Estado de pago */}
