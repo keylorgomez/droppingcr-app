@@ -29,6 +29,7 @@ export interface OrderInput {
   province?:       string | null;
   canton?:         string | null;
   district?:       string | null;
+  address_detail?: string | null;
 }
 
 export interface AdminOrderItem {
@@ -56,6 +57,7 @@ export interface AdminOrder {
   province:        string | null;
   canton:          string | null;
   district:        string | null;
+  address_detail:  string | null;
   items:           AdminOrderItem[];
   items_total:     number;
   order_total:     number;
@@ -84,6 +86,7 @@ interface RawOrderRow {
   province:        string | null;
   canton:          string | null;
   district:        string | null;
+  address_detail:  string | null;
   order_items: Array<{
     id:         string;
     sale_price: number;
@@ -140,6 +143,7 @@ export async function recordManualOrder(data: OrderInput): Promise<void> {
       province:        data.province ?? null,
       canton:          data.canton   ?? null,
       district:        data.district ?? null,
+      address_detail:  data.address_detail ?? null,
     })
     .select("id")
     .single();
@@ -207,7 +211,7 @@ export async function getAllOrders(): Promise<AdminOrder[]> {
     .select(`
       id, sold_at, guest_name, guest_phone,
       shipping_method, shipping_cost, delivery_status,
-      tracking_number, status, note, province, canton, district,
+      tracking_number, status, note, province, canton, district, address_detail,
       order_items (
         id, quantity, sale_price,
         product_variants (
@@ -264,6 +268,7 @@ export async function getAllOrders(): Promise<AdminOrder[]> {
       province:        orderRow.province        ?? null,
       canton:          orderRow.canton          ?? null,
       district:        orderRow.district        ?? null,
+      address_detail:  orderRow.address_detail  ?? null,
       items,
       items_total:     itemsTotal,
       order_total:     itemsTotal + (orderRow.shipping_cost ?? 0),

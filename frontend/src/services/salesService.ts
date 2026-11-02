@@ -108,6 +108,7 @@ interface RawAdminSaleRow {
   province:        string | null;
   canton:          string | null;
   district:        string | null;
+  address_detail:  string | null;
   variant_id:      string | null;
   quantity:        number | null;
   product_variants: {
@@ -180,6 +181,7 @@ export interface SaleInput {
   province?:        string | null;
   canton?:          string | null;
   district?:        string | null;
+  address_detail?:  string | null;
 }
 
 export interface Payment {
@@ -259,6 +261,7 @@ export interface AdminSale {
   province:        string | null;
   canton:          string | null;
   district:        string | null;
+  address_detail:  string | null;
   status:          "pending" | "completed";
   note:            string | null;
   guest_name:      string | null;
@@ -385,6 +388,7 @@ export async function recordManualSale(data: SaleInput): Promise<void> {
       province:        data.province  ?? null,
       canton:          data.canton    ?? null,
       district:        data.district  ?? null,
+      address_detail:  data.address_detail ?? null,
     })
     .select("id")
     .single();
@@ -755,7 +759,7 @@ export async function getAllSales(): Promise<AdminSale[]> {
     .select(`
       id, sold_at, sale_price, shipping_cost, shipping_method,
       delivery_status, tracking_number, status, note,
-      guest_name, guest_phone, province, canton, district,
+      guest_name, guest_phone, province, canton, district, address_detail,
       variant_id, quantity,
       product_variants (
         size,
@@ -790,6 +794,7 @@ export async function getAllSales(): Promise<AdminSale[]> {
       province:        saleRow.province        ?? null,
       canton:          saleRow.canton          ?? null,
       district:        saleRow.district        ?? null,
+      address_detail:  saleRow.address_detail  ?? null,
       status:          saleRow.status as AdminSale["status"],
       note:            saleRow.note            ?? null,
       guest_name:      saleRow.guest_name      ?? null,

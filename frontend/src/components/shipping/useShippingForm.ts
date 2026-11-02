@@ -21,6 +21,7 @@ export function useShippingForm() {
   const [district,       setDistrict]       = useState("");
   const [carrierChoice,  setCarrierChoice]  = useState<Carrier>("mensajero");
   const [trackingNumber, setTrackingNumber] = useState("");
+  const [addressDetail,  setAddressDetail]  = useState("");
 
   const availableCarriers: Carrier[] = canton ? getAvailableCarriers(canton, district) : [];
   // Mensajero may have been picked before the district was changed to one outside coverage.
@@ -35,6 +36,7 @@ export function useShippingForm() {
 
   const isEnvio      = deliveryType === "envio";
   const showTracking = isEnvio && carrier === "correos" && canton !== "Grecia";
+  const showDetail   = isEnvio && carrier === "mensajero";
 
   function selectProvince(value: string) {
     setProvince(value);
@@ -71,6 +73,7 @@ export function useShippingForm() {
     selectProvince, selectCanton, selectDistrict,
     carrier, setCarrierChoice, availableCarriers,
     trackingNumber, setTrackingNumber, showTracking,
+    addressDetail, setAddressDetail, showDetail,
     shippingMethod, shippingCost,
     validate,
     /** Address to persist with the sale/order; null when delivery is personal. */
@@ -78,6 +81,8 @@ export function useShippingForm() {
       province: isEnvio ? (province || null) : null,
       canton:   isEnvio ? (canton   || null) : null,
       district: isEnvio ? (district || null) : null,
+      // Exact directions only matter for the courier; Correos uses the official address.
+      address_detail: showDetail ? (addressDetail.trim() || null) : null,
     },
     tracking: showTracking ? (trackingNumber.trim() || null) : null,
   };

@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Printer, Trash2, ArrowLeft } from "lucide-react";
 import Header from "../../components/ui/Header";
-import { printLabel } from "../../lib/printLabel";
+import { preloadLabelPdf, printLabel } from "../../lib/printLabel";
 import { cn } from "../../lib/utils";
 
 const inputCls =
@@ -20,6 +20,8 @@ const METHODS: { key: MethodKey; label: string; method: string }[] = [
 
 export default function LabelsPage() {
   const navigate = useNavigate();
+
+  useEffect(() => { preloadLabelPdf(); }, []);
 
   const [name,            setName]            = useState("");
   const [phone,           setPhone]           = useState("");
@@ -324,7 +326,7 @@ export default function LabelsPage() {
           </div>
 
           <p className="text-[11px] text-ink-300 text-center pb-4">
-            Se abrirá una ventana lista para imprimir en formato 4"×6".
+            Se genera un PDF de 100×150 mm listo para la impresora térmica.
           </p>
         </div>
       </div>

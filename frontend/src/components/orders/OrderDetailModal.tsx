@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { X, Package, Check, Loader2, MessageCircle, Plus, Trash2, Printer } from "lucide-react";
 import { motion } from "framer-motion";
@@ -17,7 +17,7 @@ import {
   type AdminOrder,
 } from "../../services/ordersService";
 import { QUERY_KEYS } from "../../constants/queryKeys";
-import { printLabel } from "../../lib/printLabel";
+import { preloadLabelPdf, printLabel } from "../../lib/printLabel";
 import { cn } from "../../lib/utils";
 import { formatDate, formatTime } from "../../lib/formatters";
 
@@ -185,6 +185,8 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
     saveMutation.mutate();
   }
 
+  useEffect(() => { preloadLabelPdf(); }, []);
+
   function handlePrintLabel() {
     printLabel({
       recipientName:  order.guest_name  ?? undefined,
@@ -199,6 +201,7 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
       province:       order.province ?? undefined,
       canton:         order.canton   ?? undefined,
       district:       order.district ?? undefined,
+      detail:         order.address_detail ?? undefined,
       cashOnDelivery: remaining,
       date: formatDate(order.sold_at),
     });

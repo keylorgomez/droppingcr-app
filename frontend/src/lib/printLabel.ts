@@ -14,262 +14,80 @@ export interface LabelData {
   canton?:          string;
   district?:        string;
   detail?:          string;
-  cashOnDelivery?:  number;   // undefined = don't show; 0 = paid; >0 = amount due
+  cashOnDelivery?:  number;   // >0 = amount due (+ SINPE info); 0 or undefined = paid
   date?:            string;
 }
 
-function methodInfo(method: string): { title: string } {
-  if (method === "personal_grecia")   return { title: "ENTREGA PERSONAL" };
-  if (method.startsWith("mensajero")) return { title: "MENSAJERO" };
-  if (method.startsWith("correos"))   return { title: "CORREOS CR" };
-  return { title: method.toUpperCase() };
+// jsPDF only loads when a label is generated, so it stays out of the main bundle.
+let pdfModule: Promise<typeof import("./labelPdf")> | null = null;
+
+/**
+ * Starts loading the PDF generator ahead of time. Call it when a screen that
+ * prints labels opens: iOS only allows the share sheet right after a tap, and
+ * a cold download in between can use up that window.
+ */
+export function preloadLabelPdf() {
+  pdfModule ??= import("./labelPdf");
+  return pdfModule;
 }
 
-export function printLabel(data: LabelData): void {
-  const { title } = methodInfo(data.shippingMethod);
+/** Phones/tablets that can hand a file to another app (e.g. Flash Label). */
+function canShareToApp(): boolean {
+  if (!window.matchMedia("(pointer: coarse)").matches || !navigator.canShare) return false;
+  return navigator.canShare({ files: [new File([""], "etiqueta.pdf", { type: "application/pdf" })] });
+}
 
-  const productLines = data.products
-    .map((p) => {
-      const parts: string[] = [p.name];
-      if (p.size) parts.push(`Talla ${p.size}`);
-      if (p.qty && p.qty > 1) parts.push(`x${p.qty}`);
-      return `<p class="product-line">• ${parts.join(" &nbsp;·&nbsp; ")}</p>`;
-    })
+function methodSuffix(method: string): string {
+  if (method === "personal_grecia")   return "EntregaPersonal";
+  if (method.startsWith("mensajero")) return "Mensajero";
+  if (method.startsWith("correos"))   return "Correos";
+  return "Etiqueta";
+}
+
+/** "Camila Murillo" + mensajero → "CamilaMurillo-Mensajero.pdf" (accents stripped). */
+function fileNameFor(data: LabelData): string {
+  const name = (data.recipientName ?? "")
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .split(/[^A-Za-z0-9]+/)
+    .filter(Boolean)
+    .map((word) => word[0].toUpperCase() + word.slice(1))
     .join("");
+  return `${name || "Dropping"}-${methodSuffix(data.shippingMethod)}.pdf`;
+}
 
-  const hasAddress = data.province || data.canton || data.district;
-  const addressBlock = hasAddress
-    ? `
-      <div class="section">
-        <div class="label">Dirección</div>
-        <div class="value-sm">${[data.province, data.canton, data.district].filter(Boolean).join(", ")}</div>
-      </div>`
-    : "";
+function download(file: File) {
+  const url  = URL.createObjectURL(file);
+  const link = document.createElement("a");
+  link.href     = url;
+  link.download = file.name;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
 
-  const detailBlock = data.detail
-    ? `
-      <div class="section">
-        <div class="label">Detalles</div>
-        <div class="detail-text">${data.detail}</div>
-      </div>`
-    : "";
+/**
+ * Generates the label as a 100×150 mm PDF.
+ * - Phone: opens the share sheet so it goes straight to the printer app at 1:1.
+ * - Computer: opens the PDF in a new tab, ready to print.
+ */
+export async function printLabel(data: LabelData): Promise<void> {
+  const share = canShareToApp();
+  // The tab must be opened synchronously inside the click, before any await,
+  // or the browser treats it as a popup and blocks it.
+  const tab = share ? null : window.open("", "_blank");
 
-  const trackingBlock = data.trackingNumber
-    ? `
-      <div class="section">
-        <div class="label">N.° de guía (Correos CR)</div>
-        <div class="tracking">${data.trackingNumber}</div>
-      </div>`
-    : "";
+  const { buildLabelPdf } = await preloadLabelPdf();
+  const file = new File([buildLabelPdf(data)], fileNameFor(data), { type: "application/pdf" });
 
-  const recipientBlock = (data.recipientName || data.recipientPhone)
-    ? `
-      <div class="section">
-        <div class="label">Destinatario</div>
-        ${data.recipientName  ? `<div class="value">${data.recipientName}</div>`  : ""}
-        ${data.recipientPhone ? `<div class="value-sm">${data.recipientPhone}</div>` : ""}
-      </div>`
-    : "";
+  if (share) {
+    try {
+      await navigator.share({ files: [file], title: file.name });
+    } catch (error) {
+      // AbortError = the user closed the sheet; anything else, fall back to a download.
+      if ((error as Error).name !== "AbortError") download(file);
+    }
+    return;
+  }
 
-  const cashBlock = (data.cashOnDelivery ?? 0) > 0
-    ? `<div class="cash-box due">
-         <div class="cash-label">A CANCELAR CONTRA ENTREGA</div>
-         <div class="cash-amount">&#8353;${data.cashOnDelivery!.toLocaleString("en-US")}</div>
-       </div>`
-    : `<div class="cash-box paid"><strong>&#10003; PAGO COMPLETADO</strong></div>`;
-
-  const html = `<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <title>Etiqueta · Dropping CR</title>
-  <style>
-    @page {
-      size: 4in 6in;
-      margin: 0;
-    }
-    @media print {
-      html, body { width: 4in; height: 6in; }
-    }
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      width: 4in;
-      height: 6in;
-      font-family: Arial, Helvetica, sans-serif;
-      padding: 0.22in;
-      display: flex;
-      flex-direction: column;
-      background: white;
-      overflow: hidden;
-    }
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      border-bottom: 2.5px solid #111;
-      padding-bottom: 9px;
-      margin-bottom: 14px;
-    }
-    .brand {
-      font-size: 22pt;
-      font-weight: 900;
-      font-style: italic;
-      letter-spacing: -0.5px;
-      color: #111;
-      line-height: 1;
-    }
-    .brand-sub {
-      font-size: 7pt;
-      font-weight: 400;
-      font-style: normal;
-      text-transform: uppercase;
-      letter-spacing: 2.5px;
-      color: #555;
-      display: block;
-      margin-top: 4px;
-    }
-    .method-badge {
-      font-size: 7.5pt;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: #111;
-      border: 2px solid #111;
-      padding: 3px 8px;
-      border-radius: 4px;
-      margin-top: 4px;
-      white-space: nowrap;
-    }
-    .section {
-      margin-bottom: 10px;
-    }
-    .label {
-      font-size: 6.5pt;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-      color: #777;
-      margin-bottom: 3px;
-    }
-    .value {
-      font-size: 15pt;
-      font-weight: 800;
-      color: #111;
-      line-height: 1.2;
-    }
-    .value-sm {
-      font-size: 11pt;
-      font-weight: 600;
-      color: #222;
-      line-height: 1.3;
-    }
-    .product-line {
-      font-size: 10pt;
-      color: #222;
-      margin-bottom: 3px;
-      line-height: 1.4;
-    }
-    .detail-text {
-      font-size: 9.5pt;
-      color: #333;
-      line-height: 1.4;
-      white-space: pre-line;
-    }
-    .tracking {
-      font-size: 14pt;
-      font-weight: 900;
-      letter-spacing: 2px;
-      font-family: 'Courier New', monospace;
-      color: #111;
-      word-break: break-all;
-    }
-    .divider {
-      border: none;
-      border-top: 1px dashed #bbb;
-      margin: 10px 0;
-    }
-    .cash-box {
-      border: 2px solid #111;
-      border-radius: 4px;
-      padding: 8px 10px;
-      margin-bottom: 10px;
-      text-align: center;
-    }
-    .cash-box.paid {
-      font-size: 10pt;
-      font-weight: 800;
-      letter-spacing: 1px;
-      color: #111;
-    }
-    .cash-box.due {
-      border-style: dashed;
-    }
-    .cash-label {
-      font-size: 6.5pt;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-      color: #555;
-      margin-bottom: 3px;
-    }
-    .cash-amount {
-      font-size: 18pt;
-      font-weight: 900;
-      color: #111;
-      line-height: 1;
-    }
-    .footer {
-      margin-top: auto;
-      border-top: 1px solid #ccc;
-      padding-top: 6px;
-      font-size: 6.5pt;
-      color: #999;
-      display: flex;
-      justify-content: space-between;
-    }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <div>
-      <div class="brand">
-        Dropping
-        <span class="brand-sub">Costa Rica</span>
-      </div>
-    </div>
-    <div class="method-badge">${title}</div>
-  </div>
-
-  ${recipientBlock}
-
-  ${addressBlock}
-
-  ${detailBlock}
-
-  ${(hasAddress || detailBlock) ? "<hr class=\"divider\">" : ""}
-
-  <div class="section">
-    <div class="label">Producto${data.products.length > 1 ? "s" : ""}</div>
-    ${productLines}
-  </div>
-
-  ${trackingBlock}
-
-  ${cashBlock}
-
-  <div class="footer">
-    <span>droppingcr.com</span>
-    <span>${data.date ?? new Date().toLocaleDateString("es-CR")}</span>
-  </div>
-
-  <script>
-    window.onload = function() { window.print(); };
-  </script>
-</body>
-</html>`;
-
-  const win = window.open("", "_blank", "width=420,height=640,menubar=no,toolbar=no");
-  if (!win) return;
-  win.document.write(html);
-  win.document.close();
+  if (tab) tab.location.href = URL.createObjectURL(file);
+  else     download(file);
 }

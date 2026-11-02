@@ -40,6 +40,7 @@ export function ShippingFields({ form, errors }: ShippingFieldsProps) {
     selectProvince, selectCanton, selectDistrict,
     carrier, setCarrierChoice, availableCarriers,
     trackingNumber, setTrackingNumber, showTracking,
+    addressDetail, setAddressDetail, showDetail,
     shippingCost,
   } = form;
 
@@ -182,6 +183,25 @@ export function ShippingFields({ form, errors }: ShippingFieldsProps) {
                   </p>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Exact address — mensajero only */}
+          {showDetail && (
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-ink-500 uppercase tracking-wider">
+                Dirección exacta{" "}
+                <span className="normal-case text-ink-300">(opcional)</span>
+              </label>
+              <textarea
+                value={addressDetail}
+                onChange={(e) => setAddressDetail(e.target.value)}
+                rows={3}
+                maxLength={300}
+                placeholder="Ej: 100 m norte del parque, casa azul con portón negro"
+                className={cn(inputCls, "resize-none")}
+              />
+              <p className="text-[11px] text-ink-400 px-1">Se imprime en la etiqueta para el mensajero.</p>
             </div>
           )}
 
