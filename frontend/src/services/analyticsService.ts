@@ -74,7 +74,8 @@ export interface FinanceSummary {
   shipping_paid:       number;  // pagado a Correos / mensajero (dinero de paso)
   // A hoy
   receivables:         number;  // lo que falta cobrar
-  distributed:         number;  // ya repartido a admins
+  distributed:         number;  // ya repartido a admins, neto de ajustes
+  adjustments:         number;  // ajustes de conciliación (finance_adjustments)
   all_time_net:        number;  // utilidad neta histórica
   available:           number;  // caja del negocio: all_time_net − receivables − distributed
   stock_cost:          number;  // inventario en bodega, a costo

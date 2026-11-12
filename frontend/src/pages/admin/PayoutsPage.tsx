@@ -249,10 +249,11 @@ function AdminBreakdown({ payouts }: { payouts: AdminPayout[] }) {
 // ── Distribution tracker ───────────────────────────────────────────────────
 
 function DistributionTracker({
-  netProfit, totalDistributed,
+  netProfit, totalDistributed, adjustments,
 }: {
   netProfit:        number;
   totalDistributed: number;
+  adjustments:      number;
 }) {
   const target      = Math.round(netProfit * PAYOUT_SHARE);
   const fundNegocio = Math.round(netProfit * (1 - PAYOUT_SHARE));
@@ -355,6 +356,9 @@ function DistributionTracker({
             Distribuido: <span className="font-semibold text-brand-dark">
               {fmt(totalDistributed)}
             </span>
+            {adjustments !== 0 && (
+              <span className="text-ink-400"> (neto de ajuste de conciliación {fmt(adjustments)})</span>
+            )}
           </span>
           <span className={`text-xs font-bold ${t.textCls}`}>
             {Math.min(progress, 999).toFixed(1)}%
@@ -553,6 +557,7 @@ export default function PayoutsPage() {
             <DistributionTracker
               netProfit={netProfit}
               totalDistributed={totalDistributed}
+              adjustments={finance?.adjustments ?? 0}
             />
           </div>
         )}

@@ -27,6 +27,7 @@ import { SALE_STATUS } from "../../constants/domain";
 import { cn } from "../../lib/utils";
 import { normalizeText } from "../../lib/formatters";
 import { QUERY_KEYS } from "../../constants/queryKeys";
+import { getFinanceSummary, periodRange } from "../../services/analyticsService";
 import {
   type Movement,
   TableSkeleton, SummaryCard,
@@ -463,10 +464,19 @@ export default function PaymentsPage() {
   // abonos ya entran por el log de pagos. Sumar además su precio la contaría
   // dos veces, y sin abonos registraría plata que no entró.
   const externalTotal = externalSales.reduce((s, e) => s + externalSaleCashIn(e), 0);
+  // Ajuste de conciliación con el banco (única vez, ver migración
+  // 20261112070000): no es ingreso ni salida, solo cuadra el saldo.
+  const { data: finance } = useQuery({
+    queryKey: QUERY_KEYS.FINANCE_SUMMARY("all"),
+    queryFn:  () => getFinanceSummary(periodRange("all")),
+  });
+  const adjustments = finance?.adjustments ?? 0;
   const totalIn  = logs.reduce((s, l) => s + l.amount, 0) + externalTotal;
   const totalOut = payouts.reduce((s, p) => s + p.amount, 0)
                  + expensePayments.reduce((s, e) => s + e.amount, 0)
                  + refunds.reduce((s, r) => s + r.amount, 0);
+
+  const netBalance   = totalIn - totalOut + adjustments;
 
   const now          = new Date();
   const currentMonth = now.getMonth();
@@ -573,12 +583,14 @@ export default function PaymentsPage() {
             bgCls="bg-red-50"
           />
           <SummaryCard
-            icon={totalIn - totalOut >= 0 ? TrendingUp : Minus}
+            icon={netBalance >= 0 ? TrendingUp : Minus}
             label="Balance neto"
-            value={`₡${(totalIn - totalOut).toLocaleString("en-US")}`}
-            sub="Ingresos − salidas"
-            textCls={totalIn - totalOut >= 0 ? "text-brand-primary" : "text-red-500"}
-            bgCls={totalIn - totalOut >= 0 ? "bg-brand-bg" : "bg-red-50"}
+            value={`₡${netBalance.toLocaleString("en-US")}`}
+            sub={adjustments !== 0
+              ? `Ingresos − salidas + ajuste de conciliación ₡${adjustments.toLocaleString("en-US")}`
+              : "Ingresos − salidas"}
+            textCls={netBalance >= 0 ? "text-brand-primary" : "text-red-500"}
+            bgCls={netBalance >= 0 ? "bg-brand-bg" : "bg-red-50"}
           />
         </div>
 
