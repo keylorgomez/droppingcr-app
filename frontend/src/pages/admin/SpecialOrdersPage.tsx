@@ -6,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "motion/react";
 import {
   ArrowLeft, Plus, X, Loader2, PackageSearch, Wallet, Clock, ExternalLink,
-  ChevronRight, CheckCircle2, Ban, Info,
+  ChevronRight, CheckCircle2, Ban, Info, Search,
 } from "lucide-react";
 import Header from "../../components/ui/Header";
 import WhatsAppIcon from "../../components/ui/WhatsAppIcon";
@@ -27,6 +27,17 @@ const inputCls =
   "outline-none bg-white focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20 transition";
 
 type Tab = "active" | "delivered" | "cancelled";
+
+const normalize = (text: string) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+/** Nombre o producto sin importar tildes; teléfono solo por dígitos (8888-1234 = 88881234). */
+function matchesSearch(order: SpecialOrder, query: string): boolean {
+  const text   = normalize(query.trim());
+  const digits = query.replace(/\D/g, "");
+  const haystack = normalize([order.guest_name, order.description, order.size, order.note].filter(Boolean).join(" "));
+  if (haystack.includes(text)) return true;
+  return digits.length >= 3 && (order.guest_phone ?? "").replace(/\D/g, "").includes(digits);
+}
 
 const parseAmount = (value: string) => Number(value.replace(/[^\d.]/g, "")) || 0;
 
@@ -471,10 +482,14 @@ export default function SpecialOrdersPage() {
   });
 
   const active = useMemo(() => orders.filter(isActiveSpecialOrder), [orders]);
-  const shown  = useMemo(
-    () => tab === "active" ? active : orders.filter((order) => order.status === tab),
-    [tab, orders, active]
-  );
+  // Con texto en el buscador se busca en TODOS los encargos (activos,
+  // entregados y cancelados): el chip de cada tarjeta dice en qué estado está.
+  const [query, setQuery] = useState("");
+  const searching = query.trim().length > 0;
+  const shown  = useMemo(() => {
+    if (searching) return orders.filter((order) => matchesSearch(order, query));
+    return tab === "active" ? active : orders.filter((order) => order.status === tab);
+  }, [tab, orders, active, searching, query]);
   const custody = active.reduce((total, order) => total + order.advance, 0);
   const pending = active.reduce((total, order) => total + Math.max(0, order.estimated_price - order.advance), 0);
 
@@ -486,7 +501,7 @@ export default function SpecialOrdersPage() {
 
 
   // Se dibujan de a 20: con cientos de filas el celular se trababa.
-  const paged = usePaged(shown, tab);
+  const paged = usePaged(shown, `${tab}|${query}`);
   return (
     <>
       <Header />
@@ -527,6 +542,33 @@ export default function SpecialOrdersPage() {
           Lo que le pagás al proveedor por un encargo no lo registres en Gastos: va como costo real al entregar.
         </p>
 
+        <div className="relative">
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-300 pointer-events-none" />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Buscar por nombre, teléfono o producto"
+            aria-label="Buscar encargos"
+            className={cn(inputCls, "pl-10 pr-10")}
+          />
+          {searching && (
+            <button
+              type="button"
+              onClick={() => setQuery("")}
+              aria-label="Limpiar búsqueda"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-ink-400 hover:text-ink-700"
+            >
+              <X size={15} />
+            </button>
+          )}
+        </div>
+
+        {searching ? (
+          <p className="text-xs text-ink-400 -mt-2">
+            {shown.length} {shown.length === 1 ? "resultado" : "resultados"} en todos los encargos
+          </p>
+        ) : (
         <div className="flex gap-2 overflow-x-auto no-scrollbar">
           {TABS.map(({ id, label, count }) => (
             <button
@@ -541,6 +583,7 @@ export default function SpecialOrdersPage() {
             </button>
           ))}
         </div>
+        )}
 
         {error ? (
           <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -550,7 +593,7 @@ export default function SpecialOrdersPage() {
           Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-44 rounded-2xl bg-ink-100 animate-pulse" />)
         ) : shown.length === 0 ? (
           <p className="text-center text-sm text-ink-400 py-14">
-            {tab === "active" ? "No hay encargos pendientes." : "Nada por aquí todavía."}
+            {searching ? "Ningún encargo coincide con la búsqueda." : tab === "active" ? "No hay encargos pendientes." : "Nada por aquí todavía."}
           </p>
         ) : (
           <div className="flex flex-col gap-3">
