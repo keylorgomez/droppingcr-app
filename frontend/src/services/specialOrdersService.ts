@@ -120,14 +120,15 @@ export async function addSpecialOrderAdvance(id: string, amount: number, note: s
   if (error) throw new Error(error.message);
 }
 
-/** Convierte el encargo en una venta externa con precio y costo reales. */
+/** Convierte el encargo en una venta externa con precio y costo reales. Devuelve el id de la venta. */
 export async function deliverSpecialOrder(
   id: string, finalPrice: number, cost: number, productName: string | null,
-): Promise<void> {
-  const { error } = await supabase.rpc("deliver_special_order", {
+): Promise<string> {
+  const { data, error } = await supabase.rpc("deliver_special_order", {
     p_id: id, p_final_price: finalPrice, p_cost: cost, p_product_name: productName,
   });
   if (error) throw new Error(error.message);
+  return String(data);
 }
 
 export async function cancelSpecialOrder(id: string, refund: boolean, reason: string | null): Promise<void> {

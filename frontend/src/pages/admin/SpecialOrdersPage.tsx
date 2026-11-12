@@ -15,6 +15,7 @@ import { fmt, formatDate, displayPhone, normalizePhone } from "../../lib/formatt
 import { cn } from "../../lib/utils";
 import { QUERY_KEYS } from "../../constants/queryKeys";
 import { lookupCustomerProfileByPhone } from "../../services/customerService";
+import { addExternalSalePayment } from "../../services/externalSalesService";
 import {
   getSpecialOrders, createSpecialOrder, updateSpecialOrder, updateSpecialOrderStatus, addSpecialOrderAdvance,
   deliverSpecialOrder, cancelSpecialOrder, isActiveSpecialOrder,
@@ -312,31 +313,71 @@ function AdvanceModal({ order, onClose, onSaved }: { order: SpecialOrder; onClos
 
 // ── Entregar ───────────────────────────────────────────────────────────────
 
+type Settlement = "paid" | "installments";
+
 function DeliverModal({ order, onClose, onSaved }: { order: SpecialOrder; onClose: () => void; onSaved: () => void }) {
   const { showToast } = useToast();
   const [price, setPrice] = useState(order.estimated_price ? String(order.estimated_price) : "");
   const [cost, setCost]   = useState(order.estimated_cost !== null ? String(order.estimated_cost) : "");
   const [name, setName]   = useState(order.description);
+  // Sin opción marcada a propósito: elegir "pagó" registra plata, así que
+  // tiene que ser una decisión, no un default que se acepta sin leer.
+  const [settlement, setSettlement] = useState<Settlement | null>(null);
+  const [partial, setPartial]       = useState("");
+  const [payNote, setPayNote]       = useState("");
 
   const finalPrice = parseAmount(price);
   const realCost   = parseAmount(cost);
   const balance    = finalPrice - order.advance;
+  const owes       = balance > 0;
+  const partialAmt = parseAmount(partial);
+
+  // Lo que se cobra en el momento de la entrega.
+  const collectNow = !owes ? 0 : settlement === "paid" ? balance : settlement === "installments" ? partialAmt : 0;
+  const leftOwing  = owes ? balance - collectNow : 0;
+
+  const partialError = settlement === "installments" && partialAmt >= balance && partialAmt > 0
+    ? "Si paga todo, elegí \"Pagó el saldo\"." : null;
+  const canSubmit = finalPrice > 0 && cost !== "" && (!owes || settlement !== null) && !partialError;
 
   const mutation = useMutation({
-    mutationFn: () => deliverSpecialOrder(order.id, finalPrice, realCost, name.trim() || null),
-    onSuccess:  () => { showToast("Encargo entregado: ya cuenta como venta.", "success"); onSaved(); },
-    onError:    (err: Error) => showToast(err.message, "error"),
+    mutationFn: async () => {
+      const saleId = await deliverSpecialOrder(order.id, finalPrice, realCost, name.trim() || null);
+      if (collectNow <= 0) return { paymentFailed: false };
+      try {
+        await addExternalSalePayment(saleId, collectNow, payNote.trim() || (settlement === "paid" ? "Saldo al entregar" : "Abono al entregar"));
+        return { paymentFailed: false };
+      } catch (err) {
+        console.warn("[entrega] el pago no se registró", err);
+        return { paymentFailed: true };
+      }
+    },
+    onSuccess: ({ paymentFailed }) => {
+      if (paymentFailed) {
+        showToast("Encargo entregado, pero el pago no se registró: anotalo en Cobros pendientes.", "error");
+      } else if (leftOwing > 0) {
+        showToast(`Entregado a pagos: queda debiendo ${fmt(leftOwing)} en Cobros pendientes.`, "success");
+      } else {
+        showToast("Encargo entregado y pagado: ya cuenta como venta.", "success");
+      }
+      onSaved();
+    },
+    onError: (err: Error) => showToast(err.message, "error"),
   });
+
+  const optionCls = (on: boolean) => cn(
+    "flex-1 rounded-xl border px-3 py-2.5 text-left transition-colors",
+    on ? "border-ink-900 bg-ink-900 text-bone" : "border-ink-200 bg-white text-brand-dark hover:border-ink-400"
+  );
 
   return (
     <Modal title="Entregar encargo" onClose={onClose}>
       <form
-        onSubmit={(e) => { e.preventDefault(); if (finalPrice > 0 && cost !== "") mutation.mutate(); }}
+        onSubmit={(e) => { e.preventDefault(); if (canSubmit) mutation.mutate(); }}
         className="flex flex-col gap-4"
       >
         <p className="text-[12.5px] text-ink-500 leading-snug">
-          Con los números reales el encargo se convierte en una venta: sus adelantos pasan a ser abonos
-          y, si falta plata, queda en <b>Por cobrar</b>.
+          Con los números reales el encargo se convierte en una venta y sus adelantos pasan a ser abonos.
         </p>
         <Field label="Producto">
           <input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} />
@@ -345,17 +386,51 @@ function DeliverModal({ order, onClose, onSaved }: { order: SpecialOrder; onClos
           <Field label="Precio final ₡">
             <input inputMode="numeric" value={price} onChange={(e) => setPrice(e.target.value)} className={inputCls} />
           </Field>
-          <Field label="Costo real ₡" hint="(puesto en CR)">
-            <input inputMode="numeric" value={cost} onChange={(e) => setCost(e.target.value)} placeholder="0" className={inputCls} />
+          <Field label="Costo real ₡">
+            <input inputMode="numeric" value={cost} onChange={(e) => setCost(e.target.value)} placeholder="Puesto en CR" className={inputCls} />
           </Field>
         </div>
+
+        {owes && finalPrice > 0 && (
+          <div className="flex flex-col gap-2.5">
+            <span className="text-xs font-medium text-ink-500 uppercase tracking-wider">
+              Saldo de {fmt(balance)}
+            </span>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setSettlement("paid")} className={optionCls(settlement === "paid")}>
+                <span className="block text-[13px] font-semibold">Pagó el saldo</span>
+                <span className="block text-[11px] opacity-70">Queda saldada</span>
+              </button>
+              <button type="button" onClick={() => setSettlement("installments")} className={optionCls(settlement === "installments")}>
+                <span className="block text-[13px] font-semibold">Venta a pagos</span>
+                <span className="block text-[11px] opacity-70">Va a Cobros pendientes</span>
+              </button>
+            </div>
+            {settlement === "installments" && (
+              <Field label="Abono al entregar ₡">
+                <input inputMode="numeric" value={partial} onChange={(e) => setPartial(e.target.value)} placeholder="0 si no dio nada" className={inputCls} />
+              </Field>
+            )}
+            {partialError && <p className="text-[11.5px] text-red-500 -mt-1">{partialError}</p>}
+            {collectNow > 0 && (
+              <Field label="Cómo pagó">
+                <input value={payNote} onChange={(e) => setPayNote(e.target.value)} placeholder="SINPE, efectivo…" className={inputCls} />
+              </Field>
+            )}
+          </div>
+        )}
 
         {finalPrice > 0 && (
           <div className="rounded-xl bg-ink-50 px-4 py-3 text-sm flex flex-col gap-1.5 tnum">
             <div className="flex justify-between"><span className="text-ink-500">Adelantado</span><span>{fmt(order.advance)}</span></div>
+            {collectNow > 0 && (
+              <div className="flex justify-between"><span className="text-ink-500">Cobra al entregar</span><span>{fmt(collectNow)}</span></div>
+            )}
             <div className="flex justify-between">
-              <span className="text-ink-500">{balance >= 0 ? "Falta cobrar" : "Saldo a favor del cliente"}</span>
-              <span className={balance > 0 ? "text-amber-600 font-semibold" : "font-semibold"}>{fmt(Math.abs(balance))}</span>
+              <span className="text-ink-500">{balance >= 0 ? "Queda debiendo" : "Saldo a favor del cliente"}</span>
+              <span className={leftOwing > 0 ? "text-amber-600 font-semibold" : "font-semibold"}>
+                {fmt(balance >= 0 ? leftOwing : Math.abs(balance))}
+              </span>
             </div>
             {cost !== "" && (
               <div className="flex justify-between border-t border-ink-200 pt-1.5">
@@ -368,7 +443,7 @@ function DeliverModal({ order, onClose, onSaved }: { order: SpecialOrder; onClos
           </div>
         )}
 
-        <SubmitButton saving={mutation.isPending} disabled={finalPrice <= 0 || cost === ""}>Confirmar entrega</SubmitButton>
+        <SubmitButton saving={mutation.isPending} disabled={!canSubmit}>Confirmar entrega</SubmitButton>
       </form>
     </Modal>
   );
