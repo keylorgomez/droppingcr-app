@@ -1,10 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+import { corsFor, getCaller } from "../_shared/auth.ts";
 
 const IG_TOKEN   = Deno.env.get("INSTAGRAM_ACCESS_TOKEN") ?? "";
 const IG_USER_ID = Deno.env.get("INSTAGRAM_USER_ID") ?? "";
@@ -29,8 +24,17 @@ async function igPost(endpoint: string, params: Record<string, string>): Promise
 }
 
 serve(async (req) => {
+  const corsHeaders = corsFor(req);
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
+  }
+
+  // Publica en la cuenta real de la tienda: solo admins.
+  const caller = await getCaller(req);
+  if (!caller?.isAdmin) {
+    return new Response(JSON.stringify({ error: "No autorizado" }), {
+      status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   try {

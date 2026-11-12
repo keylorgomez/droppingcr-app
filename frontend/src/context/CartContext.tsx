@@ -41,7 +41,7 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | null>(null);
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
 
   const [items,      setItems]      = useState<CartItem[]>([]);
   const [isLoading,  setIsLoading]  = useState(true);
@@ -75,12 +75,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }
     }
 
+    // Esperar a saber si hay sesión: si no, se cargaría el carrito de
+    // invitado y un instante después el del usuario.
+    if (authLoading) return;
+
     // Run on first mount and whenever userId changes (login / logout)
     if (prevUserId.current === undefined || prevUserId.current !== (user?.id ?? null)) {
       prevUserId.current = user?.id ?? null;
       init();
     }
-  }, [user]);
+  }, [user, authLoading]);
 
   // ── Drawer auto-close ─────────────────────────────────────────────────────
   function openDrawer(item: CartItem) {

@@ -1,3 +1,5 @@
+import { usePaged } from "../../lib/usePaged";
+import ShowMore from "../../components/ui/ShowMore";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -334,6 +336,9 @@ export default function DebtPage() {
   const grandTotalPaid = clients.reduce((sum, c) => sum + c.total_paid, 0);
   const grandTotal     = clients.reduce((sum, c) => sum + c.remaining, 0);
 
+  // Se dibujan de a 20: con cientos de filas el celular se trababa.
+  const paged = usePaged(filtered, search);
+
   if (authLoading) return null;
 
   return (
@@ -468,9 +473,10 @@ export default function DebtPage() {
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            {filtered.map((client) => (
+            {paged.visible.map((client) => (
               <ClientCard key={client.key} client={client} />
             ))}
+            <ShowMore remaining={paged.remaining} pageSize={paged.pageSize} onClick={paged.showMore} />
           </div>
         )}
 

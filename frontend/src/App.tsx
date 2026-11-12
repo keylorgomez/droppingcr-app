@@ -1,31 +1,49 @@
+import { lazy, Suspense, useEffect } from "react";
 import { Routes, Route, Navigate, useSearchParams } from "react-router-dom";
-import { AnimatePresence } from "framer-motion";
 import HomePage          from "./pages/HomePage";
-import CatalogPage       from "./pages/CatalogPage";
-import ProductDetailPage from "./pages/ProductDetailPage";
-import ProfilePage       from "./pages/ProfilePage";
-import MyOrdersPage      from "./pages/MyOrdersPage";
-import CartPage          from "./pages/CartPage";
-import ResetPasswordPage from "./pages/ResetPasswordPage";
-import ProductFormPage   from "./pages/admin/ProductFormPage";
-import EditProductPage   from "./pages/admin/EditProductPage";
-import CategoriesPage    from "./pages/admin/CategoriesPage";
-import DebtPage          from "./pages/admin/DebtPage";
-import OrdersPage        from "./pages/admin/OrdersPage";
-import Dashboard         from "./pages/admin/Dashboard";
-import PaymentsPage      from "./pages/admin/PaymentsPage";
-import PayoutsPage       from "./pages/admin/PayoutsPage";
-import ExpensesPage      from "./pages/admin/ExpensesPage";
-import LabelsPage        from "./pages/admin/LabelsPage";
 import Footer            from "./components/ui/Footer";
 import GATracker         from "./components/GATracker";
 import ScrollToTop       from "./components/ScrollToTop";
-import SplashScreen      from "./components/ui/SplashScreen";
 import CartDrawer        from "./components/ui/CartDrawer";
 import CompleteProfileModal from "./components/ui/CompleteProfileModal";
 import { useAuth }       from "./context/AuthContext";
 import { CartProvider }  from "./context/CartContext";
 import { ROUTES }        from "./constants/app";
+
+// Cada pantalla se descarga cuando se visita. La Home va en el paquete
+// principal porque es la que abre casi todo el mundo; el backoffice entero
+// (con Recharts) ya no viaja en el celular de un cliente.
+const CatalogPage       = lazy(() => import("./pages/CatalogPage"));
+const ProductDetailPage = lazy(() => import("./pages/ProductDetailPage"));
+const ProfilePage       = lazy(() => import("./pages/ProfilePage"));
+const MyOrdersPage      = lazy(() => import("./pages/MyOrdersPage"));
+const CartPage          = lazy(() => import("./pages/CartPage"));
+const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
+const ProductFormPage   = lazy(() => import("./pages/admin/ProductFormPage"));
+const EditProductPage   = lazy(() => import("./pages/admin/EditProductPage"));
+const CategoriesPage    = lazy(() => import("./pages/admin/CategoriesPage"));
+const DebtPage          = lazy(() => import("./pages/admin/DebtPage"));
+const OrdersPage        = lazy(() => import("./pages/admin/OrdersPage"));
+const Dashboard         = lazy(() => import("./pages/admin/Dashboard"));
+const PaymentsPage      = lazy(() => import("./pages/admin/PaymentsPage"));
+const PayoutsPage       = lazy(() => import("./pages/admin/PayoutsPage"));
+const ExpensesPage      = lazy(() => import("./pages/admin/ExpensesPage"));
+const LabelsPage        = lazy(() => import("./pages/admin/LabelsPage"));
+const SpecialOrdersPage = lazy(() => import("./pages/admin/SpecialOrdersPage"));
+const NotFoundPage      = lazy(() => import("./pages/NotFoundPage"));
+
+/** Mientras baja el código de una pantalla: el fondo de siempre, sin saltos. */
+function RouteFallback() {
+  return <div className="min-h-[70vh] bg-bone" aria-busy="true" />;
+}
+
+/** Quita el splash de index.html cuando la app ya pintó. */
+function useDismissSplash() {
+  useEffect(() => {
+    const dismiss = (window as unknown as { __dismissSplash?: () => void }).__dismissSplash;
+    dismiss?.();
+  }, []);
+}
 
 // Redirige al catálogo si el usuario no es admin
 function AdminRoute({ children }: { children: React.ReactNode }) {
@@ -48,20 +66,17 @@ function HomeOrLegacyCatalog() {
 }
 
 export default function App() {
-  const { isLoading } = useAuth();
+  useDismissSplash();
 
+  // La tienda pinta de inmediato: el carrito, el avatar y las rutas admin se
+  // completan cuando se resuelve la sesión.
   return (
-    <>
-      <AnimatePresence>
-        {isLoading && <SplashScreen key="splash" />}
-      </AnimatePresence>
-
-      {!isLoading && (
-        <CartProvider>
+    <CartProvider>
           <div className="min-h-screen flex flex-col bg-bone">
             <GATracker />
             <ScrollToTop />
             <div className="flex-1">
+              <Suspense fallback={<RouteFallback />}>
               <Routes>
                 {/* Public routes */}
                 <Route path="/"                        element={<HomeOrLegacyCatalog />} />
@@ -83,17 +98,18 @@ export default function App() {
                 <Route path="/admin/ganancias"         element={<AdminRoute><PayoutsPage /></AdminRoute>} />
                 <Route path="/admin/gastos"            element={<AdminRoute><ExpensesPage /></AdminRoute>} />
                 <Route path="/admin/etiquetas"         element={<AdminRoute><LabelsPage /></AdminRoute>} />
+                <Route path="/admin/encargos"          element={<AdminRoute><SpecialOrdersPage /></AdminRoute>} />
 
-                {/* Cualquier otra ruta vuelve al inicio */}
-                <Route path="*"                        element={<Navigate to={ROUTES.HOME} replace />} />
+                {/* 404 real con `noindex`, no un redirect al inicio: redirigir
+                    hacía que Google indexara la URL inventada como contenido válido. */}
+                <Route path="*"                        element={<NotFoundPage />} />
               </Routes>
+              </Suspense>
             </div>
             <Footer />
           </div>
           <CartDrawer />
           <CompleteProfileModal />
-        </CartProvider>
-      )}
-    </>
+    </CartProvider>
   );
 }

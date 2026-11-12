@@ -1,7 +1,10 @@
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import { ArrowUp } from "lucide-react";
+import { motion, useReducedMotion } from "motion/react";
 import { ROUTES, STORE_WHATSAPP } from "../../constants/app";
-import Logo from "./Logo";
+import { SHIPPING_RATES } from "../../config/shipping";
+import ScrollMarquee from "./ScrollMarquee";
+import WhatsAppIcon from "./WhatsAppIcon";
 
 const socialLinks = [
   {
@@ -34,65 +37,110 @@ const socialLinks = [
   },
 ];
 
-const navLinks = [
+const colones = (amount: number) => `₡${amount.toLocaleString("en-US")}`;
+
+const whatsappUrl = `https://wa.me/${STORE_WHATSAPP}?text=${encodeURIComponent("Hola! Tengo una consulta.")}`;
+
+const LINKS = [
   { label: "Catálogo",    to: ROUTES.CATALOG },
-  { label: "Nuevo",       to: ROUTES.catalogFilter("nuevo") },
+  { label: "Lo nuevo",    to: ROUTES.catalogFilter("nuevo") },
   { label: "Descuentos",  to: ROUTES.catalogFilter("descuentos") },
   { label: "Mis pedidos", to: "/my-orders" },
 ];
 
+/**
+ * Footer: poco texto y un cierre con presencia. Las tarifas y los métodos de
+ * pago ya viven en la ficha, el carrito y "Cómo comprar"; aquí basta una línea.
+ * Cierra con una cinta de texto gigante que avanza con el scroll.
+ */
 export default function Footer() {
+  const reduceMotion = useReducedMotion() ?? false;
+
   return (
-    <footer className="w-full bg-ink-950 text-bone">
-      <div className="max-w-[1600px] mx-auto px-6 lg:px-10 py-14">
+    <footer className="relative w-full bg-ink-950 text-bone overflow-hidden">
+      <div className="max-w-[1600px] mx-auto px-5 sm:px-6 lg:px-10 pt-16 sm:pt-20">
 
-        {/* Marca + redes */}
-        <div className="flex items-start justify-between gap-8">
-          <Link to={ROUTES.HOME} aria-label="Dropping CR — inicio" className="shrink-0">
-            <Logo className="h-[30px] sm:h-[34px] w-auto text-bone hover:opacity-70 transition-opacity" />
-          </Link>
-
-          <div className="flex items-center gap-5 pt-0.5">
-            {socialLinks.map(({ label, href, icon }) => (
+        {/* Celular: todo centrado en una columna, con un eje claro.
+            Desktop: frase y contacto a la izquierda, links a la derecha. */}
+        <div className="flex flex-col items-center text-center lg:flex-row lg:items-end lg:justify-between lg:text-left gap-10">
+          {/* Frase + contacto */}
+          <div className="flex flex-col items-center lg:items-start gap-7 max-w-xl w-full">
+            <p className="type-accent text-[clamp(2rem,5vw,3.25rem)] leading-[1.1] text-bone/90 text-balance">
+              Drip is temporary, style is forever.
+            </p>
+            <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
               <motion.a
-                key={label}
-                href={href}
+                href={whatsappUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label={label}
-                className="text-bone/55 hover:text-bone transition-colors"
-                whileHover={{ y: -2 }}
-                transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                className="inline-flex items-center justify-center gap-2.5 h-[52px] w-full max-w-[320px] sm:w-auto px-7
+                           rounded-full bg-bone text-ink-900 font-display uppercase text-[12px] tracking-widest2
+                           hover:bg-white transition-colors"
               >
-                {icon}
+                <WhatsAppIcon size={18} />
+                Escribinos por WhatsApp
               </motion.a>
-            ))}
+              <div className="flex items-center gap-3">
+                {socialLinks.filter((social) => social.label !== "WhatsApp").map(({ label, href, icon }) => (
+                  <motion.a
+                    key={label}
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={label}
+                    whileHover={{ y: -3 }}
+                    className="w-12 h-12 rounded-full border border-bone/20 flex items-center justify-center
+                               text-bone/70 hover:text-bone hover:border-bone/60 transition-colors"
+                  >
+                    {icon}
+                  </motion.a>
+                ))}
+              </div>
+            </div>
           </div>
+
+          {/* Links: grilla 2×2 centrada en celular, una fila en desktop */}
+          <nav className="grid grid-cols-2 gap-x-8 gap-y-1 w-full max-w-[300px] sm:flex sm:w-auto sm:max-w-none sm:gap-8">
+            {LINKS.map(({ label, to }) => (
+              <Link
+                key={label}
+                to={to}
+                className="font-display uppercase text-[13px] tracking-widest2 text-bone/70 hover:text-bone
+                           transition-colors py-2.5 text-center sm:link-underline"
+              >
+                {label}
+              </Link>
+            ))}
+          </nav>
         </div>
 
-        <p className="type-accent text-lg text-bone/60 mt-5 max-w-sm leading-snug">
-          Drip is temporary, style is forever.
-        </p>
-
-        {/* Navegación en una sola línea — el menú completo vive en el header */}
-        <nav className="flex flex-wrap items-center gap-x-6 gap-y-3 mt-10">
-          {navLinks.map(({ label, to }) => (
-            <Link
-              key={label}
-              to={to}
-              className="link-underline font-display uppercase text-[10.5px] tracking-widest2
-                         text-bone/60 hover:text-bone transition-colors"
-            >
-              {label}
-            </Link>
-          ))}
-        </nav>
-
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between
-                        gap-2 border-t border-bone/10 mt-8 pt-6">
-          <p className="type-eyebrow text-bone/30">© {new Date().getFullYear()} Dropping CR</p>
-          <p className="type-eyebrow text-bone/30">Grecia · Costa Rica</p>
+        <div className="flex flex-col items-center gap-5 text-center lg:flex-row lg:justify-between lg:text-left mt-12 pt-7 border-t border-bone/10">
+          <p className="text-[12.5px] leading-relaxed text-bone/50 max-w-[300px] lg:max-w-none">
+            Envíos a todo el país desde {colones(SHIPPING_RATES.MENSAJERO)} · SINPE Móvil · Contra entrega
+          </p>
+          <button
+            onClick={() => window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" })}
+            className="group inline-flex items-center gap-2.5 h-10 pl-4 pr-3 rounded-full border border-bone/15
+                       font-display uppercase text-[11px] tracking-widest2 text-bone/60
+                       hover:text-bone hover:border-bone/40 transition-colors"
+          >
+            Volver arriba
+            <ArrowUp size={14} className="transition-transform duration-300 group-hover:-translate-y-0.5" />
+          </button>
         </div>
+      </div>
+
+      {/* Cierre: cinta de texto gigante que responde al scroll */}
+      <ScrollMarquee
+        words={["Piezas únicas", "Drops limitados", "Grecia CR", "Drip is temporary"]}
+        className="mt-10 text-[clamp(2.25rem,8vw,5.5rem)] border-y border-bone/10 py-2"
+      />
+
+      <div className="relative max-w-[1600px] mx-auto px-5 sm:px-6 lg:px-10 pt-6 pb-7 flex flex-col sm:flex-row items-center sm:justify-between gap-1">
+        <p className="text-[11.5px] text-bone/40">© {new Date().getFullYear()} Dropping CR</p>
+        <p className="text-[11.5px] text-bone/40">Hecho en Grecia, Costa Rica</p>
       </div>
     </footer>
   );

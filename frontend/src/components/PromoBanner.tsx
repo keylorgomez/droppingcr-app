@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { X, ArrowRight } from "lucide-react";
 import { FEATURES } from "../constants/featureFlags";
 import { ROUTES } from "../constants/app";
@@ -61,6 +61,9 @@ export default function PromoBanner({ maxDiscountPercent, suppressed = false }: 
       if (done) return;
       done = true;
       setEntered(true);
+      // Una vez por sesión aunque no lo cierren: perseguir a alguien página
+      // tras página con el mismo aviso cansa más de lo que vende.
+      sessionStorage.setItem(SESSION_KEY, "1");
       window.removeEventListener("scroll", onScroll);
       clearTimeout(timer);
     };
@@ -100,10 +103,33 @@ export default function PromoBanner({ maxDiscountPercent, suppressed = false }: 
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 40, opacity: 0 }}
           transition={{ duration: reduceMotion ? 0.3 : 0.62, ease: [0.16, 1, 0.3, 1] }}
-          className="fixed z-40 left-4 right-4 bottom-4 max-w-[320px] mx-auto sm:mx-0 sm:left-auto sm:right-6 sm:bottom-6 sm:w-[286px]
+          className="fixed z-40 left-3 right-3 bottom-3 sm:left-auto sm:right-6 sm:bottom-6 sm:w-[286px]
                      rounded-card bg-ink-950 text-bone border border-bone/15
-                     px-5 pt-4 pb-5 shadow-lift"
+                     px-4 py-3 sm:px-5 sm:pt-4 sm:pb-5 shadow-lift"
         >
+          {/* Celular: una sola franja. La tarjeta grande tapaba ~40% de la
+              pantalla, justo encima del precio de la pieza destacada. */}
+          <div className="sm:hidden flex items-center gap-3">
+            <button type="button" onClick={goToPromos} className="flex-1 min-w-0 flex items-center gap-2.5 text-left">
+              <span className="flex flex-col min-w-0">
+                <span className="type-eyebrow text-bone/55 leading-tight">{t.promoBanner.tag}</span>
+                <span className="text-[12.5px] text-bone/85 leading-tight truncate">
+                  Hasta {maxDiscountPercent}% de descuento · {t.promoBanner.cta}
+                </span>
+              </span>
+              <ArrowRight size={16} strokeWidth={2} className="ml-auto shrink-0" />
+            </button>
+            <button
+              type="button"
+              onClick={dismiss}
+              className="w-9 h-9 -mr-1.5 flex items-center justify-center text-bone/55 hover:text-bone shrink-0"
+              aria-label={t.actions.close}
+            >
+              <X size={16} strokeWidth={2} />
+            </button>
+          </div>
+
+          <div className="hidden sm:block">
           <div className="flex items-start justify-between mb-4">
             <span className="type-eyebrow text-bone/50">{t.promoBanner.tag}</span>
             <button
@@ -148,6 +174,7 @@ export default function PromoBanner({ maxDiscountPercent, suppressed = false }: 
             {t.promoBanner.cta}
             <ArrowRight size={11} strokeWidth={2.4} />
           </button>
+          </div>
         </motion.div>
       )}
     </AnimatePresence>

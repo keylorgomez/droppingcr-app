@@ -27,6 +27,17 @@
   h1, h2, h3, h4, h5, h6 {
     font-weight: 600;
     letter-spacing: -0.02em;
+    /* Renglones parejos: evita un título de 3 palabras + 1 sola abajo */
+    text-wrap: balance;
+  }
+
+  /* Párrafos sin viudas (una palabra sola en el último renglón) */
+  p, li {
+    text-wrap: pretty;
+  }
+
+  body {
+    text-rendering: optimizeLegibility;
   }
 
   /* Los precios y cualquier cifra se alinean en columna */
@@ -62,8 +73,10 @@
   }
 
   /* Eyebrow: la etiqueta chiquita que abre cada sección */
+  /* 11.5px en celular: a 11px el Anton condensado con tracking ancho se
+     empastaba en pantallas de baja densidad. */
   .type-eyebrow {
-    @apply font-display uppercase text-[11px] leading-none tracking-widest2;
+    @apply font-display uppercase text-[11.5px] sm:text-[11px] leading-none tracking-widest2;
   }
 
   /* Frase-acento editorial */

@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { ArrowUpRight } from "lucide-react";
 import { cloudinaryUrl } from "../../lib/cloudinary";
 import { ROUTES } from "../../constants/app";
@@ -49,7 +49,7 @@ export default function CategoryTiles({ categories }: CategoryTilesProps) {
                     {cat.name}
                   </h3>
                   <p className="type-eyebrow text-bone/50 mt-2">
-                    {cat.count} {cat.count === 1 ? "pieza" : "piezas"}
+                    {cat.count} {cat.count === 1 ? "disponible" : "disponibles"}
                   </p>
                 </div>
                 <motion.span

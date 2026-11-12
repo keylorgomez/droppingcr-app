@@ -1,17 +1,20 @@
+import { usePaged } from "../../lib/usePaged";
+import ShowMore from "../../components/ui/ShowMore";
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Plus, Wallet, TrendingUp, Coins, Loader2, X, ChevronDown, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../components/ui/Toast";
 import Header from "../../components/ui/Header";
 import {
   getAllPayouts, getAdminUsers, createPayout,
-  getAllTimeNetProfit, getTotalDistributed,
   type AdminPayout, type AdminUser,
 } from "../../services/payoutsService";
 import { fmt, formatDate } from "../../lib/formatters";
+import { getFinanceSummary, periodRange } from "../../services/analyticsService";
+import { PAYOUT_SHARE, PAYOUT_SHARE_LABEL } from "../../config/finance";
 import { QUERY_KEYS } from "../../constants/queryKeys";
 
 // ── Summary card ───────────────────────────────────────────────────────────
@@ -59,7 +62,10 @@ function PayoutModal({
   onClose,
   onSave,
   saving,
+  allowed,
 }: {
+  /** Lo que se puede repartir hoy respetando el 60/40 y la plata cobrada. */
+  allowed: number;
   admins:  AdminUser[];
   onClose: () => void;
   onSave:  (recipientId: string, amount: number, note: string) => void;
@@ -152,6 +158,13 @@ function PayoutModal({
                          focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20
                          transition"
             />
+            {Number(amount) > allowed && (
+              <p className="text-[11px] text-red-600 leading-snug">
+                {allowed > 0
+                  ? `Supera lo que pueden repartir hoy (${fmt(allowed)}). Se puede registrar, pero el negocio queda por debajo del 40% de reserva.`
+                  : "Hoy no hay margen para repartir sin bajar la reserva del 40%. Se puede registrar igual."}
+              </p>
+            )}
           </div>
 
           {/* Note */}
@@ -234,8 +247,8 @@ function DistributionTracker({
   netProfit:        number;
   totalDistributed: number;
 }) {
-  const target      = netProfit * 0.6;
-  const fundNegocio = netProfit * 0.4;
+  const target      = Math.round(netProfit * PAYOUT_SHARE);
+  const fundNegocio = Math.round(netProfit * (1 - PAYOUT_SHARE));
   const progress    = target > 0 ? (totalDistributed / target) * 100 : 0;
   const remaining   = target - totalDistributed;
   const exceeded    = totalDistributed > target;
@@ -292,7 +305,7 @@ function DistributionTracker({
             Control de distribución
           </p>
           <p className="text-xs text-ink-400 mt-0.5">
-            60% distribuible · 40% fondo del negocio
+            {PAYOUT_SHARE_LABEL}
           </p>
         </div>
         <span className={`flex items-center gap-1.5 shrink-0 text-[10px] font-bold uppercase
@@ -306,7 +319,7 @@ function DistributionTracker({
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-white/60 rounded-xl px-3.5 py-3 flex flex-col gap-0.5">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-400">
-            60% distribuible
+            {Math.round(PAYOUT_SHARE * 100)}% distribuible
           </p>
           <p className={`text-lg font-bold leading-tight ${t.textCls}`}>
             {fmt(target)}
@@ -317,7 +330,7 @@ function DistributionTracker({
         </div>
         <div className="bg-white/60 rounded-xl px-3.5 py-3 flex flex-col gap-0.5">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-400">
-            40% fondo negocio
+            {Math.round((1 - PAYOUT_SHARE) * 100)}% fondo negocio
           </p>
           <p className="text-lg font-bold text-brand-dark leading-tight">
             {fmt(fundNegocio)}
@@ -410,17 +423,32 @@ export default function PayoutsPage() {
     queryFn:  getAdminUsers,
   });
 
-  const { data: netProfit = 0, isLoading: loadingProfit } = useQuery({
-    queryKey: QUERY_KEYS.NET_PROFIT_ALL,
-    queryFn:  getAllTimeNetProfit,
+  // Utilidad neta = margen − gastos operativos (la compra de mercadería ya
+  // está en el costo). Disponible = eso − lo que falta cobrar − lo repartido.
+  const { data: finance, isLoading: loadingFinance } = useQuery({
+    queryKey: QUERY_KEYS.FINANCE_SUMMARY("all"),
+    queryFn:  () => getFinanceSummary(periodRange("all")),
   });
 
-  const { data: totalDistributed = 0, isLoading: loadingDistributed } = useQuery({
-    queryKey: QUERY_KEYS.TOTAL_DISTRIBUTED,
-    queryFn:  getTotalDistributed,
-  });
-
-  const available = Math.max(0, netProfit - totalDistributed);
+  const loadingProfit      = loadingFinance;
+  const loadingDistributed = loadingFinance;
+  const netProfit          = finance?.all_time_net ?? 0;
+  const totalDistributed   = finance?.distributed  ?? 0;
+  const receivables        = finance?.receivables  ?? 0;
+  // Caja del negocio: toda la ganancia cobrada que no se ha repartido.
+  const cash               = finance?.available    ?? 0;
+  // Lo que todavía permite la regla 60/40 sobre la utilidad.
+  const ruleRemaining      = Math.round(netProfit * PAYOUT_SHARE) - totalDistributed;
+  // Lo que se puede repartir hoy: lo que permite la regla, pero nunca más de
+  // lo que hay en caja (lo que falta cobrar no se puede repartir).
+  const canDistribute      = Math.max(0, Math.min(ruleRemaining, cash));
+  const perAdmin           = admins.length > 0 ? Math.floor(canDistribute / admins.length) : 0;
+  const limitReason        =
+    ruleRemaining <= 0
+      ? `Ya repartieron ${fmt(-ruleRemaining)} por encima del ${Math.round(PAYOUT_SHARE * 100)}%. Se libera con ventas nuevas.`
+      : cash < ruleRemaining
+        ? `La regla permite ${fmt(ruleRemaining)}, pero falta cobrar: al entrar lo pendiente se libera más.`
+        : `Dentro de la regla ${Math.round(PAYOUT_SHARE * 100)}/${Math.round((1 - PAYOUT_SHARE) * 100)} y con plata en caja.`;
 
   const saveMutation = useMutation({
     mutationFn: ({ recipientId, amount, note }: {
@@ -428,7 +456,7 @@ export default function PayoutsPage() {
     }) => createPayout(recipientId, amount, note || null, user!.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ADMIN_PAYOUTS });
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.TOTAL_DISTRIBUTED });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.FINANCE });
       setModalOpen(false);
       showToast("Abono registrado correctamente.", "success");
     },
@@ -443,6 +471,9 @@ export default function PayoutsPage() {
 
   const filteredTotal = filtered.reduce((s, p) => s + p.amount, 0);
 
+
+  // Se dibujan de a 20: con cientos de filas el celular se trababa.
+  const paged = usePaged(filtered, filterAdmin);
   return (
     <>
       <Header />
@@ -466,13 +497,35 @@ export default function PayoutsPage() {
           </p>
         </div>
 
+        {/* Lo que importa al abrir esta pantalla: cuánto se puede repartir hoy */}
+        {!loadingFinance && (
+          <div className={`rounded-2xl border p-5 mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 ${
+            canDistribute > 0 ? "bg-green-50 border-green-200 text-green-800" : "bg-ink-50 border-ink-200 text-ink-800"
+          }`}>
+            <div className="flex flex-col gap-1">
+              <span className="text-xs font-semibold uppercase tracking-wider opacity-70">Pueden repartir hoy</span>
+              <span className="text-3xl font-bold leading-none tnum">{fmt(canDistribute)}</span>
+              <span className="text-[12px] opacity-75">{limitReason}</span>
+            </div>
+            {canDistribute > 0 && admins.length > 1 && (
+              <span className="text-sm font-medium opacity-80 tnum">≈ {fmt(perAdmin)} por admin</span>
+            )}
+          </div>
+        )}
+
         {/* Summary cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
           <SummaryCard
-            label="Ganancia neta"
+            label="Utilidad neta"
             value={loadingProfit ? "…" : fmt(netProfit)}
-            sub="Acumulada — ventas no canceladas"
+            sub="Margen − gastos operativos"
             color="green"
+          />
+          <SummaryCard
+            label="Por cobrar"
+            value={loadingFinance ? "…" : fmt(receivables)}
+            sub="Aún no es dinero en caja"
+            color="orange"
           />
           <SummaryCard
             label="Total distribuido"
@@ -481,9 +534,9 @@ export default function PayoutsPage() {
             color="orange"
           />
           <SummaryCard
-            label="Disponible"
-            value={(loadingProfit || loadingDistributed) ? "…" : fmt(available)}
-            sub="Ganancia − distribuido"
+            label="Caja del negocio"
+            value={loadingFinance ? "…" : fmt(cash)}
+            sub="Ganancia cobrada que no se ha repartido"
             color="blue"
           />
         </div>
@@ -576,7 +629,7 @@ export default function PayoutsPage() {
                 </tr>
               )}
 
-              {!loadingPayouts && filtered.map((p) => (
+              {!loadingPayouts && paged.visible.map((p) => (
                 <tr key={p.id} className="border-t border-ink-50 hover:bg-ink-50/60 transition-colors">
                   <td className="px-4 py-3 text-ink-500 whitespace-nowrap text-xs">
                     {formatDate(p.paid_at)}
@@ -597,6 +650,10 @@ export default function PayoutsPage() {
               ))}
             </tbody>
           </table>
+
+          <div className="px-4 pb-3">
+            <ShowMore remaining={paged.remaining} pageSize={paged.pageSize} onClick={paged.showMore} />
+          </div>
 
           {/* Footer */}
           {filtered.length > 0 && (
@@ -625,6 +682,7 @@ export default function PayoutsPage() {
                   : []
             }
             saving={saveMutation.isPending}
+            allowed={canDistribute}
             onClose={() => setModalOpen(false)}
             onSave={(recipientId, amount, note) =>
               saveMutation.mutate({ recipientId, amount, note })

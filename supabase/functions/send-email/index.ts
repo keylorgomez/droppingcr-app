@@ -1,11 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+import { corsFor, escapeHtml, getCaller } from "../_shared/auth.ts";
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 
@@ -43,7 +38,7 @@ function welcomeHtml(firstName: string): string {
         <tr>
           <td style="background:#ffffff;padding:40px 40px 32px;">
             <p style="margin:0 0 6px;font-size:12px;color:#aaa;text-transform:uppercase;letter-spacing:0.12em;">Bienvenido/a</p>
-            <h1 style="margin:0 0 22px;font-size:26px;font-weight:700;color:#0a0a0a;line-height:1.2;">Hola, ${firstName} 👋</h1>
+            <h1 style="margin:0 0 22px;font-size:26px;font-weight:700;color:#0a0a0a;line-height:1.2;">Hola, ${escapeHtml(firstName)} 👋</h1>
             <p style="margin:0 0 14px;font-size:15px;color:#555;line-height:1.75;">
               Tu cuenta en <strong style="color:#0a0a0a;">Dropping CR</strong> está lista.
               Ya podés guardar tus favoritos y ver el estado de tus pedidos directo desde tu perfil.
@@ -97,8 +92,8 @@ function orderHtml(
       (item) => `
       <tr>
         <td style="padding:14px 0;border-bottom:1px solid #f0f0f0;vertical-align:top;">
-          <p style="margin:0;font-size:14px;font-weight:600;color:#0a0a0a;">${item.product_name}</p>
-          <p style="margin:4px 0 0;font-size:12px;color:#999;">Talla: ${item.variant_size} &nbsp;·&nbsp; Cant: ${item.quantity}</p>
+          <p style="margin:0;font-size:14px;font-weight:600;color:#0a0a0a;">${escapeHtml(item.product_name)}</p>
+          <p style="margin:4px 0 0;font-size:12px;color:#999;">Talla: ${escapeHtml(item.variant_size)} &nbsp;·&nbsp; Cant: ${escapeHtml(item.quantity)}</p>
         </td>
         <td style="padding:14px 0;border-bottom:1px solid #f0f0f0;text-align:right;vertical-align:top;
                    font-size:14px;font-weight:600;color:#0a0a0a;white-space:nowrap;">
@@ -141,7 +136,7 @@ function orderHtml(
         <tr>
           <td style="background:#ffffff;padding:36px 40px 0;">
             <p style="margin:0 0 4px;font-size:12px;color:#aaa;text-transform:uppercase;letter-spacing:0.12em;">¡Gracias por tu compra!</p>
-            <h1 style="margin:0 0 28px;font-size:22px;font-weight:700;color:#0a0a0a;">${name}</h1>
+            <h1 style="margin:0 0 28px;font-size:22px;font-weight:700;color:#0a0a0a;">${escapeHtml(name)}</h1>
 
             <!-- Items -->
             <table width="100%" cellpadding="0" cellspacing="0">
@@ -217,7 +212,7 @@ function paymentReceiptHtml(
         <tr>
           <td style="background:#ffffff;padding:36px 40px 32px;">
             <p style="margin:0 0 4px;font-size:12px;color:#aaa;text-transform:uppercase;letter-spacing:0.12em;">Hola,</p>
-            <h1 style="margin:0 0 24px;font-size:22px;font-weight:700;color:#0a0a0a;">${name} 👋</h1>
+            <h1 style="margin:0 0 24px;font-size:22px;font-weight:700;color:#0a0a0a;">${escapeHtml(name)} 👋</h1>
 
             <p style="margin:0 0 24px;font-size:15px;color:#555;line-height:1.75;">
               Registramos un abono a tu cuenta. Acá te dejamos el resumen:
@@ -251,7 +246,7 @@ function paymentReceiptHtml(
             ${note ? `
             <div style="margin-top:20px;background:#f5f4f2;border-radius:10px;padding:14px 18px;">
               <p style="margin:0;font-size:13px;color:#4a4a4a;line-height:1.65;">
-                📝 Nota: ${note}
+                📝 Nota: ${escapeHtml(note)}
               </p>
             </div>` : ""}
 
@@ -282,12 +277,24 @@ function paymentReceiptHtml(
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 serve(async (req) => {
+  const corsHeaders = corsFor(req);
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
+  const forbidden = () => new Response(JSON.stringify({ error: "No autorizado" }), {
+    status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+
   try {
     const { type, data } = await req.json();
+
+    // Bienvenida: solo a la propia cuenta de quien llama. Pedido y abono: solo
+    // admins (son los que registran ventas). Antes cualquiera con la llave
+    // pública podía mandar correos "de Dropping CR" a cualquier dirección.
+    const caller = await getCaller(req);
+    if (!caller) return forbidden();
+    if (type !== "welcome" && !caller.isAdmin) return forbidden();
 
     const resendKey  = Deno.env.get("RESEND_API_KEY");
     const fromEmail  = Deno.env.get("RESEND_FROM_EMAIL") ?? "Dropping CR <noreply@droppingcr.com>";
@@ -300,7 +307,7 @@ serve(async (req) => {
 
     // ── Welcome ──────────────────────────────────────────────────────────────
     if (type === "welcome") {
-      toEmail = data.email;
+      toEmail = caller.email;
       subject = "¡Bienvenido/a a Dropping CR! 🔥";
       html    = welcomeHtml(data.first_name ?? "");
 

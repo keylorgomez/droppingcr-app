@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { deliveryStatusMeta } from "../../services/salesService";
 import { formatDate, formatTime } from "../../lib/formatters";

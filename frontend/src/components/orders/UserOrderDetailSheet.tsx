@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { X, Truck, MapPin, Package, ExternalLink } from "lucide-react";
 import { deliveryStatusMeta, type UserOrder } from "../../services/salesService";
 import { fmt, formatDate } from "../../lib/formatters";

@@ -1,0 +1,17 @@
+# https://droppingcr.com
+User-agent: *
+Allow: /
+
+# El backoffice no tiene nada que hacer en un índice de búsqueda.
+Disallow: /admin/
+Disallow: /carrito
+Disallow: /profile
+Disallow: /my-orders
+Disallow: /reset-password
+
+# Los filtros de búsqueda generan infinitas combinaciones de la misma grilla.
+# Las categorías (?filter=) sí son páginas con sentido propio y quedan abiertas.
+Disallow: /*?*q=
+Disallow: /*?*tallas=
+
+Sitemap: https://droppingcr.com/sitemap.xml

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { ShoppingBag, ArrowLeft } from "lucide-react";
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence } from "motion/react";
 import Header from "../components/ui/Header";
 import { useAuth } from "../context/AuthContext";
 import { claimOrders, getUserOrders, type UserOrder } from "../services/salesService";
@@ -12,7 +12,7 @@ import { OrderSkeleton, OrderCard } from "../components/orders/UserOrderCard";
 import { OrderDetailSheet } from "../components/orders/UserOrderDetailSheet";
 
 export default function MyOrdersPage() {
-  const { user }    = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const navigate    = useNavigate();
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState<UserOrder | null>(null);
@@ -41,9 +41,11 @@ export default function MyOrdersPage() {
     refetchOnMount: true,
   });
 
+  // La app ya no espera la sesión para pintar: solo redirigir cuando terminó
+  // de cargar y de verdad no hay usuario.
   useEffect(() => {
-    if (!user) navigate("/");
-  }, [user, navigate]);
+    if (!authLoading && !user) navigate("/");
+  }, [authLoading, user, navigate]);
 
   const pending   = orders.filter((o) => o.status === "pending");
   const completed = orders.filter((o) => o.status === "completed");

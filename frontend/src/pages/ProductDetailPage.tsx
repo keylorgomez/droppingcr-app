@@ -2,13 +2,14 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, ShoppingBag, Pencil, X, ChevronLeft, ChevronRight, Plus, Minus } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { cloudinaryUrl } from "../lib/cloudinary";
 import { getProducts, getProductBySlug, type ProductDetail, type CatalogProduct } from "../services/productService";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 import { trackViewItem } from "../lib/analytics";
 import Header from "../components/ui/Header";
+import WhatsAppIcon from "../components/ui/WhatsAppIcon";
 import ProductCard from "../components/catalog/ProductCard";
 import Reveal from "../components/ui/Reveal";
 import SectionHeading from "../components/home/SectionHeading";
@@ -16,19 +17,14 @@ import { CLOTHING_SIZES } from "../constants/domain";
 import { QUERY_KEYS } from "../constants/queryKeys";
 import { STORE_WHATSAPP, ROUTES } from "../constants/app";
 import { cn } from "../lib/utils";
+import { useSeo, productJsonLd, breadcrumbJsonLd } from "../lib/seo";
 import { discountedPrice } from "../lib/formatters";
+import { SHIPPING_RATES } from "../config/shipping";
+import { SINPE_MOVIL } from "../config/payments";
+
+const colones = (amount: number) => `₡${amount.toLocaleString("en-US")}`;
 
 const RELATED_COUNT = 4;
-
-// ── WhatsApp icon ──────────────────────────────────────────────────────────
-function WhatsAppIcon({ size = 18 }: { size?: number }) {
-  return (
-    <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor" aria-hidden="true">
-      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
-      <path d="M12 0C5.373 0 0 5.373 0 12c0 2.125.557 4.126 1.528 5.858L.057 23.428a.75.75 0 0 0 .921.921l5.57-1.471A11.943 11.943 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.907 0-3.698-.511-5.238-1.4l-.374-.22-3.875 1.023 1.023-3.762-.234-.386A9.953 9.953 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z" />
-    </svg>
-  );
-}
 
 // ── Skeleton ───────────────────────────────────────────────────────────────
 function Skeleton({ className }: { className?: string }) {
@@ -254,7 +250,23 @@ function ProductContent({ product }: { product: ProductDetail }) {
     b.is_primary === a.is_primary ? 0 : b.is_primary ? 1 : -1
   );
 
-  const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  // Con una sola talla disponible no tiene sentido hacer elegir: va marcada.
+  const [selectedSize, setSelectedSize] = useState<string | null>(() => {
+    const available = [...new Set(product.variants.filter((v) => v.stock > 0).map((v) => v.size))];
+    return available.length === 1 ? available[0] : null;
+  });
+
+  // Barra de compra fija en celular: aparece cuando los botones principales
+  // salen de pantalla, así la compra está siempre a un toque.
+  const actionsRef = useRef<HTMLDivElement>(null);
+  const [actionsVisible, setActionsVisible] = useState(true);
+  useEffect(() => {
+    const node = actionsRef.current;
+    if (!node) return;
+    const observer = new IntersectionObserver(([entry]) => setActionsVisible(entry.isIntersecting));
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
 
   const hasDiscount = product.discount_percentage > 0;
   const finalPrice = discountedPrice(product.price_sale, product.discount_percentage);
@@ -287,9 +299,53 @@ function ProductContent({ product }: { product: ProductDetail }) {
   const isSoldOut = product.variants.every((v) => v.stock === 0);
   const lowStock  = selectedSize ? stockBySize[selectedSize] : 0;
 
+  // Mientras se ve la barra fija, la página crece lo que mide la barra para
+  // que no tape el final del footer.
+  const stickyBarShown = !actionsVisible && !isSoldOut;
+  useEffect(() => {
+    if (!stickyBarShown || window.matchMedia("(min-width: 1024px)").matches) return;
+    document.body.style.paddingBottom = "84px";
+    return () => { document.body.style.paddingBottom = ""; };
+  }, [stickyBarShown]);
+
+  const categoryName = product.categories[0]?.name ?? null;
+
+  // Sin esto las fichas comparten título y descripción, y Google no tiene por
+  // qué posicionar una sobre otra. El JSON-LD es lo que además habilita que
+  // muestre precio y disponibilidad en el resultado.
+  useSeo({
+    title: categoryName ? `${product.name} — ${categoryName}` : product.name,
+    description:
+      product.description?.trim() ||
+      `${product.name}${categoryName ? ` (${categoryName})` : ""} por ₡${finalPrice.toLocaleString("en-US")}` +
+      `${sizes.length ? `. Tallas ${sizes.join(", ")}` : ""}. Envíos a todo Costa Rica.`,
+    path:  ROUTES.PRODUCT(product.slug),
+    image: sortedImages[0] ? cloudinaryUrl(sortedImages[0].image_url, "medium") : undefined,
+    type:  "product",
+    jsonLd: [
+      productJsonLd({
+        name:        product.name,
+        description: product.description,
+        slug:        product.slug,
+        price:       finalPrice,
+        images:      sortedImages.map((img) => cloudinaryUrl(img.image_url, "full")),
+        inStock:     !isSoldOut,
+        category:    categoryName,
+      }),
+      breadcrumbJsonLd([
+        { name: "Inicio",   path: ROUTES.HOME },
+        { name: "Catálogo", path: ROUTES.CATALOG },
+        ...(categoryName ? [{ name: categoryName, path: ROUTES.catalogFilter(product.categories[0].slug) }] : []),
+        { name: product.name, path: ROUTES.PRODUCT(product.slug) },
+      ]),
+    ],
+  });
+
   async function handleAddToCart() {
     if (!selectedSize) {
       setSizeError(true);
+      // Desde la barra fija, llevar a la persona a elegir la talla.
+      actionsRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
     setSizeError(false);
@@ -313,7 +369,7 @@ function ProductContent({ product }: { product: ProductDetail }) {
   }
 
   const whatsappBuyUrl = `https://wa.me/${STORE_WHATSAPP}?text=${encodeURIComponent(
-    `Hola! Me interesa el producto: ${product.name} (${window.location.href})`
+    `Hola! Me interesa ${product.name}${selectedSize ? ` en talla ${selectedSize}` : ""} (${colones(finalPrice)}). ${window.location.href}`
   )}`;
 
   const whatsappQuoteUrl = `https://wa.me/${STORE_WHATSAPP}?text=${encodeURIComponent(
@@ -341,7 +397,7 @@ function ProductContent({ product }: { product: ProductDetail }) {
     <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 pt-6 pb-20">
 
       {/* ── Migas + admin ─────────────────────────────────────────── */}
-      <div className="flex items-center justify-between gap-4 mb-8">
+      <div className="flex items-center justify-between gap-4 mb-4 lg:mb-8">
         <button
           onClick={goBackToCatalog}
           className="group flex items-center gap-2 type-eyebrow text-ink-400 hover:text-ink-900 transition-colors"
@@ -367,13 +423,21 @@ function ProductContent({ product }: { product: ProductDetail }) {
 
         {/* ── Galería ───────────────────────────────────────────────── */}
         <div>
-          {/* Desktop: columna apilada, se lee como un lookbook */}
-          <div className="hidden lg:flex flex-col gap-3">
+          {/* Desktop: la principal grande y el resto en dos columnas. Apiladas
+              una tras otra a todo el ancho obligaban a bajar una pantalla por foto. */}
+          <div className="hidden lg:grid grid-cols-2 gap-3">
             {sortedImages.map((img, i) => (
-              <button
+              <motion.button
                 key={img.id}
                 onClick={() => openZoom(i)}
-                className="relative w-full aspect-[4/5] overflow-hidden rounded-card bg-ink-50 cursor-zoom-in group"
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "120px" }}
+                transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1], delay: i === 0 ? 0 : 0.06 * (i % 2) }}
+                className={cn(
+                  "relative w-full aspect-[4/5] overflow-hidden rounded-card bg-ink-50 cursor-zoom-in group",
+                  i === 0 && "col-span-2"
+                )}
               >
                 <img
                   src={cloudinaryUrl(img.image_url, "full")}
@@ -381,24 +445,32 @@ function ProductContent({ product }: { product: ProductDetail }) {
                   loading={i === 0 ? "eager" : "lazy"}
                   className="absolute inset-0 w-full h-full object-cover transition-transform duration-[900ms] ease-drop group-hover:scale-[1.03]"
                 />
-              </button>
+              </motion.button>
             ))}
           </div>
 
-          {/* Mobile: carrusel con scroll-snap */}
+          {/* Mobile: carrusel más bajo que deja asomar la siguiente foto. A todo
+              el ancho la foto medía 125% del ancho de pantalla y el nombre y el
+              precio quedaban debajo del pliegue en celulares chicos. */}
           <div className="lg:hidden -mx-4 sm:-mx-6">
             <div
-              className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar"
+              className="flex gap-2.5 overflow-x-auto snap-x snap-mandatory no-scrollbar px-4 sm:px-6 scroll-px-4"
               onScroll={(e) => {
-                const el = e.currentTarget;
-                setMobileImg(Math.round(el.scrollLeft / el.clientWidth));
+                const el    = e.currentTarget;
+                const slide = el.firstElementChild as HTMLElement | null;
+                const step  = slide ? slide.offsetWidth + 10 : el.clientWidth;
+                setMobileImg(Math.round(el.scrollLeft / step));
               }}
             >
               {sortedImages.map((img, i) => (
                 <button
                   key={img.id}
                   onClick={() => openZoom(i)}
-                  className="relative shrink-0 w-screen aspect-[4/5] snap-center bg-ink-50"
+                  className={cn(
+                    "relative shrink-0 snap-start overflow-hidden rounded-card bg-ink-50",
+                    "h-[min(100vw,58svh)] aspect-[4/5]",
+                    sortedImages.length === 1 && "w-full aspect-auto"
+                  )}
                 >
                   <img
                     src={cloudinaryUrl(img.image_url, "full")}
@@ -471,6 +543,12 @@ function ProductContent({ product }: { product: ProductDetail }) {
             )}
           </div>
 
+          {/* Lo que más se pregunta antes de comprar, sin abrir nada */}
+          <ul className="mt-4 flex flex-col gap-1 text-[12.5px] text-ink-500">
+            <li>Envío a todo el país desde {colones(SHIPPING_RATES.MENSAJERO)}</li>
+            <li>Pagá por SINPE Móvil, transferencia o contra entrega</li>
+          </ul>
+
           {product.description && (
             <p className="text-[13.5px] leading-relaxed text-ink-500 mt-7 max-w-prose">
               {product.description}
@@ -530,14 +608,16 @@ function ProductContent({ product }: { product: ProductDetail }) {
 
               {selectedSize && lowStock > 0 && lowStock <= 2 && (
                 <p className="type-eyebrow text-ink-500 mt-3">
-                  Última{lowStock === 1 ? "" : "s"} {lowStock} en talla {selectedSize}
+                  {lowStock === 1
+                    ? `Queda solo 1 en talla ${selectedSize}`
+                    : `Quedan solo ${lowStock} en talla ${selectedSize}`}
                 </p>
               )}
             </div>
           )}
 
           {/* Acciones */}
-          <div className="flex flex-col gap-2.5 mt-9">
+          <div ref={actionsRef} className="flex flex-col gap-2.5 mt-9">
             {isSoldOut ? (
               <>
                 <p className="type-eyebrow text-ink-400 text-center pb-1">
@@ -581,13 +661,14 @@ function ProductContent({ product }: { product: ProductDetail }) {
           {/* Información */}
           <div className="mt-12">
             <InfoRow title="Envíos y entrega">
-              Enviamos a todo el país por Correos de Costa Rica con número de guía.
-              También coordinamos entrega en Grecia. El costo del envío se confirma
-              al cerrar el pedido por WhatsApp.
+              Mensajero privado en zonas de cobertura: {colones(SHIPPING_RATES.MENSAJERO)}.
+              Correos de Costa Rica con número de guía: {colones(SHIPPING_RATES.CORREOS_GAM)} dentro
+              del GAM y {colones(SHIPPING_RATES.CORREOS_FUERA_GAM)} fuera del GAM. Entrega personal
+              gratis en Grecia.
             </InfoRow>
             <InfoRow title="Formas de pago">
-              SINPE Móvil, transferencia bancaria o efectivo contra entrega.
-              El pago se coordina directamente con nosotros después de hacer el pedido.
+              SINPE Móvil al {SINPE_MOVIL.phone}, transferencia bancaria o efectivo
+              contra entrega. También podés apartar la pieza con un abono.
             </InfoRow>
             <InfoRow title="Estado de la pieza">
               Cada prenda se revisa antes de publicarse. Si una pieza tiene algún
@@ -597,13 +678,54 @@ function ProductContent({ product }: { product: ProductDetail }) {
           </div>
         </div>
       </div>
+
+      {/* ── Barra de compra fija (solo celular) ──────────────────── */}
+      <AnimatePresence>
+        {stickyBarShown && (
+          <motion.div
+            initial={{ y: "110%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "110%" }}
+            transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+            className="lg:hidden fixed inset-x-0 bottom-0 z-40 bg-bone/95 backdrop-blur-xl
+                       border-t border-ink-200 px-4 pt-3 pb-[max(12px,env(safe-area-inset-bottom))]"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex flex-col min-w-0 flex-1">
+                <span className="text-[12px] text-ink-500 truncate">
+                  {selectedSize ? `Talla ${selectedSize}` : product.name}
+                </span>
+                <span className={cn("text-[17px] font-semibold tnum leading-tight", hasDiscount ? "text-sale" : "text-ink-900")}>
+                  {colones(finalPrice)}
+                </span>
+              </div>
+              <a
+                href={whatsappBuyUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Comprar por WhatsApp"
+                className="w-12 h-12 shrink-0 rounded-btn border border-ink-900 flex items-center justify-center text-ink-900"
+              >
+                <WhatsAppIcon size={20} />
+              </a>
+              <button
+                onClick={handleAddToCart}
+                disabled={addingToCart}
+                className="btn-ink h-12 px-5 shrink-0"
+              >
+                <ShoppingBag size={16} strokeWidth={1.8} />
+                {addingToCart ? "Agregando…" : selectedSize ? "Añadir" : "Elegir talla"}
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
 // ── Relacionados ───────────────────────────────────────────────────────────
 function RelatedProducts({ product }: { product: ProductDetail }) {
-  const navigate = useNavigate();
   const { user } = useAuth();
   const isAdmin  = user?.role === "admin";
 
@@ -643,7 +765,8 @@ function RelatedProducts({ product }: { product: ProductDetail }) {
             discount_percentage={p.discount_percentage}
             is_sold_out={p.is_sold_out}
             is_reserved={p.is_reserved}
-            onClick={() => navigate(ROUTES.PRODUCT(p.slug))}
+            sizes={p.sizes}
+            href={ROUTES.PRODUCT(p.slug)}
           />
         ))}
       </div>

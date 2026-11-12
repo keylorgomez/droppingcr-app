@@ -239,11 +239,46 @@ cart_items ──> profiles, product_variants
 
 ### Flujo de una venta
 1. Admin registra venta (SaleModal o NewOrderModal)
-2. Se llama `decrement_variant_stock()` via Supabase RPC
-3. Se crea registro en `sales` o `orders` + `order_items`
-4. Si hay datos de cliente registrado, se envía email de confirmación
-5. Se invalida `QUERY_KEYS.SALES` / `QUERY_KEYS.ORDERS` en React Query
-6. El dashboard recalcula automáticamente al recargar
+2. Se llama **una sola** RPC transaccional: `record_sale(p)` o `record_order(p)`.
+   Baja el stock (falla si no alcanza), crea la venta/pedido, marca el apartado y
+   registra el pago inicial: todo o nada. No volver a encadenar inserts sueltos
+   desde el navegador.
+3. Si hay datos de cliente registrado, se envía email de confirmación
+4. Se invalida `QUERY_KEYS.FINANCE` (dashboard + ganancias) y la lista correspondiente
+
+### Dinero: una sola fórmula, en la base
+Todos los montos del dashboard y de Ganancias salen de `finance_summary()`,
+`top_products()` y `daily_sales()` sobre la vista `sale_lines` (ventas + pedidos +
+externas, sin canceladas, **sin envío**: el envío es dinero de paso al courier).
+- `sales.sale_price` y `sales.cost_price` son **totales de la línea**; en
+  `order_items` son **unitarios** (× quantity).
+- Gastos: `expenses.kind` = `inventory` (compra de mercadería, ya está en el costo:
+  no resta) u `operating` (sí resta).
+- Utilidad neta = margen bruto − gastos operativos.
+- Caja del negocio = utilidad neta − por cobrar − ya repartido.
+- Pueden repartir hoy = mín(60% × utilidad neta − repartido, caja), nunca < 0.
+  El % repartible vive en `config/finance.ts`.
+- Gastos `shipping` (Correos / mensajero a clientes) son dinero de paso: no
+  restan, igual que el envío cobrado no suma.
+No recalcular dinero en el frontend; si falta un número, se agrega a la función.
+Las listas largas usan `fetchAll()` (`lib/fetchAll.ts`): PostgREST corta en 1000 filas.
+
+### Encargos (piezas contra pedido) — `/admin/encargos`
+- Tabla `special_orders` con precio/costo **estimados**; los adelantos son
+  `payments.special_order_id`. Mientras no se entrega NO es venta ni ganancia:
+  `finance_summary` los informa aparte como `special_order_advances` (plata del
+  cliente en custodia) y no entran a utilidad ni a "pueden repartir".
+- Entregar = RPC `deliver_special_order` (precio final y costo reales): crea una
+  `external_sales`, mueve los adelantos a esa venta y desde ahí cuenta.
+- Cancelar = `cancel_special_order`; si se devolvió el adelanto queda en `refunds`.
+- Lo que se le paga al proveedor por un encargo NO va en Gastos (sería doble).
+
+### Seguridad (no repetir errores ya corregidos)
+- La llave anónima es pública y es un JWT válido: **toda** función `SECURITY
+  DEFINER` y toda Edge Function revisa quién llama (`is_admin_user(auth.uid())`,
+  `_shared/auth.ts → getCaller`). Revocar `execute` a `anon` en funciones nuevas.
+- `profiles.role` solo lo cambia un admin (trigger `profiles_guard_role`).
+- Texto de usuario dentro de HTML de correos → `escapeHtml`.
 
 ---
 
@@ -276,7 +311,10 @@ palabra y el "CR"— y el "CR" ocupa solo el 13% de la altura. Por debajo de ~28
 convierte en una mancha y ensucia la palabra. Por eso `<Logo compact />` recorta el
 "CR": la palabra pasa de ocupar el 82% de la caja al 100%, o sea un 22% más grande sin
 cambiar la maqueta. **El header y el sidebar usan `compact`; el hero, el splash y el
-footer usan el mark completo**, donde hay altura de sobra para que el "CR" se lea. No
+footer usan el mark completo**. El splash vive en `index.html` (SVG inline + CSS,
+no React) para que el logo se arme mientras baja el JS: el óvalo se traza, las 8
+letras suben por columnas y al final aparece "CR". `App` lo retira con
+`window.__dismissSplash()`; solo se muestra en la primera visita de la sesión, donde hay altura de sobra para que el "CR" se lea. No
 hace falta ponerle fondo: el contraste ya es máximo, el problema es densidad de detalle.
 
 Variantes en `public/`:
@@ -510,6 +548,42 @@ catálogo en blanco.
 - Labels de UI siempre en español, centralizados en `locales/es.ts`
 - Precio siempre `₡` + `toLocaleString("en-US")` con la clase `.tnum`
 - Los eyebrows numeran las secciones: `01 / PIEZA DESTACADA`, `02 / SELECCIÓN`
+
+---
+
+## SEO
+
+La app es un SPA sin SSR, y eso define todo lo demás: **el `index.html` es el mismo para
+las ~180 fichas**. Sin intervención, todas se anuncian con el mismo título y Google no
+tiene motivo para posicionar ninguna.
+
+**`useSeo()` (`lib/seo.ts`) reescribe el `<head>` en cada ruta**: título, descripción,
+canonical, Open Graph, Twitter y JSON-LD. Va en `useLayoutEffect` para que el título ya
+esté puesto antes del primer pintado. Toda página nueva lo llama — si no, hereda el
+título de la anterior.
+
+**Canonical del catálogo: `?filter=` sí, `q=` y `tallas=` no.** Una categoría es
+contenido propio y merece indexarse; las combinaciones de búsqueda y talla son infinitas
+variantes de la misma grilla y Google las leería como duplicados. Los links compartibles
+siguen funcionando: lo que cambia es qué URL se declara como la buena. `robots.txt`
+refuerza lo mismo con `Disallow: /*?*q=`.
+
+**El sitemap se genera en el build** (`scripts/generate-sitemap.mjs`, enganchado a
+`prebuild`) consultando Supabase. Si Supabase no responde **no rompe el build**: conserva
+el anterior y avisa. Un despliegue caído por un sitemap sería un precio absurdo.
+
+**El 404 es una página real con `noindex`, no un redirect al inicio.** El hosting (Render)
+sirve `index.html` para todo, así que el código HTTP no se puede cambiar desde el
+frontend; redirigir hacía que Google indexara URLs inventadas como contenido válido.
+
+**Lo que esto NO resuelve: las IAs.** El HTML crudo de una ficha sigue llegando vacío
+—2 KB, cero menciones al producto— porque el contenido solo existe tras ejecutar
+JavaScript. Google lo renderiza; la mayoría de crawlers de IA no. Para ChatGPT o
+Perplexity hace falta servir HTML ya hecho: prerender en el build o una función en el
+borde. Es una decisión de arquitectura pendiente.
+
+**Verificar el JSON-LD siempre en el navegador**, nunca con `curl`: los `<script>` se
+inyectan desde JavaScript y no aparecen en el HTML estático.
 
 ---
 

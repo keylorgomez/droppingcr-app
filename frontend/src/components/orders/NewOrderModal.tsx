@@ -4,7 +4,7 @@ import {
   X, Package, Loader2, ShoppingBag,
   Search, Plus, Minus, ArrowLeft, ChevronRight,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { useToast } from "../ui/Toast";
 import {
   DELIVERY_STATUSES,
@@ -194,6 +194,7 @@ export default function NewOrderModal({ onClose }: NewOrderModalProps) {
       showToast("Compra registrada correctamente.", "success");
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ADMIN_SALES });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ADMIN_ORDERS });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.FINANCE });
       onClose();
     },
     onError: (err: Error) => showToast(err.message, "error"),

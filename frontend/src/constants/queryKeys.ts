@@ -22,6 +22,7 @@ export const QUERY_KEYS = {
   PAYMENTS_LOG_FULL:    ["payments-log-full"]      as const,
   REFUNDS_LOG:          ["refunds-log"]            as const,
   EXTERNAL_SALES_LOG:   ["external-sales-log"]     as const,
+  SPECIAL_ORDERS:       ["special-orders"]         as const,
   SALE_PAYMENTS:        (saleId: string)  => ["sale-payments",  saleId]  as const,
   ORDER_PAYMENTS:       (orderId: string) => ["order-payments", orderId] as const,
 
@@ -31,14 +32,15 @@ export const QUERY_KEYS = {
   // ── Payouts ───────────────────────────────────────────────────────────────
   ADMIN_PAYOUTS:        ["admin-payouts"]          as const,
   ADMIN_USERS:          ["admin-users"]            as const,
-  NET_PROFIT_ALL:       ["net-profit-all"]         as const,
-  TOTAL_DISTRIBUTED:    ["total-distributed"]      as const,
+  TOTAL_DISTRIBUTED:    ["finance", "distributed"] as const,
 
-  // ── Dashboard ─────────────────────────────────────────────────────────────
-  DASH_STATS:           ["dash-stats"]             as const,
-  DASH_AREA:            ["dash-area"]              as const,
-  DASH_TOP:             ["dash-top"]               as const,
-  DASH_PIE:             ["dash-pie"]               as const,
+  // ── Dashboard / finanzas ──────────────────────────────────────────────────
+  // Todo cuelga de "finance": invalidar FINANCE refresca dashboard y ganancias.
+  FINANCE:              ["finance"]                as const,
+  FINANCE_SUMMARY:      (period: string) =>        ["finance", "summary", period] as const,
+  DASH_AREA:            (period: string) =>        ["finance", "area",    period] as const,
+  DASH_TOP:             (period: string) =>        ["finance", "top",     period] as const,
+  DASH_PIE:             (period: string) =>        ["finance", "pie",     period] as const,
 
   // ── User ──────────────────────────────────────────────────────────────────
   MY_ORDERS:            (userId: string) =>        ["my-orders",  userId] as const,

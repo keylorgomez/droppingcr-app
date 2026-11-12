@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
+import { motion } from "motion/react";
 import Reveal from "../ui/Reveal";
 
 interface SectionHeadingProps {
@@ -19,8 +20,17 @@ export default function SectionHeading({ index, eyebrow, title, link }: SectionH
           {index && <span className="mr-2 text-ink-900">{index}</span>}
           {eyebrow}
         </span>
-        <h2 className="type-display text-[clamp(2rem,6vw,3.75rem)] text-ink-900">
-          {title}
+        {/* El título sube desde detrás de una máscara, igual que la frase del hero */}
+        <h2 className="type-display text-[clamp(2rem,6vw,3.75rem)] text-ink-900 overflow-hidden pb-[0.06em]">
+          <motion.span
+            className="block"
+            initial={{ y: "105%" }}
+            whileInView={{ y: 0 }}
+            viewport={{ once: true, margin: "-40px" }}
+            transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+          >
+            {title}
+          </motion.span>
         </h2>
       </div>
 

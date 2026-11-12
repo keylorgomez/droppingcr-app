@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { ImagePlus, Trash2, Star } from "lucide-react";
 import { cn } from "../../lib/utils";
 
@@ -13,6 +13,24 @@ declare global {
       ) => { open: () => void };
     };
   }
+}
+
+// El widget pesa y solo lo usa el admin al subir fotos: antes se cargaba en
+// el <head> de index.html y frenaba la primera pintura de cada cliente.
+const WIDGET_SRC = "https://upload-widget.cloudinary.com/latest/global/all.js";
+let widgetPromise: Promise<void> | null = null;
+
+function loadWidget(): Promise<void> {
+  if (window.cloudinary) return Promise.resolve();
+  widgetPromise ??= new Promise<void>((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src     = WIDGET_SRC;
+    script.async   = true;
+    script.onload  = () => resolve();
+    script.onerror = () => { widgetPromise = null; reject(new Error("No se pudo cargar el subidor de imágenes.")); };
+    document.head.appendChild(script);
+  });
+  return widgetPromise;
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────
@@ -39,7 +57,17 @@ export default function ImageUpload({ images, onChange, error }: ImageUploadProp
   const imagesRef = useRef<ImageRow[]>(images);
   imagesRef.current = images;
 
-  function openWidget() {
+  // Se empieza a descargar al abrir el formulario, para que el botón responda al toque.
+  useEffect(() => { loadWidget().catch(() => {}); }, []);
+
+  async function openWidget() {
+    try {
+      await loadWidget();
+    } catch (err) {
+      alert((err as Error).message);
+      return;
+    }
+
     // Snapshot images at the moment the widget opens.
     // The callback must NEVER read imagesRef.current — by the time a second or
     // third "success" event fires, React may have already re-rendered and

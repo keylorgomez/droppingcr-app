@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Menu, User, ShoppingBag } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { motion, useScroll, useMotionValueEvent } from "framer-motion";
+import { motion, useScroll, useMotionValueEvent } from "motion/react";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
 import { useToast } from "./Toast";
@@ -82,23 +82,30 @@ export default function Header({ overlay = false }: HeaderProps) {
           así no roba altura permanente a la ventana. */}
       {!overlay && <Marquee items={[...MARQUEE_ITEMS]} />}
 
+      {/* En la home el header FLOTA sobre el hero (fixed): con sticky ocupaba
+          su propio espacio arriba de la foto y, transparente con texto claro
+          sobre el fondo hueso, quedaba invisible salvo el badge y el avatar. */}
       <motion.header
         className={cn(
-          "sticky top-0 z-30 w-full transition-colors duration-500",
+          "top-0 z-30 w-full transition-[background-color,border-color,color] duration-500",
+          overlay ? "fixed inset-x-0" : "sticky",
           solid
             ? "bg-bone/85 backdrop-blur-xl border-b border-ink-100 text-ink-900"
-            : "bg-transparent border-b border-transparent text-bone"
+            : "bg-gradient-to-b from-ink-950/50 to-transparent border-b border-transparent text-bone"
         )}
         animate={{ y: hidden ? "-100%" : 0 }}
         transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
       >
-        <div className="relative flex items-center h-14 px-4 sm:px-6 max-w-[1600px] mx-auto">
+        <div className={cn(
+          "relative flex items-center px-2 sm:px-4 lg:px-6 max-w-[1600px] mx-auto transition-[height] duration-500 ease-drop",
+          solid ? "h-14" : "h-16 sm:h-[72px]"
+        )}>
 
           {/* ── Izquierda: menú + nav desktop ───────────────────────── */}
-          <div className="flex items-center gap-7 flex-1">
+          <div className="flex items-center gap-5 flex-1">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="hover:opacity-60 transition-opacity"
+              className="w-11 h-11 flex items-center justify-center hover:opacity-60 transition-opacity"
               aria-label="Abrir menú"
             >
               <Menu size={20} strokeWidth={1.6} />
@@ -110,7 +117,7 @@ export default function Header({ overlay = false }: HeaderProps) {
                   key={label}
                   onClick={() => navigate(href)}
                   className={cn(
-                    "link-underline font-display uppercase text-[11px] tracking-widest2 leading-none",
+                    "link-underline font-display uppercase text-[12px] tracking-widest2 leading-none",
                     isActive(href) ? "opacity-100 after:scale-x-100" : "opacity-70 hover:opacity-100"
                   )}
                 >
@@ -126,21 +133,27 @@ export default function Header({ overlay = false }: HeaderProps) {
             aria-label="Dropping CR — inicio"
             className="absolute left-1/2 -translate-x-1/2 hover:opacity-70 transition-opacity"
           >
-            <Logo compact className="h-[21px] sm:h-[23px] w-auto" />
+            <Logo
+              compact
+              className={cn(
+                "w-auto transition-[height] duration-500 ease-drop",
+                solid ? "h-[22px] sm:h-[24px]" : "h-[26px] sm:h-[30px]"
+              )}
+            />
           </button>
 
           {/* ── Derecha: carrito + cuenta ────────────────────────────── */}
-          <div className="flex items-center justify-end gap-4 sm:gap-5 flex-1">
+          <div className="flex items-center justify-end gap-0.5 sm:gap-1 flex-1">
             <button
               onClick={() => navigate(ROUTES.CART)}
-              className="relative hover:opacity-60 transition-opacity"
+              className="relative w-11 h-11 flex items-center justify-center hover:opacity-60 transition-opacity"
               aria-label="Ver carrito"
             >
               <ShoppingBag size={19} strokeWidth={1.6} />
               {itemCount > 0 && (
                 <span
                   className={cn(
-                    "absolute -top-1.5 -right-2 min-w-[16px] h-[16px] px-1 text-[9px] font-semibold tnum",
+                    "absolute top-1.5 right-0.5 min-w-[17px] h-[17px] px-1 text-[10px] font-semibold tnum",
                     "flex items-center justify-center leading-none rounded-full",
                     solid ? "bg-ink-900 text-bone" : "bg-bone text-ink-900"
                   )}
@@ -152,7 +165,7 @@ export default function Header({ overlay = false }: HeaderProps) {
 
             <button
               onClick={handleUserClick}
-              className="hover:opacity-60 transition-opacity"
+              className="w-11 h-11 flex items-center justify-center hover:opacity-60 transition-opacity"
               aria-label="Cuenta de usuario"
             >
               {user ? (

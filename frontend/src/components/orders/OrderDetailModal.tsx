@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { X, Package, Check, Loader2, MessageCircle, Plus, Trash2, Printer } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { useToast } from "../ui/Toast";
 import { cloudinaryUrl } from "../../lib/cloudinary";
 import {
@@ -130,7 +130,7 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ADMIN_ORDERS });
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PAYMENTS_LOG });
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.GROUPED_DEBTS });
-    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.DASH_STATS });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.FINANCE });
   }
 
   const saveMutation = useMutation({

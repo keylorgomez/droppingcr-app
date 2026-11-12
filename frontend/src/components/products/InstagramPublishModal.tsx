@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { X, Loader2, CheckCircle2, ExternalLink } from "lucide-react";
 
 function IgIcon({ size = 15, color = "currentColor" }: { size?: number; color?: string }) {

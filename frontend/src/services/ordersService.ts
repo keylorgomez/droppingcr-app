@@ -1,4 +1,5 @@
 import { supabase } from "../lib/supabaseClient";
+import { fetchAll } from "../lib/fetchAll";
 import { sendTransactionalEmail } from "../lib/emailService";
 import { DELIVERY_STATUS, SALE_STATUS, SHIPPING_METHOD } from "../constants/domain";
 import {
@@ -116,22 +117,10 @@ interface RawOrderItemVariantId {
 // ── Record multi-item order ────────────────────────────────────────────────
 
 export async function recordManualOrder(data: OrderInput): Promise<void> {
-  const costPrices = new Map<string, number>();
-  for (const item of data.items) {
-    if (!costPrices.has(item.product_id)) {
-      const { data: product, error } = await supabase
-        .from("products")
-        .select("price_purchase")
-        .eq("id", item.product_id)
-        .single();
-      if (error) throw new Error(error.message);
-      costPrices.set(item.product_id, product.price_purchase);
-    }
-  }
-
-  const { data: order, error: orderError } = await supabase
-    .from("orders")
-    .insert({
+  // Una sola transacción en la base (record_order): pedido, líneas, stock,
+  // apartados y pago inicial se guardan juntos o no se guarda nada.
+  const { error } = await supabase.rpc("record_order", {
+    p: {
       guest_name:      data.guest_name,
       guest_phone:     data.guest_phone,
       shipping_method: data.shipping_method,
@@ -140,56 +129,20 @@ export async function recordManualOrder(data: OrderInput): Promise<void> {
       tracking_number: data.tracking_number,
       status:          data.status,
       note:            data.note,
-      province:        data.province ?? null,
-      canton:          data.canton   ?? null,
-      district:        data.district ?? null,
+      province:        data.province       ?? null,
+      canton:          data.canton         ?? null,
+      district:        data.district       ?? null,
       address_detail:  data.address_detail ?? null,
-    })
-    .select("id")
-    .single();
-
-  if (orderError) throw new Error(orderError.message);
-  const orderId = order.id;
-
-  const { error: itemsError } = await supabase
-    .from("order_items")
-    .insert(
-      data.items.map((item) => ({
-        order_id:   orderId,
+      initial_payment: data.initial_payment,
+      items: data.items.map((item) => ({
         product_id: item.product_id,
         variant_id: item.variant_id,
         quantity:   item.quantity,
         sale_price: item.sale_price,
-        cost_price: costPrices.get(item.product_id) ?? 0,
-      }))
-    );
-  if (itemsError) throw new Error(itemsError.message);
-
-  for (const item of data.items) {
-    const { error: stockError } = await supabase.rpc("decrement_variant_stock", {
-      p_variant_id: item.variant_id,
-      p_amount:     item.quantity,
-    });
-    if (stockError) throw new Error(stockError.message);
-
-    if (data.delivery_status === DELIVERY_STATUS.APARTADA) {
-      const { error: reserveErr } = await supabase
-        .from("product_variants")
-        .update({ is_reserved: true })
-        .eq("id", item.variant_id);
-      if (reserveErr) throw new Error(reserveErr.message);
-    }
-  }
-
-  if (data.initial_payment > 0) {
-    const { error: payError } = await supabase.from("payments").insert({
-      order_id: orderId,
-      sale_id:  null,
-      amount:   data.initial_payment,
-      note:     data.status === SALE_STATUS.PENDING ? "Abono inicial" : "Pago completo",
-    });
-    if (payError) throw new Error(payError.message);
-  }
+      })),
+    },
+  });
+  if (error) throw new Error(error.message);
 
   triggerNewOrderEmail(
     data.guest_phone,
@@ -206,7 +159,7 @@ export async function recordManualOrder(data: OrderInput): Promise<void> {
 // ── Get all orders (admin) ─────────────────────────────────────────────────
 
 export async function getAllOrders(): Promise<AdminOrder[]> {
-  const { data, error } = await supabase
+  const { data, error } = await fetchAll(() => supabase
     .from("orders")
     .select(`
       id, sold_at, guest_name, guest_phone,
@@ -224,7 +177,7 @@ export async function getAllOrders(): Promise<AdminOrder[]> {
       ),
       payments ( amount )
     `)
-    .order("sold_at", { ascending: false });
+    .order("sold_at", { ascending: false }));
 
   if (error) throw new Error(error.message);
 

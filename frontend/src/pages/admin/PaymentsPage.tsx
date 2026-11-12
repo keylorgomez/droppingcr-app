@@ -1,3 +1,5 @@
+import { usePaged } from "../../lib/usePaged";
+import ShowMore from "../../components/ui/ShowMore";
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -5,7 +7,7 @@ import {
   ArrowLeft, Search, X, Receipt, TrendingUp, ArrowDownLeft, ArrowUpRight,
   Minus, Calendar, Plus, Loader2, ShoppingBag,
 } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import Header from "../../components/ui/Header";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../components/ui/Toast";
@@ -382,9 +384,7 @@ export default function PaymentsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.EXTERNAL_SALES_LOG });
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.DASH_STATS });
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.DASH_AREA });
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.NET_PROFIT_ALL });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.FINANCE });
       showToast("Venta externa registrada", "success");
       setModalOpen(false);
     },
@@ -393,7 +393,6 @@ export default function PaymentsPage() {
 
   const isLoading = loadingLogs || loadingPayouts || loadingExpenses || loadingRefunds || loadingExternal;
 
-  if (user && user.role !== "admin") { navigate("/"); return null; }
 
   // ── Merge and sort ─────────────────────────────────────────────────────────
   const movements: Movement[] = useMemo(() => {
@@ -513,6 +512,9 @@ export default function PaymentsPage() {
     return s;
   }, 0);
 
+
+  // Se dibujan de a 20: con cientos de filas el celular se trababa.
+  const paged = usePaged(filtered, filtered);
   return (
     <>
       <Header />
@@ -675,7 +677,7 @@ export default function PaymentsPage() {
                 </thead>
                 <tbody>
                   <AnimatePresence>
-                    {filtered.map((m) =>
+                    {paged.visible.map((m) =>
                       m.kind === "in"
                         ? <PaymentRow          key={`in-${m.data.id}`}  log={m.data}    />
                         : m.kind === "out"
@@ -693,7 +695,7 @@ export default function PaymentsPage() {
               {/* Mobile cards */}
               <div className="md:hidden flex flex-col divide-y divide-ink-50">
                 <AnimatePresence>
-                  {filtered.map((m) =>
+                  {paged.visible.map((m) =>
                     m.kind === "in"
                       ? <MobilePaymentCard       key={`in-${m.data.id}`}  log={m.data}    />
                       : m.kind === "out"
@@ -705,6 +707,10 @@ export default function PaymentsPage() {
                       : <MobileRefundCard        key={`ref-${m.data.id}`} refund={m.data} />
                   )}
                 </AnimatePresence>
+              </div>
+
+              <div className="px-4 pb-3">
+                <ShowMore remaining={paged.remaining} pageSize={paged.pageSize} onClick={paged.showMore} />
               </div>
             </>
           )}

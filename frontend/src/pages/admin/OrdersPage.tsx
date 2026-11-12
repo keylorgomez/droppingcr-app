@@ -1,3 +1,5 @@
+import { usePaged } from "../../lib/usePaged";
+import ShowMore from "../../components/ui/ShowMore";
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -5,9 +7,8 @@ import {
   Search, X, Package,
   Truck, MapPin, ChevronRight, ArrowLeft, Plus,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import Header from "../../components/ui/Header";
-import { useAuth } from "../../context/AuthContext";
 import {
   getAllSales,
   SHIPPING_OPTIONS,
@@ -206,7 +207,6 @@ function OrderRow({ order, onClick }: { order: AdminOrder; onClick: () => void }
 // ── Page ───────────────────────────────────────────────────────────────────
 
 export default function OrdersPage() {
-  const { user }       = useAuth();
   const navigate       = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -216,7 +216,6 @@ export default function OrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
   const [showNewModal,  setShowNewModal]  = useState(false);
 
-  if (user && user.role !== "admin") { navigate("/"); return null; }
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => { window.scrollTo({ top: 0, behavior: "instant" }); }, []);
@@ -288,6 +287,9 @@ export default function OrdersPage() {
     id === "shipped"   ? counts.shipped :
     id === "delivered" ? counts.delivered : 0;
 
+
+  // Se dibujan de a 20: con cientos de filas el celular se trababa.
+  const paged = usePaged(filtered, filtered);
   return (
     <>
       <Header />
@@ -420,7 +422,7 @@ export default function OrdersPage() {
         {/* List */}
         {!isLoading && filtered.length > 0 && (
           <div className="bg-white rounded-2xl border border-ink-100 shadow-sm overflow-hidden">
-            {filtered.map((unifiedItem) =>
+            {paged.visible.map((unifiedItem) =>
               unifiedItem.kind === "sale" ? (
                 <SaleRow
                   key={`sale-${unifiedItem.data.id}`}
@@ -435,6 +437,7 @@ export default function OrdersPage() {
                 />
               )
             )}
+            <ShowMore remaining={paged.remaining} pageSize={paged.pageSize} onClick={paged.showMore} />
           </div>
         )}
       </main>

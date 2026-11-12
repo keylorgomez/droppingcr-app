@@ -1,4 +1,5 @@
 import { supabase } from "../lib/supabaseClient";
+import { fetchAll } from "../lib/fetchAll";
 import { SALE_STATUS } from "../constants/domain";
 import { sendTransactionalEmail } from "../lib/emailService";
 
@@ -189,10 +190,10 @@ export async function addExternalSalePayment(
 // ── Queries ────────────────────────────────────────────────────────────────
 
 export async function getExternalSalesLog(): Promise<ExternalSale[]> {
-  const { data, error } = await supabase
+  const { data, error } = await fetchAll(() => supabase
     .from("external_sales")
     .select(SELECT_COLUMNS)
-    .order("sold_at", { ascending: false });
+    .order("sold_at", { ascending: false }));
 
   if (error) throw new Error(error.message);
   return (data as unknown as RawExternalSaleRow[]).map(toExternalSale);

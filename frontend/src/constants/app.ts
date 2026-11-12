@@ -3,6 +3,9 @@
 
 export const STORE_WHATSAPP = "50688364879";
 
+/** Dominio canónico. Sin esto los `canonical` y el JSON-LD saldrían relativos. */
+export const SITE_URL = "https://droppingcr.com";
+
 export const MS_PER_DAY = 86_400_000;
 
 // Rutas públicas. El catálogo dejó de vivir en "/" cuando la home pasó a ser

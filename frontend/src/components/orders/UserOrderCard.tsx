@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { Truck, MapPin, Package, ChevronRight } from "lucide-react";
 import { deliveryStatusMeta, SHIPPING_OPTIONS, type UserOrder } from "../../services/salesService";
 import { fmt, formatDate } from "../../lib/formatters";

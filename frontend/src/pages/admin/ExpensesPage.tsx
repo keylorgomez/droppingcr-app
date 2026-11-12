@@ -1,3 +1,5 @@
+import { usePaged } from "../../lib/usePaged";
+import ShowMore from "../../components/ui/ShowMore";
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
@@ -5,12 +7,13 @@ import {
   ArrowLeft, Plus, Loader2, X, ChevronDown, CreditCard,
   Clock, AlertCircle, CheckCircle2, Wallet,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import Header from "../../components/ui/Header";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../components/ui/Toast";
 import {
-  getExpenses, createExpense, addExpensePayment,
+  getExpenses, createExpense, addExpensePayment, updateExpenseKind,
+  defaultKindFor, nextKind, EXPENSE_KINDS, EXPENSE_KIND_LABEL, EXPENSE_KIND_HINT, type ExpenseKind,
   type Expense, type ExpenseStatus,
 } from "../../services/expensesService";
 import { QUERY_KEYS } from "../../constants/queryKeys";
@@ -28,19 +31,20 @@ function NewExpenseModal({
   onClose, onSave, saving,
 }: {
   onClose: () => void;
-  onSave:  (description: string, amount: number, category: string, notes: string) => void;
+  onSave:  (description: string, amount: number, category: string, notes: string, kind: ExpenseKind) => void;
   saving:  boolean;
 }) {
   const [description, setDescription] = useState("");
   const [amount, setAmount]           = useState("");
   const [category, setCategory]       = useState("");
   const [notes, setNotes]             = useState("");
+  const [kind, setKind]               = useState<ExpenseKind>("operating");
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const parsed = parseFloat(amount);
     if (!description.trim() || !parsed || parsed <= 0) return;
-    onSave(description.trim(), parsed, category.trim(), notes.trim());
+    onSave(description.trim(), parsed, category.trim(), notes.trim(), kind);
   }
 
   return (
@@ -84,7 +88,8 @@ function NewExpenseModal({
             <Field label="Categoría (opcional)">
               <div className="relative">
                 <select
-                  value={category} onChange={(e) => setCategory(e.target.value)}
+                  value={category}
+                  onChange={(e) => { setCategory(e.target.value); setKind(defaultKindFor(e.target.value)); }}
                   className={`${inputCls} appearance-none pr-8`}
                 >
                   <option value="">Sin categoría</option>
@@ -98,6 +103,26 @@ function NewExpenseModal({
               </div>
             </Field>
           </div>
+
+          <Field label="¿Afecta la utilidad?">
+            <div className="grid grid-cols-3 gap-2">
+              {EXPENSE_KINDS.map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => setKind(option)}
+                  className={`rounded-xl border px-3 py-2.5 text-left transition-colors ${
+                    kind === option ? "border-brand-primary bg-brand-primary/5" : "border-ink-200 hover:border-ink-300"
+                  }`}
+                >
+                  <span className="block text-sm font-medium text-brand-dark">{EXPENSE_KIND_LABEL[option]}</span>
+                  <span className="block text-[11px] text-ink-400 leading-snug">
+                    {EXPENSE_KIND_HINT[option]}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </Field>
 
           <Field label="Notas (opcional)">
             <textarea
@@ -215,10 +240,11 @@ function PaymentModal({
 // ── Expense card ───────────────────────────────────────────────────────────
 
 function ExpenseCard({
-  expense, onPayClick,
+  expense, onPayClick, onKindToggle,
 }: {
-  expense:    Expense;
-  onPayClick: (e: Expense) => void;
+  expense:      Expense;
+  onPayClick:   (e: Expense) => void;
+  onKindToggle: (e: Expense) => void;
 }) {
   const meta      = STATUS_META[expense.status];
   const remaining = expense.amount - expense.total_paid;
@@ -247,6 +273,20 @@ function ExpenseCard({
                   {expense.category}
                 </span>
               )}
+              <button
+                type="button"
+                onClick={() => onKindToggle(expense)}
+                title={`${EXPENSE_KIND_HINT[expense.kind]} · tocar para cambiar`}
+                className={`text-[10px] font-semibold rounded-full px-2 py-0.5 border transition-colors ${
+                  expense.kind === "operating"
+                    ? "border-red-200 text-red-600 bg-red-50"
+                    : expense.kind === "shipping"
+                      ? "border-blue-200 text-blue-700 bg-blue-50"
+                      : "border-ink-300 text-ink-600 bg-white"
+                }`}
+              >
+                {EXPENSE_KIND_LABEL[expense.kind]} ⇄
+              </button>
               <span className="text-[10px] text-ink-300">
                 {formatDate(expense.created_at)}
               </span>
@@ -379,13 +419,24 @@ export default function ExpensesPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: ({ description, amount, category, notes }: {
-      description: string; amount: number; category: string; notes: string;
-    }) => createExpense(description, amount, category || null, notes || null, user!.id),
+    mutationFn: ({ description, amount, category, notes, kind }: {
+      description: string; amount: number; category: string; notes: string; kind: ExpenseKind;
+    }) => createExpense(description, amount, category || null, notes || null, user!.id, kind),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.EXPENSES });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.FINANCE });
       setNewOpen(false);
       showToast("Gasto registrado.", "success");
+    },
+    onError: (err) => showToast(err instanceof Error ? err.message : "Error.", "error"),
+  });
+
+  const kindMutation = useMutation({
+    mutationFn: (expense: Expense) =>
+      updateExpenseKind(expense.id, nextKind(expense.kind)),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.EXPENSES });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.FINANCE });
     },
     onError: (err) => showToast(err instanceof Error ? err.message : "Error.", "error"),
   });
@@ -396,6 +447,7 @@ export default function ExpensesPage() {
     }) => addExpensePayment(expenseId, amount, note || null, user!.id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.EXPENSES });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.FINANCE });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.EXPENSE_PAYMENTS_LOG });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PAYMENTS_LOG_FULL });
       setPayTarget(null);
@@ -424,6 +476,9 @@ export default function ExpensesPage() {
     })
     .reduce((s, e) => s + e.amount, 0);
 
+
+  // Se dibujan de a 20: con cientos de filas el celular se trababa.
+  const paged = usePaged(filtered, filtered);
   return (
     <>
       <Header />
@@ -540,14 +595,16 @@ export default function ExpensesPage() {
         {!isLoading && (
           <div className="flex flex-col gap-3">
             <AnimatePresence>
-              {filtered.map((e) => (
+              {paged.visible.map((e) => (
                 <ExpenseCard
                   key={e.id}
                   expense={e}
                   onPayClick={setPayTarget}
+                  onKindToggle={(expense) => kindMutation.mutate(expense)}
                 />
               ))}
             </AnimatePresence>
+            <ShowMore remaining={paged.remaining} pageSize={paged.pageSize} onClick={paged.showMore} />
           </div>
         )}
       </main>
@@ -558,8 +615,8 @@ export default function ExpensesPage() {
           <NewExpenseModal
             saving={createMutation.isPending}
             onClose={() => setNewOpen(false)}
-            onSave={(description, amount, category, notes) =>
-              createMutation.mutate({ description, amount, category, notes })
+            onSave={(description, amount, category, notes, kind) =>
+              createMutation.mutate({ description, amount, category, notes, kind })
             }
           />
         )}

@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Truck, ShieldCheck, MessageCircle, ArrowRight } from "lucide-react";
+import { Truck, Wallet, MessageCircle, ArrowRight } from "lucide-react";
 import Header from "../components/ui/Header";
 import Marquee from "../components/ui/Marquee";
 import Reveal from "../components/ui/Reveal";
@@ -11,10 +11,13 @@ import HeroDrop from "../components/home/HeroDrop";
 import FeaturedDrop from "../components/home/FeaturedDrop";
 import SectionHeading from "../components/home/SectionHeading";
 import CategoryTiles, { type CategoryTile } from "../components/home/CategoryTiles";
+import HowToBuy from "../components/home/HowToBuy";
+import { SHIPPING_RATES } from "../config/shipping";
 import { getProducts, catalogSortRank, type CatalogProduct } from "../services/productService";
 import { QUERY_KEYS } from "../constants/queryKeys";
 import { ROUTES, MARQUEE_ITEMS, HERO_IMAGES, CATEGORY_IMAGES, MAX_HERO_SLIDES } from "../constants/app";
 import { useAuth } from "../context/AuthContext";
+import { useSeo, organizationJsonLd } from "../lib/seo";
 
 const CURATED_COUNT = 8;
 const MAX_TILES     = 6;
@@ -80,6 +83,13 @@ export default function HomePage() {
     );
   }, [visible]);
 
+  // Para la tira del hero: lo más reciente con stock (el catálogo ya viene
+  // ordenado por fecha de creación).
+  const latest = useMemo(
+    () => visible.filter((p) => !p.is_sold_out && !p.is_reserved && p.image_url).slice(0, 8),
+    [visible]
+  );
+
   // Selección: novedades y rebajas primero, el destacado no se repite.
   const curated = useMemo(() => {
     return [...visible]
@@ -90,7 +100,9 @@ export default function HomePage() {
 
   const categoryTiles: CategoryTile[] = useMemo(() => {
     const byslug = new Map<string, CategoryTile>();
+    // Solo cuenta lo que se puede comprar hoy: un agotado inflaba el número.
     for (const product of visible) {
+      if (product.is_sold_out || product.is_reserved) continue;
       for (const cat of product.categories) {
         const entry = byslug.get(cat.slug);
         if (entry) entry.count += 1;
@@ -104,12 +116,25 @@ export default function HomePage() {
       .slice(0, MAX_TILES);
   }, [visible]);
 
+  useSeo({
+    title: "Streetwear, vintage y camisetas de fútbol en Costa Rica",
+    description:
+      "Tienda de streetwear en Grecia, Costa Rica. Camisetas de fútbol, vintage, " +
+      "sneakers y accesorios. Piezas únicas con envío a todo el país.",
+    path: ROUTES.HOME,
+    jsonLd: organizationJsonLd(),
+  });
+
   return (
     <>
       {!isLoading && <PromoBanner maxDiscountPercent={maxDiscountPercent} />}
 
       <Header overlay />
-      <HeroDrop images={heroImages(visible)} />
+      <HeroDrop
+        images={heroImages(visible)}
+        latest={latest}
+        newCount={visible.filter((p) => p.is_new && !p.is_sold_out).length}
+      />
 
       <Marquee items={[...MARQUEE_ITEMS]} />
 
@@ -140,7 +165,8 @@ export default function HomePage() {
                 discount_percentage={product.discount_percentage}
                 is_sold_out={product.is_sold_out}
                 is_reserved={product.is_reserved}
-                onClick={() => navigate(ROUTES.PRODUCT(product.slug))}
+                sizes={product.sizes}
+                href={ROUTES.PRODUCT(product.slug)}
               />
             ))}
           </div>
@@ -172,6 +198,8 @@ export default function HomePage() {
         </section>
       )}
 
+      <HowToBuy />
+
       {/* ── Manifiesto ───────────────────────────────────────────────── */}
       <section className="bg-ink-950 text-bone px-6 py-24 lg:py-32 grain relative">
         <Reveal className="max-w-3xl mx-auto text-center">
@@ -188,9 +216,9 @@ export default function HomePage() {
       <section className="border-b border-ink-200">
         <div className="max-w-[1600px] mx-auto grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-ink-200">
           {[
-            { icon: Truck,         title: "Envíos a todo el país", text: "Correos de Costa Rica, con número de guía." },
-            { icon: ShieldCheck,   title: "Piezas verificadas",     text: "Cada prenda se revisa antes de publicarse." },
-            { icon: MessageCircle, title: "Atención directa",       text: "Escribinos por WhatsApp y te respondemos." },
+            { icon: Truck,         title: "Envíos a todo el país", text: `Mensajero desde ₡${SHIPPING_RATES.MENSAJERO.toLocaleString("en-US")} o Correos de Costa Rica con número de guía.` },
+            { icon: Wallet,        title: "Pagás como querás",     text: "SINPE Móvil, transferencia o contra entrega. También apartás con un abono." },
+            { icon: MessageCircle, title: "Atención directa",      text: "Escribinos por WhatsApp: te respondemos personas, no un bot." },
           ].map(({ icon: Icon, title, text }, i) => (
             <Reveal key={title} delay={i * 0.08} className="flex flex-col gap-3 px-6 lg:px-10 py-12">
               <Icon size={20} strokeWidth={1.5} className="text-ink-900" />

@@ -1,8 +1,8 @@
 import { useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { X, Settings2, CreditCard, Receipt, Coins, ShoppingBag, Printer, LayoutDashboard, PackagePlus } from "lucide-react";
+import { X, Settings2, CreditCard, Receipt, Coins, ShoppingBag, Printer, LayoutDashboard, PackagePlus, PackageSearch } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { getProducts } from "../../services/productService";
 import { cn } from "../../lib/utils";
@@ -20,6 +20,7 @@ const adminLinks = [
   { label: "Nuevo producto",    icon: PackagePlus,     href: "/admin/products/new" },
   { label: "Categorías",        icon: Settings2,       href: "/admin/categories"   },
   { label: "Cobros pendientes", icon: CreditCard,      href: "/admin/deudas"       },
+  { label: "Encargos",          icon: PackageSearch,   href: "/admin/encargos"     },
   { label: "Movimientos",       icon: Receipt,         href: "/admin/movimientos"  },
   { label: "Ganancias",         icon: Coins,           href: "/admin/ganancias"    },
   { label: "Gastos",            icon: ShoppingBag,     href: "/admin/gastos"       },

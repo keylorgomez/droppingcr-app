@@ -1,0 +1,581 @@
+import { usePaged } from "../../lib/usePaged";
+import ShowMore from "../../components/ui/ShowMore";
+import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { motion, AnimatePresence } from "motion/react";
+import {
+  ArrowLeft, Plus, X, Loader2, PackageSearch, Wallet, Clock, ExternalLink,
+  ChevronRight, CheckCircle2, Ban, Info,
+} from "lucide-react";
+import Header from "../../components/ui/Header";
+import WhatsAppIcon from "../../components/ui/WhatsAppIcon";
+import { useToast } from "../../components/ui/Toast";
+import { fmt, formatDate } from "../../lib/formatters";
+import { cn } from "../../lib/utils";
+import { QUERY_KEYS } from "../../constants/queryKeys";
+import { lookupCustomerProfileByPhone } from "../../services/customerService";
+import {
+  getSpecialOrders, createSpecialOrder, updateSpecialOrderStatus, addSpecialOrderAdvance,
+  deliverSpecialOrder, cancelSpecialOrder, isActiveSpecialOrder,
+  SPECIAL_ORDER_FLOW, SPECIAL_ORDER_STATUS_LABEL,
+  type SpecialOrder, type SpecialOrderStatus,
+} from "../../services/specialOrdersService";
+
+const inputCls =
+  "w-full rounded-xl border border-ink-200 px-4 py-2.5 text-sm text-brand-dark placeholder:text-ink-300 " +
+  "outline-none bg-white focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20 transition";
+
+type Tab = "active" | "delivered" | "cancelled";
+
+const parseAmount = (value: string) => Number(value.replace(/[^\d.]/g, "")) || 0;
+
+// ── Piezas comunes ─────────────────────────────────────────────────────────
+
+function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+  return (
+    <label className="flex flex-col gap-1.5">
+      <span className="text-xs font-medium text-ink-500 uppercase tracking-wider">
+        {label}{hint && <span className="normal-case tracking-normal text-ink-300"> {hint}</span>}
+      </span>
+      {children}
+    </label>
+  );
+}
+
+function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+  return (
+    <motion.div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm sm:px-4"
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <motion.div
+        className="w-full sm:max-w-md max-h-[92svh] overflow-y-auto bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl p-6 flex flex-col gap-5"
+        initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 60, opacity: 0 }}
+        transition={{ type: "spring", stiffness: 340, damping: 32 }}
+      >
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold text-brand-dark text-base">{title}</h2>
+          <button onClick={onClose} className="w-9 h-9 -mr-2 flex items-center justify-center text-ink-400 hover:text-brand-primary" aria-label="Cerrar">
+            <X size={20} />
+          </button>
+        </div>
+        {children}
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function SubmitButton({ saving, children, disabled }: { saving: boolean; children: ReactNode; disabled?: boolean }) {
+  return (
+    <button
+      type="submit"
+      disabled={saving || disabled}
+      className="w-full py-3 rounded-xl bg-brand-primary text-white text-sm font-medium flex items-center justify-center gap-2
+                 hover:bg-[#2e2e2e] transition-colors disabled:opacity-50"
+    >
+      {saving && <Loader2 size={15} className="animate-spin" />}
+      {children}
+    </button>
+  );
+}
+
+// ── Nuevo encargo ──────────────────────────────────────────────────────────
+
+function NewOrderModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+  const { showToast } = useToast();
+  const [phone, setPhone]             = useState("");
+  const [name, setName]               = useState("");
+  const [customerId, setCustomerId]   = useState<string | null>(null);
+  const [description, setDescription] = useState("");
+  const [size, setSize]               = useState("");
+  const [price, setPrice]             = useState("");
+  const [cost, setCost]               = useState("");
+  const [advance, setAdvance]         = useState("");
+  const [note, setNote]               = useState("");
+
+  const mutation = useMutation({
+    mutationFn: () => {
+      const digits = phone.replace(/\D/g, "");
+      return createSpecialOrder({
+        customer_id:     customerId,
+        guest_name:      name.trim() || null,
+        guest_phone:     digits ? `+506${digits.slice(-8)}` : null,
+        description:     description.trim(),
+        size:            size.trim() || null,
+        reference_url:   null,
+        estimated_price: parseAmount(price),
+        estimated_cost:  cost ? parseAmount(cost) : null,
+        note:            note.trim() || null,
+        advance:         parseAmount(advance),
+      });
+    },
+    onSuccess: () => { showToast("Encargo registrado.", "success"); onSaved(); },
+    onError:   (err: Error) => showToast(err.message, "error"),
+  });
+
+  async function autofillFromPhone() {
+    const match = await lookupCustomerProfileByPhone(phone);
+    if (!match) return;
+    setCustomerId(match.customer_id);
+    if (!name.trim() && match.name) setName(match.name);
+  }
+
+  function submit(e: FormEvent) {
+    e.preventDefault();
+    if (!description.trim() || parseAmount(advance) > parseAmount(price) && parseAmount(price) > 0) {
+      showToast(!description.trim() ? "Describí qué se encargó." : "El adelanto supera el precio estimado.", "error");
+      return;
+    }
+    mutation.mutate();
+  }
+
+  return (
+    <Modal title="Nuevo encargo" onClose={onClose}>
+      <form onSubmit={submit} className="flex flex-col gap-4">
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="WhatsApp">
+            <input
+              type="tel" inputMode="numeric" value={phone}
+              onChange={(e) => { setPhone(e.target.value); setCustomerId(null); }}
+              onBlur={autofillFromPhone} placeholder="8888 8888" className={inputCls}
+            />
+          </Field>
+          <Field label="Nombre">
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Cliente" className={inputCls} />
+          </Field>
+        </div>
+
+        <Field label="¿Qué encargó?">
+          <input
+            value={description} onChange={(e) => setDescription(e.target.value)} required
+            placeholder="Ej: Camiseta Real Madrid local 25/26" className={inputCls}
+          />
+        </Field>
+
+        {/* Etiquetas cortas de una sola línea: con "(opcional)" largo una
+            columna saltaba a dos renglones y los campos quedaban desalineados. */}
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Talla">
+            <input value={size} onChange={(e) => setSize(e.target.value)} placeholder="M" className={inputCls} />
+          </Field>
+          <Field label="Adelanto ₡">
+            <input inputMode="numeric" value={advance} onChange={(e) => setAdvance(e.target.value)} placeholder="0" className={inputCls} />
+          </Field>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Precio est. ₡">
+            <input inputMode="numeric" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0" className={inputCls} />
+          </Field>
+          <Field label="Costo est. ₡">
+            <input inputMode="numeric" value={cost} onChange={(e) => setCost(e.target.value)} placeholder="Opcional" className={inputCls} />
+          </Field>
+        </div>
+
+        <Field label="Nota" hint="(opcional)">
+          <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="Proveedor, fecha estimada, link…" className={cn(inputCls, "resize-none")} />
+        </Field>
+
+        <p className="flex gap-2 text-[11.5px] text-ink-400 leading-snug">
+          <Info size={14} className="shrink-0 mt-px" />
+          Nada de esto cuenta como venta ni ganancia hasta que entregues la pieza con su precio y costo reales.
+        </p>
+
+        <SubmitButton saving={mutation.isPending}>Registrar encargo</SubmitButton>
+      </form>
+    </Modal>
+  );
+}
+
+// ── Abonar ─────────────────────────────────────────────────────────────────
+
+function AdvanceModal({ order, onClose, onSaved }: { order: SpecialOrder; onClose: () => void; onSaved: () => void }) {
+  const { showToast } = useToast();
+  const [amount, setAmount] = useState("");
+  const [note, setNote]     = useState("");
+  const pending = Math.max(0, order.estimated_price - order.advance);
+
+  const mutation = useMutation({
+    mutationFn: () => addSpecialOrderAdvance(order.id, parseAmount(amount), note.trim() || null),
+    onSuccess:  () => { showToast("Adelanto registrado.", "success"); onSaved(); },
+    onError:    (err: Error) => showToast(err.message, "error"),
+  });
+
+  return (
+    <Modal title="Registrar adelanto" onClose={onClose}>
+      <form onSubmit={(e) => { e.preventDefault(); if (parseAmount(amount) > 0) mutation.mutate(); }} className="flex flex-col gap-4">
+        <p className="text-sm text-ink-500">
+          {order.description} · ya adelantó <b className="text-brand-dark">{fmt(order.advance)}</b>
+          {order.estimated_price > 0 && <> · falta aprox. <b className="text-brand-dark">{fmt(pending)}</b></>}
+        </p>
+        <Field label="Monto ₡">
+          <input autoFocus inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0" className={inputCls} />
+        </Field>
+        <Field label="Nota" hint="(opcional)">
+          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="SINPE, efectivo…" className={inputCls} />
+        </Field>
+        <SubmitButton saving={mutation.isPending} disabled={parseAmount(amount) <= 0}>Registrar adelanto</SubmitButton>
+      </form>
+    </Modal>
+  );
+}
+
+// ── Entregar ───────────────────────────────────────────────────────────────
+
+function DeliverModal({ order, onClose, onSaved }: { order: SpecialOrder; onClose: () => void; onSaved: () => void }) {
+  const { showToast } = useToast();
+  const [price, setPrice] = useState(order.estimated_price ? String(order.estimated_price) : "");
+  const [cost, setCost]   = useState(order.estimated_cost !== null ? String(order.estimated_cost) : "");
+  const [name, setName]   = useState(order.description);
+
+  const finalPrice = parseAmount(price);
+  const realCost   = parseAmount(cost);
+  const balance    = finalPrice - order.advance;
+
+  const mutation = useMutation({
+    mutationFn: () => deliverSpecialOrder(order.id, finalPrice, realCost, name.trim() || null),
+    onSuccess:  () => { showToast("Encargo entregado: ya cuenta como venta.", "success"); onSaved(); },
+    onError:    (err: Error) => showToast(err.message, "error"),
+  });
+
+  return (
+    <Modal title="Entregar encargo" onClose={onClose}>
+      <form
+        onSubmit={(e) => { e.preventDefault(); if (finalPrice > 0 && cost !== "") mutation.mutate(); }}
+        className="flex flex-col gap-4"
+      >
+        <p className="text-[12.5px] text-ink-500 leading-snug">
+          Con los números reales el encargo se convierte en una venta: sus adelantos pasan a ser abonos
+          y, si falta plata, queda en <b>Por cobrar</b>.
+        </p>
+        <Field label="Producto">
+          <input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} />
+        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Precio final ₡">
+            <input inputMode="numeric" value={price} onChange={(e) => setPrice(e.target.value)} className={inputCls} />
+          </Field>
+          <Field label="Costo real ₡" hint="(puesto en CR)">
+            <input inputMode="numeric" value={cost} onChange={(e) => setCost(e.target.value)} placeholder="0" className={inputCls} />
+          </Field>
+        </div>
+
+        {finalPrice > 0 && (
+          <div className="rounded-xl bg-ink-50 px-4 py-3 text-sm flex flex-col gap-1.5 tnum">
+            <div className="flex justify-between"><span className="text-ink-500">Adelantado</span><span>{fmt(order.advance)}</span></div>
+            <div className="flex justify-between">
+              <span className="text-ink-500">{balance >= 0 ? "Falta cobrar" : "Saldo a favor del cliente"}</span>
+              <span className={balance > 0 ? "text-amber-600 font-semibold" : "font-semibold"}>{fmt(Math.abs(balance))}</span>
+            </div>
+            {cost !== "" && (
+              <div className="flex justify-between border-t border-ink-200 pt-1.5">
+                <span className="text-ink-500">Ganancia</span>
+                <span className={finalPrice - realCost >= 0 ? "text-green-600 font-semibold" : "text-red-500 font-semibold"}>
+                  {fmt(finalPrice - realCost)}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        <SubmitButton saving={mutation.isPending} disabled={finalPrice <= 0 || cost === ""}>Confirmar entrega</SubmitButton>
+      </form>
+    </Modal>
+  );
+}
+
+// ── Cancelar ───────────────────────────────────────────────────────────────
+
+function CancelModal({ order, onClose, onSaved }: { order: SpecialOrder; onClose: () => void; onSaved: () => void }) {
+  const { showToast } = useToast();
+  const [refund, setRefund] = useState(true);
+  const [reason, setReason] = useState("");
+
+  const mutation = useMutation({
+    mutationFn: () => cancelSpecialOrder(order.id, order.advance > 0 && refund, reason.trim() || null),
+    onSuccess:  () => { showToast("Encargo cancelado.", "success"); onSaved(); },
+    onError:    (err: Error) => showToast(err.message, "error"),
+  });
+
+  return (
+    <Modal title="Cancelar encargo" onClose={onClose}>
+      <form onSubmit={(e) => { e.preventDefault(); mutation.mutate(); }} className="flex flex-col gap-4">
+        <p className="text-sm text-ink-500">{order.description}</p>
+        {order.advance > 0 && (
+          <label className="flex items-start gap-3 rounded-xl border border-ink-200 px-4 py-3 cursor-pointer">
+            <input type="checkbox" checked={refund} onChange={(e) => setRefund(e.target.checked)} className="mt-0.5 accent-ink-900" />
+            <span className="text-sm text-brand-dark">
+              Le devolví el adelanto de <b>{fmt(order.advance)}</b>
+              <span className="block text-[11.5px] text-ink-400">Queda registrado como devolución en Movimientos.</span>
+            </span>
+          </label>
+        )}
+        <Field label="Motivo" hint="(opcional)">
+          <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="El proveedor no tenía la talla…" className={inputCls} />
+        </Field>
+        <SubmitButton saving={mutation.isPending}>Cancelar encargo</SubmitButton>
+      </form>
+    </Modal>
+  );
+}
+
+// ── Tarjeta ────────────────────────────────────────────────────────────────
+
+function StatusChip({ status }: { status: SpecialOrderStatus }) {
+  const cls =
+    status === "delivered" ? "bg-green-50 text-green-700" :
+    status === "cancelled" ? "bg-ink-100 text-ink-500" :
+    status === "arrived"   ? "bg-blue-50 text-blue-700" :
+                             "bg-amber-50 text-amber-700";
+  return (
+    <span className={cn("text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full whitespace-nowrap", cls)}>
+      {SPECIAL_ORDER_STATUS_LABEL[status]}
+    </span>
+  );
+}
+
+function OrderCard({
+  order, onAdvance, onDeliver, onCancel, onStep, stepping,
+}: {
+  order: SpecialOrder;
+  onAdvance: () => void; onDeliver: () => void; onCancel: () => void;
+  onStep: (next: SpecialOrderStatus) => void; stepping: boolean;
+}) {
+  const active    = isActiveSpecialOrder(order);
+  const stepIndex = SPECIAL_ORDER_FLOW.indexOf(order.status);
+  const next      = stepIndex >= 0 && stepIndex < SPECIAL_ORDER_FLOW.length - 1 ? SPECIAL_ORDER_FLOW[stepIndex + 1] : null;
+  const pending   = Math.max(0, order.estimated_price - order.advance);
+  const phone     = order.guest_phone?.replace(/\D/g, "");
+
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+      className="bg-white rounded-2xl border border-ink-100 shadow-sm p-4 flex flex-col gap-3.5"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-semibold text-sm text-brand-dark leading-snug">
+            {order.description}{order.size && <span className="text-ink-400 font-normal"> · Talla {order.size}</span>}
+          </p>
+          <p className="text-[12px] text-ink-400 mt-0.5 flex flex-wrap items-center gap-x-2">
+            <span>{order.guest_name ?? "Sin nombre"}</span>
+            <span>· {formatDate(order.created_at)}</span>
+            {order.reference_url && (
+              <a href={order.reference_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 underline">
+                referencia <ExternalLink size={11} />
+              </a>
+            )}
+          </p>
+        </div>
+        <StatusChip status={order.status} />
+      </div>
+
+      {/* Avance */}
+      {active && (
+        <div className="flex gap-1">
+          {SPECIAL_ORDER_FLOW.map((step, i) => (
+            <span key={step} className={cn("h-1 flex-1 rounded-full", i <= stepIndex ? "bg-ink-900" : "bg-ink-100")} />
+          ))}
+        </div>
+      )}
+
+      <div className="grid grid-cols-3 gap-2 text-center tnum">
+        <div className="rounded-xl bg-ink-50 py-2">
+          <p className="text-[10px] uppercase tracking-wider text-ink-400">Estimado</p>
+          <p className="text-sm font-semibold text-brand-dark">{fmt(order.estimated_price)}</p>
+        </div>
+        <div className="rounded-xl bg-ink-50 py-2">
+          <p className="text-[10px] uppercase tracking-wider text-ink-400">Adelantó</p>
+          <p className="text-sm font-semibold text-brand-dark">{fmt(order.advance)}</p>
+        </div>
+        <div className="rounded-xl bg-ink-50 py-2">
+          <p className="text-[10px] uppercase tracking-wider text-ink-400">{active ? "Falta aprox." : "—"}</p>
+          <p className="text-sm font-semibold text-brand-dark">{active ? fmt(pending) : "—"}</p>
+        </div>
+      </div>
+
+      {active && order.estimated_cost !== null && order.estimated_price > 0 && (
+        <p className="text-[11.5px] text-ink-400">
+          Ganancia proyectada: {fmt(order.estimated_price - order.estimated_cost)} (no cuenta hasta entregar)
+        </p>
+      )}
+      {order.note && <p className="text-[12px] text-ink-500 bg-ink-50 rounded-lg px-3 py-2">{order.note}</p>}
+
+      {active && (
+        <div className="flex flex-wrap gap-2 pt-1">
+          {next && (
+            <button
+              onClick={() => onStep(next)} disabled={stepping}
+              className="h-9 px-3 rounded-lg border border-ink-200 text-[12px] font-medium text-brand-dark hover:border-ink-900 transition-colors inline-flex items-center gap-1 disabled:opacity-50"
+            >
+              {SPECIAL_ORDER_STATUS_LABEL[next]} <ChevronRight size={14} />
+            </button>
+          )}
+          <button onClick={onAdvance} className="h-9 px-3 rounded-lg border border-ink-200 text-[12px] font-medium text-brand-dark hover:border-ink-900 transition-colors">
+            + Adelanto
+          </button>
+          <button onClick={onDeliver} className="h-9 px-3 rounded-lg bg-ink-900 text-bone text-[12px] font-medium hover:bg-ink-700 transition-colors inline-flex items-center gap-1.5">
+            <CheckCircle2 size={14} /> Entregar
+          </button>
+          {phone && (
+            <a
+              href={`https://wa.me/${phone.length === 8 ? `506${phone}` : phone}`}
+              target="_blank" rel="noopener noreferrer" aria-label="Escribir al cliente"
+              className="h-9 w-9 rounded-lg border border-ink-200 flex items-center justify-center text-ink-600 hover:border-ink-900"
+            >
+              <WhatsAppIcon size={15} />
+            </a>
+          )}
+          <button onClick={onCancel} className="h-9 px-3 rounded-lg text-[12px] font-medium text-red-500 hover:bg-red-50 transition-colors inline-flex items-center gap-1.5 ml-auto">
+            <Ban size={13} /> Cancelar
+          </button>
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
+// ── Página ─────────────────────────────────────────────────────────────────
+
+export default function SpecialOrdersPage() {
+  const navigate    = useNavigate();
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+
+  const [tab, setTab]           = useState<Tab>("active");
+  const [creating, setCreating] = useState(false);
+  const [advanceFor, setAdvanceFor] = useState<SpecialOrder | null>(null);
+  const [deliverFor, setDeliverFor] = useState<SpecialOrder | null>(null);
+  const [cancelFor, setCancelFor]   = useState<SpecialOrder | null>(null);
+
+  const { data: orders = [], isLoading, error } = useQuery({
+    queryKey: QUERY_KEYS.SPECIAL_ORDERS,
+    queryFn:  getSpecialOrders,
+  });
+
+  function refresh() {
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.SPECIAL_ORDERS });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.FINANCE });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PAYMENTS_LOG });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.EXTERNAL_SALES_LOG });
+    setCreating(false); setAdvanceFor(null); setDeliverFor(null); setCancelFor(null);
+  }
+
+  const stepMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: SpecialOrderStatus }) => updateSpecialOrderStatus(id, status),
+    onSuccess:  refresh,
+    onError:    (err: Error) => showToast(err.message, "error"),
+  });
+
+  const active = useMemo(() => orders.filter(isActiveSpecialOrder), [orders]);
+  const shown  = useMemo(
+    () => tab === "active" ? active : orders.filter((order) => order.status === tab),
+    [tab, orders, active]
+  );
+  const custody = active.reduce((total, order) => total + order.advance, 0);
+  const pending = active.reduce((total, order) => total + Math.max(0, order.estimated_price - order.advance), 0);
+
+  const TABS: { id: Tab; label: string; count: number }[] = [
+    { id: "active",    label: "Activos",    count: active.length },
+    { id: "delivered", label: "Entregados", count: orders.filter((o) => o.status === "delivered").length },
+    { id: "cancelled", label: "Cancelados", count: orders.filter((o) => o.status === "cancelled").length },
+  ];
+
+
+  // Se dibujan de a 20: con cientos de filas el celular se trababa.
+  const paged = usePaged(shown, tab);
+  return (
+    <>
+      <Header />
+      <main className="max-w-3xl mx-auto px-4 pt-8 pb-16 flex flex-col gap-5">
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-sm text-ink-400 hover:text-brand-primary transition-colors mb-3">
+              <ArrowLeft size={15} strokeWidth={2} /> Volver
+            </button>
+            <h1 className="font-semibold text-brand-primary text-2xl">Encargos</h1>
+            <p className="text-xs text-ink-400 mt-1">Piezas por pedido: no cuentan como venta hasta entregarlas.</p>
+          </div>
+          <button
+            onClick={() => setCreating(true)}
+            className="shrink-0 h-11 px-4 rounded-xl bg-ink-900 text-bone text-sm font-medium inline-flex items-center gap-2 hover:bg-ink-700 transition-colors"
+          >
+            <Plus size={16} /> Nuevo
+          </button>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2.5">
+          {[
+            { icon: Wallet,        label: "Adelantos en custodia", value: fmt(custody), tone: "text-amber-700 bg-amber-50 border-amber-100" },
+            { icon: PackageSearch, label: "Encargos activos",      value: String(active.length), tone: "text-ink-800 bg-white border-ink-100" },
+            { icon: Clock,         label: "Por cobrar aprox.",     value: fmt(pending), tone: "text-ink-800 bg-white border-ink-100" },
+          ].map(({ icon: Icon, label, value, tone }) => (
+            <div key={label} className={cn("rounded-2xl border p-3 sm:p-4 flex flex-col gap-1.5", tone)}>
+              <Icon size={16} strokeWidth={1.8} className="opacity-60" />
+              <p className="text-[10px] sm:text-[11px] uppercase tracking-wider opacity-70 leading-tight">{label}</p>
+              <p className="text-base sm:text-xl font-bold tnum leading-none">{value}</p>
+            </div>
+          ))}
+        </div>
+
+        <p className="flex gap-2 text-[12px] text-ink-500 bg-ink-50 rounded-xl px-3.5 py-3 leading-snug">
+          <Info size={15} className="shrink-0 mt-px" />
+          Los adelantos son plata de los clientes hasta que entregues la pieza: no suman a la utilidad ni a lo que se puede repartir.
+          Lo que le pagás al proveedor por un encargo no lo registres en Gastos: va como costo real al entregar.
+        </p>
+
+        <div className="flex gap-2 overflow-x-auto no-scrollbar">
+          {TABS.map(({ id, label, count }) => (
+            <button
+              key={id}
+              onClick={() => setTab(id)}
+              className={cn(
+                "h-9 px-4 rounded-full text-xs font-semibold whitespace-nowrap border transition-colors",
+                tab === id ? "bg-ink-900 text-bone border-ink-900" : "bg-white text-ink-600 border-ink-200"
+              )}
+            >
+              {label} · {count}
+            </button>
+          ))}
+        </div>
+
+        {error ? (
+          <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            No se pudieron cargar los encargos: {(error as Error).message}
+          </p>
+        ) : isLoading ? (
+          Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-44 rounded-2xl bg-ink-100 animate-pulse" />)
+        ) : shown.length === 0 ? (
+          <p className="text-center text-sm text-ink-400 py-14">
+            {tab === "active" ? "No hay encargos pendientes." : "Nada por aquí todavía."}
+          </p>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {paged.visible.map((order) => (
+              <OrderCard
+                key={order.id}
+                order={order}
+                stepping={stepMutation.isPending}
+                onStep={(status) => stepMutation.mutate({ id: order.id, status })}
+                onAdvance={() => setAdvanceFor(order)}
+                onDeliver={() => setDeliverFor(order)}
+                onCancel={() => setCancelFor(order)}
+              />
+            ))}
+            <ShowMore remaining={paged.remaining} pageSize={paged.pageSize} onClick={paged.showMore} />
+          </div>
+        )}
+      </main>
+
+      <AnimatePresence>
+        {creating   && <NewOrderModal key="new" onClose={() => setCreating(false)} onSaved={refresh} />}
+        {advanceFor && <AdvanceModal key="adv" order={advanceFor} onClose={() => setAdvanceFor(null)} onSaved={refresh} />}
+        {deliverFor && <DeliverModal key="del" order={deliverFor} onClose={() => setDeliverFor(null)} onSaved={refresh} />}
+        {cancelFor  && <CancelModal  key="can" order={cancelFor}  onClose={() => setCancelFor(null)}  onSaved={refresh} />}
+      </AnimatePresence>
+    </>
+  );
+}

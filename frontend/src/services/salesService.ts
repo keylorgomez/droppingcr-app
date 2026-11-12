@@ -1,4 +1,5 @@
 import { supabase } from "../lib/supabaseClient";
+import { fetchAll } from "../lib/fetchAll";
 import { sendTransactionalEmail } from "../lib/emailService";
 import { getUserExternalSales } from "./externalSalesService";
 import { SHIPPING_RATES } from "../config/shipping";
@@ -128,6 +129,12 @@ interface RawRefundRow {
     guest_name:       string | null;
     guest_phone:      string | null;
     product_variants: { size: string; products: { name: string } | null } | null;
+  } | null;
+  special_orders: {
+    guest_name:  string | null;
+    guest_phone: string | null;
+    description: string;
+    size:        string | null;
   } | null;
 }
 
@@ -361,22 +368,14 @@ export function triggerNewOrderEmail(
 // ── Record manual sale ─────────────────────────────────────────────────────
 
 export async function recordManualSale(data: SaleInput): Promise<void> {
-  const { data: product, error: productError } = await supabase
-    .from("products")
-    .select("price_purchase")
-    .eq("id", data.product_id)
-    .single();
-
-  if (productError) throw new Error(productError.message);
-
-  const { data: sale, error: saleError } = await supabase
-    .from("sales")
-    .insert({
+  // Una sola transacción en la base (record_sale): stock, venta, apartado y
+  // pago se guardan juntos o no se guarda nada.
+  const { error } = await supabase.rpc("record_sale", {
+    p: {
       product_id:      data.product_id,
       variant_id:      data.variant_id,
       quantity:        data.quantity,
       sale_price:      data.sale_price,
-      cost_price:      product.price_purchase,
       guest_name:      data.guest_name,
       guest_phone:     data.guest_phone,
       status:          data.status,
@@ -385,43 +384,20 @@ export async function recordManualSale(data: SaleInput): Promise<void> {
       shipping_cost:   data.shipping_cost,
       delivery_status: data.delivery_status,
       tracking_number: data.tracking_number,
-      province:        data.province  ?? null,
-      canton:          data.canton    ?? null,
-      district:        data.district  ?? null,
+      province:        data.province       ?? null,
+      canton:          data.canton         ?? null,
+      district:        data.district       ?? null,
       address_detail:  data.address_detail ?? null,
-    })
-    .select("id")
-    .single();
-
-  if (saleError) throw new Error(saleError.message);
-
-  const { error: stockError } = await supabase.rpc("decrement_variant_stock", {
-    p_variant_id: data.variant_id,
-    p_amount:     data.quantity,
+      initial_payment: data.initial_payment,
+    },
   });
-  if (stockError) throw new Error(stockError.message);
+  if (error) throw new Error(error.message);
 
-  if (data.delivery_status === DELIVERY_STATUS.APARTADA) {
-    const { error: reserveErr } = await supabase
-      .from("product_variants")
-      .update({ is_reserved: true })
-      .eq("id", data.variant_id);
-    if (reserveErr) throw new Error(reserveErr.message);
-  }
-
-  if (data.initial_payment > 0) {
-    const { error: payError } = await supabase.from("payments").insert({
-      sale_id: sale.id,
-      amount:  data.initial_payment,
-      note:    data.status === SALE_STATUS.PENDING ? "Abono inicial" : "Pago completo",
-    });
-    if (payError) throw new Error(payError.message);
-  }
-
+  // `sale_price` es el total de la línea; el correo espera precio unitario.
   triggerNewOrderEmail(
     data.guest_phone,
     data.guest_name,
-    [{ variant_id: data.variant_id, quantity: data.quantity, sale_price: data.sale_price }],
+    [{ variant_id: data.variant_id, quantity: data.quantity, sale_price: data.sale_price / data.quantity }],
     data.shipping_cost,
   );
 }
@@ -754,7 +730,7 @@ export async function getUserOrders(userId: string): Promise<UserOrder[]> {
 // ── Admin: all single-item sales ───────────────────────────────────────────
 
 export async function getAllSales(): Promise<AdminSale[]> {
-  const { data, error } = await supabase
+  const { data, error } = await fetchAll(() => supabase
     .from("sales")
     .select(`
       id, sold_at, sale_price, shipping_cost, shipping_method,
@@ -770,7 +746,7 @@ export async function getAllSales(): Promise<AdminSale[]> {
       ),
       payments ( amount )
     `)
-    .order("sold_at", { ascending: false });
+    .order("sold_at", { ascending: false }));
 
   if (error) throw new Error(error.message);
 
@@ -812,26 +788,28 @@ export async function getAllSales(): Promise<AdminSale[]> {
 // ── Refund log ─────────────────────────────────────────────────────────────
 
 export async function getRefundsLog(): Promise<RefundLog[]> {
-  const { data, error } = await supabase
+  const { data, error } = await fetchAll(() => supabase
     .from("refunds")
     .select(`
       id, sale_id, amount, reason, created_at,
       sales (
         guest_name, guest_phone,
         product_variants ( size, products ( name ) )
-      )
+      ),
+      special_orders ( guest_name, guest_phone, description, size )
     `)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false }));
 
   if (error) throw new Error(error.message);
 
   return (data as unknown as RawRefundRow[]).map((refundRow) => ({
     id:           refundRow.id,
     sale_id:      refundRow.sale_id,
-    guest_name:   refundRow.sales?.guest_name  ?? null,
-    guest_phone:  refundRow.sales?.guest_phone ?? null,
-    product_name: refundRow.sales?.product_variants?.products?.name ?? "—",
-    variant_size: refundRow.sales?.product_variants?.size           ?? "—",
+    guest_name:   refundRow.sales?.guest_name  ?? refundRow.special_orders?.guest_name  ?? null,
+    guest_phone:  refundRow.sales?.guest_phone ?? refundRow.special_orders?.guest_phone ?? null,
+    product_name: refundRow.sales?.product_variants?.products?.name
+      ?? (refundRow.special_orders ? `${refundRow.special_orders.description} (Encargo cancelado)` : "—"),
+    variant_size: refundRow.sales?.product_variants?.size ?? refundRow.special_orders?.size ?? "—",
     amount:       refundRow.amount,
     reason:       refundRow.reason     ?? null,
     created_at:   refundRow.created_at,
@@ -841,8 +819,8 @@ export async function getRefundsLog(): Promise<RefundLog[]> {
 // ── Payment log (sales + orders merged) ───────────────────────────────────
 
 export async function getPaymentsLog(): Promise<PaymentLog[]> {
-  const [salesPmtsResult, orderPmtsResult, externalPmtsResult] = await Promise.all([
-    supabase
+  const [salesPmtsResult, orderPmtsResult, externalPmtsResult, specialPmtsResult] = await Promise.all([
+    fetchAll(() => supabase
       .from("payments")
       .select(`
         id, amount, note, paid_at,
@@ -852,8 +830,8 @@ export async function getPaymentsLog(): Promise<PaymentLog[]> {
         )
       `)
       .not("sale_id", "is", null)
-      .order("paid_at", { ascending: false }),
-    supabase
+      .order("paid_at", { ascending: false })),
+    fetchAll(() => supabase
       .from("payments")
       .select(`
         id, amount, note, paid_at,
@@ -863,18 +841,30 @@ export async function getPaymentsLog(): Promise<PaymentLog[]> {
         )
       `)
       .not("order_id", "is", null)
-      .order("paid_at", { ascending: false }),
-    supabase
+      .order("paid_at", { ascending: false })),
+    fetchAll(() => supabase
       .from("payments")
       .select(`
         id, amount, note, paid_at,
         external_sales ( id, guest_name, guest_phone, sale_price, product_name )
       `)
       .not("external_sale_id", "is", null)
-      .order("paid_at", { ascending: false }),
+      .order("paid_at", { ascending: false })),
+    fetchAll(() => supabase
+      .from("payments")
+      .select(`
+        id, amount, note, paid_at,
+        special_orders ( id, guest_name, guest_phone, description, size, estimated_price )
+      `)
+      .not("special_order_id", "is", null)
+      .order("paid_at", { ascending: false })),
   ]);
 
-  if (salesPmtsResult.error) throw new Error(salesPmtsResult.error.message);
+  // Si una de las tres falla, mejor un error visible que un log incompleto.
+  if (salesPmtsResult.error)    throw new Error(salesPmtsResult.error.message);
+  if (orderPmtsResult.error)    throw new Error(orderPmtsResult.error.message);
+  if (externalPmtsResult.error) throw new Error(externalPmtsResult.error.message);
+  if (specialPmtsResult.error)  throw new Error(specialPmtsResult.error.message);
 
   const saleLogs: PaymentLog[] = (salesPmtsResult.data as unknown as RawSalePaymentLogRow[]).map((paymentRow) => ({
     id:              paymentRow.id,
@@ -934,7 +924,30 @@ export async function getPaymentsLog(): Promise<PaymentLog[]> {
     shipping_cost:   0,
   }));
 
-  return [...saleLogs, ...orderLogs, ...externalLogs].sort(
+  // Adelantos de encargos todavía sin entregar (al entregar pasan a la venta
+  // externa y salen arriba como abono de esa venta).
+  const specialLogs: PaymentLog[] = (
+    (specialPmtsResult.data ?? []) as unknown as Array<{
+      id: string; amount: number; note: string | null; paid_at: string;
+      special_orders: { id: string; guest_name: string | null; guest_phone: string | null;
+                        description: string; size: string | null; estimated_price: number } | null;
+    }>
+  ).map((paymentRow) => ({
+    id:              paymentRow.id,
+    amount:          paymentRow.amount,
+    note:            paymentRow.note ?? null,
+    paid_at:         paymentRow.paid_at,
+    sale_id:         paymentRow.special_orders?.id          ?? "",
+    guest_name:      paymentRow.special_orders?.guest_name  ?? null,
+    guest_phone:     paymentRow.special_orders?.guest_phone ?? null,
+    product_name:    `${paymentRow.special_orders?.description ?? "Encargo"} (Adelanto de encargo)`,
+    variant_size:    paymentRow.special_orders?.size ?? "—",
+    delivery_status: DELIVERY_STATUS.VALIDATING,
+    sale_price:      Number(paymentRow.special_orders?.estimated_price ?? 0),
+    shipping_cost:   0,
+  }));
+
+  return [...saleLogs, ...orderLogs, ...externalLogs, ...specialLogs].sort(
     (paymentA, paymentB) =>
       new Date(paymentB.paid_at).getTime() - new Date(paymentA.paid_at).getTime()
   );

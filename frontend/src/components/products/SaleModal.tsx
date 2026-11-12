@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { QUERY_KEYS } from "../../constants/queryKeys";
 import { X, Check, Loader2, ShoppingCart } from "lucide-react";
 import {
   recordManualSale,
@@ -88,9 +89,12 @@ export default function SaleModal({
   const priceNum           = Number(priceSold) || 0;
   const totalNum           = priceNum + shippingCost;
 
+  const queryClient = useQueryClient();
   const saleMutation = useMutation({
     mutationFn: recordManualSale,
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.FINANCE });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PRODUCTS });
       setSaleConfirmed(true);
       setConfirmedSaleData({
         name:  guestName.trim(),

@@ -2,7 +2,7 @@ import { useMemo, useEffect, useLayoutEffect, useState, useRef } from "react";
 import { useNavigate, useSearchParams, useLocation, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Search, X, ChevronDown, Check, SlidersHorizontal, ChevronLeft, ChevronRight, Share2 } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import Header from "../components/ui/Header";
 import PromoBanner from "../components/PromoBanner";
 import ProductCard from "../components/catalog/ProductCard";
@@ -12,6 +12,7 @@ import { matchesSearch } from "../lib/formatters";
 import { QUERY_KEYS } from "../constants/queryKeys";
 import { ROUTES } from "../constants/app";
 import { useAuth } from "../context/AuthContext";
+import { useSeo, breadcrumbJsonLd } from "../lib/seo";
 import { useToast } from "../components/ui/Toast";
 import { cn } from "../lib/utils";
 
@@ -300,6 +301,27 @@ export default function CatalogPage() {
     }
   }
 
+  // El canonical deja fuera `q` y `tallas`: son infinitas combinaciones de la
+  // misma grilla y Google las tomaría como páginas duplicadas. Una categoría
+  // (`?filter=`) sí es contenido propio y se apunta a sí misma.
+  useSeo({
+    title: filterLabel
+      ? `${filterLabel} — streetwear en Costa Rica`
+      : "Catálogo de streetwear y camisetas de fútbol",
+    description: filterLabel
+      ? `${filterLabel} en Dropping CR. Piezas únicas con envío a todo Costa Rica.`
+      : "Todo el catálogo de Dropping CR: streetwear, vintage, camisetas de fútbol, " +
+        "sneakers y accesorios. Envíos a todo Costa Rica.",
+    path: filter ? `${ROUTES.CATALOG}?filter=${filter}` : ROUTES.CATALOG,
+    // Una búsqueda sin resultados no aporta nada a un índice.
+    noindex: filtered.length === 0,
+    jsonLd: breadcrumbJsonLd([
+      { name: "Inicio",   path: ROUTES.HOME },
+      { name: "Catálogo", path: ROUTES.CATALOG },
+      ...(filterLabel ? [{ name: filterLabel, path: `${ROUTES.CATALOG}?filter=${filter}` }] : []),
+    ]),
+  });
+
   function openModal() {
     setPendingSearch(search);
     setPendingSizes(selectedSizes);
@@ -500,8 +522,9 @@ export default function CatalogPage() {
                       // búsqueda y tallas, no solo la categoría.
                       query: window.location.search,
                     }));
-                    navigate(ROUTES.PRODUCT(product.slug));
                   }}
+                  href={ROUTES.PRODUCT(product.slug)}
+                  sizes={product.sizes}
                   isHidden={isAdmin && !product.is_active}
                   onEdit={isAdmin ? () => navigate(`/admin/products/${product.id}/edit`) : undefined}
                 />

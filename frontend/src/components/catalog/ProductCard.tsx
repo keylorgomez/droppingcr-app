@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { Link } from "react-router-dom";
+import { motion, AnimatePresence } from "motion/react";
 import { Pencil, EyeOff, ArrowUpRight } from "lucide-react";
 import { cloudinaryUrl } from "../../lib/cloudinary";
 import { cn } from "../../lib/utils";
@@ -15,8 +16,16 @@ interface ProductCardProps {
   is_sold_out?: boolean;
   is_reserved?: boolean;
   isHidden?: boolean;
+  /** Tallas con stock, en el orden en que se muestran. */
+  sizes?: string[];
   /** Índice en la grilla — escalona la entrada. */
   index?: number;
+  /**
+   * Destino de la tarjeta. Con href la tarjeta es un link de verdad: se puede
+   * abrir en otra pestaña, compartir con un toque largo y Google la rastrea.
+   */
+  href?: string;
+  /** Efecto extra al tocar (ej. guardar la posición del catálogo). */
   onClick?: () => void;
   onEdit?: () => void;
 }
@@ -33,7 +42,9 @@ export default function ProductCard({
   is_sold_out = false,
   is_reserved = false,
   isHidden = false,
+  sizes = [],
   index = 0,
+  href,
   onClick,
   onEdit,
 }: ProductCardProps) {
@@ -59,20 +70,20 @@ export default function ProductCard({
         ? { text: "Nuevo",   cls: "bg-ink-900 text-bone" }
         : null;
 
-  return (
-    // La entrada es una animación CSS y no un `whileInView`: el producto es el
-    // contenido, no decoración. Si el motor de animaciones se atasca o el
-    // observador no dispara, con CSS la tarjeta queda visible igual.
-    <article
-      className={cn(
-        "group relative flex flex-col cursor-pointer animate-rise",
-        isHidden && "opacity-60"
-      )}
-      style={{ animationDelay: `${(index % 4) * 45}ms` }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      onClick={onClick}
-    >
+  const rootProps = {
+    className: cn(
+      "group relative flex flex-col cursor-pointer animate-rise",
+      "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ink-900 rounded-card",
+      isHidden && "opacity-60"
+    ),
+    style: { animationDelay: `${(index % 4) * 45}ms` },
+    onMouseEnter: () => setIsHovered(true),
+    onMouseLeave: () => setIsHovered(false),
+    onClick,
+  };
+
+  const content = (
+    <>
       {/* ── Imagen ──────────────────────────────────────────────────── */}
       <motion.div
         className="relative overflow-hidden rounded-card bg-ink-50 aspect-[4/5]"
@@ -124,7 +135,7 @@ export default function ProductCard({
         {statusBadge && (
           <span
             className={cn(
-              "absolute top-3 left-3 z-10 rounded-chip font-display uppercase text-[9px] tracking-widest2 leading-none px-2 py-1.5",
+              "absolute top-2.5 left-2.5 sm:top-3 sm:left-3 z-10 rounded-chip font-display uppercase text-[11px] tracking-widest2 leading-none px-2 py-1.5",
               statusBadge.cls
             )}
           >
@@ -135,8 +146,8 @@ export default function ProductCard({
         {/* Descuento: el único punto de color del sitio, y va sobre la foto
             porque es lo primero que barre el ojo al escanear la grilla. */}
         {hasDiscount && !unavailable && (
-          <span className="absolute top-3 right-3 z-10 rounded-chip bg-sale text-white
-                           font-display uppercase text-[10px] tracking-widest2 leading-none px-2 py-1.5">
+          <span className="absolute top-2.5 right-2.5 sm:top-3 sm:right-3 z-10 rounded-chip bg-sale text-white
+                           font-display uppercase text-[12px] tracking-wider leading-none px-2 py-1.5">
             −{discount_percentage}%
           </span>
         )}
@@ -145,7 +156,7 @@ export default function ProductCard({
         {allImages.length > 1 && !unavailable && (
           <motion.span
             className="absolute bottom-3 left-3 z-10 rounded-full bg-ink-950/45 backdrop-blur-sm
-                       text-bone text-[9px] tnum font-medium leading-none px-2 py-1.5"
+                       text-bone text-[10px] tnum font-medium leading-none px-2 py-1.5"
             initial={false}
             animate={{ opacity: isHovered ? 0 : 1 }}
             transition={{ duration: 0.25 }}
@@ -182,7 +193,7 @@ export default function ProductCard({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 8 }}
                 transition={{ duration: 0.25, ease: EASE }}
-                onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onEdit(); }}
                 className="absolute bottom-3 right-3 z-20 w-9 h-9 rounded-btn bg-bone text-ink-900
                            flex items-center justify-center hover:bg-white transition-colors shadow-lift"
                 title="Editar producto"
@@ -211,7 +222,7 @@ export default function ProductCard({
           línea sube el precio y la fila de la grilla queda desalineada. */}
       <div className="flex flex-col pt-3">
         <h3 className={cn(
-          "text-[12.5px] leading-[1.36] line-clamp-2 min-h-[34px]",
+          "text-[13px] leading-[1.36] line-clamp-2 min-h-[35px]",
           unavailable ? "text-ink-400" : "text-ink-900"
         )}>
           <span
@@ -228,19 +239,34 @@ export default function ProductCard({
 
         <div className="flex items-baseline gap-2 h-5 mt-1.5">
           <span className={cn(
-            "text-[13.5px] font-semibold tnum leading-none",
+            "text-[14.5px] font-semibold tnum leading-none",
             unavailable ? "text-ink-400" : hasDiscount ? "text-sale" : "text-ink-900"
           )}>
             ₡{finalPrice.toLocaleString("en-US")}
           </span>
 
           {hasDiscount && (
-            <span className="text-[11.5px] text-ink-400 line-through tnum leading-none">
+            <span className="text-[12px] text-ink-400 line-through tnum leading-none">
               ₡{price_sale.toLocaleString("en-US")}
             </span>
           )}
         </div>
+
+        {/* Tallas con stock: ahorra entrar a cada pieza para ver si hay la tuya.
+            Alto fijo para que la grilla no quede escalonada. */}
+        <p className="h-4 mt-1.5 text-[11px] text-ink-400 tracking-wide truncate">
+          {!unavailable && sizes.length > 0 ? `Tallas: ${sizes.join(" · ")}` : ""}
+        </p>
       </div>
-    </article>
+    </>
+  );
+
+  // La entrada es una animación CSS y no un `whileInView`: el producto es el
+  // contenido, no decoración. Si el motor de animaciones se atasca o el
+  // observador no dispara, con CSS la tarjeta queda visible igual.
+  return href ? (
+    <Link to={href} aria-label={name} {...rootProps}>{content}</Link>
+  ) : (
+    <article {...rootProps}>{content}</article>
   );
 }

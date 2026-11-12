@@ -1,4 +1,4 @@
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { X, User, ShoppingBag, LogOut, LayoutDashboard, Package, ClipboardList, CreditCard } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { UserRole } from "../../context/AuthContext";
