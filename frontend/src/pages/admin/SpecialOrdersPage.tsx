@@ -26,7 +26,7 @@ const inputCls =
   "w-full rounded-xl border border-ink-200 px-4 py-2.5 text-sm text-brand-dark placeholder:text-ink-300 " +
   "outline-none bg-white focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20 transition";
 
-type Tab = "active" | "delivered" | "cancelled";
+type Tab = "active" | SpecialOrderStatus;
 
 const normalize = (text: string) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
@@ -627,10 +627,18 @@ export default function SpecialOrdersPage() {
   const custody = active.reduce((total, order) => total + order.advance, 0);
   const pending = active.reduce((total, order) => total + Math.max(0, order.estimated_price - order.advance), 0);
 
+  // "Activos" junta todo lo que falta entregar; las de en medio lo parten por
+  // etapa. Un encargo está en una sola etapa, así que entregados y cancelados
+  // nunca se cuelan en ellas.
+  const countOf = (status: SpecialOrderStatus) => orders.filter((o) => o.status === status).length;
   const TABS: { id: Tab; label: string; count: number }[] = [
-    { id: "active",    label: "Activos",    count: active.length },
-    { id: "delivered", label: "Entregados", count: orders.filter((o) => o.status === "delivered").length },
-    { id: "cancelled", label: "Cancelados", count: orders.filter((o) => o.status === "cancelled").length },
+    { id: "active",     label: "Activos",    count: active.length },
+    { id: "quoted",     label: "Cotizados",  count: countOf("quoted") },
+    { id: "ordered",    label: "Pedidos",    count: countOf("ordered") },
+    { id: "in_transit", label: "En camino",  count: countOf("in_transit") },
+    { id: "arrived",    label: "En CR",      count: countOf("arrived") },
+    { id: "delivered",  label: "Entregados", count: countOf("delivered") },
+    { id: "cancelled",  label: "Cancelados", count: countOf("cancelled") },
   ];
 
 
