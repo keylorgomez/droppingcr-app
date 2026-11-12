@@ -7,6 +7,12 @@ import Header from "../components/ui/Header";
 import { useAuth } from "../context/AuthContext";
 import { claimOrders, getUserOrders, type UserOrder } from "../services/salesService";
 import { claimExternalSales } from "../services/externalSalesService";
+import {
+  claimSpecialOrders, getMySpecialOrders, SPECIAL_ORDER_FLOW, SPECIAL_ORDER_STATUS_LABEL,
+  type MySpecialOrder,
+} from "../services/specialOrdersService";
+import { fmt } from "../lib/formatters";
+import { cn } from "../lib/utils";
 import { QUERY_KEYS } from "../constants/queryKeys";
 import { OrderSkeleton, OrderCard } from "../components/orders/UserOrderCard";
 import { OrderDetailSheet } from "../components/orders/UserOrderDetailSheet";
@@ -24,13 +30,14 @@ export default function MyOrdersPage() {
     Promise.all([
       claimOrders(user.id, user.whatsapp),
       claimExternalSales(user.id, user.whatsapp),
-    ]).then(([claimed, claimedExternal]) => claimed + claimedExternal)
+      claimSpecialOrders(user.id, user.whatsapp),
+    ]).then(([claimed, claimedExternal, claimedSpecial]) => claimed + claimedExternal + claimedSpecial)
       .then((claimed) => {
         if (claimed > 0) {
           queryClient.invalidateQueries({ queryKey: QUERY_KEYS.MY_ORDERS(user.id) });
         }
       })
-      .catch(() => {});
+      .catch((err) => console.warn("[silencioso]", err));
   }, [user?.id, user?.whatsapp, queryClient]);
 
   const { data: orders = [], isLoading, isError } = useQuery({
@@ -40,6 +47,13 @@ export default function MyOrdersPage() {
     staleTime:      0,
     refetchOnMount: true,
   });
+
+  const { data: encargos = [] } = useQuery({
+    queryKey: QUERY_KEYS.MY_SPECIAL_ORDERS(user?.id ?? ""),
+    queryFn:  getMySpecialOrders,
+    enabled:  !!user?.id,
+  });
+  const activeEncargos = encargos.filter((e) => e.status !== "delivered" && e.status !== "cancelled");
 
   // La app ya no espera la sesión para pintar: solo redirigir cuando terminó
   // de cargar y de verdad no hay usuario.
@@ -86,7 +100,7 @@ export default function MyOrdersPage() {
           </p>
         )}
 
-        {!isLoading && !isError && orders.length === 0 && (
+        {!isLoading && !isError && orders.length === 0 && activeEncargos.length === 0 && (
           <div className="flex flex-col items-center gap-4 py-24 text-ink-300">
             <ShoppingBag size={48} strokeWidth={1.2} />
             <div className="text-center">
@@ -99,6 +113,18 @@ export default function MyOrdersPage() {
               </p>
             </div>
           </div>
+        )}
+
+        {activeEncargos.length > 0 && (
+          <section className="mb-8">
+            <h2 className="font-display text-[11px] uppercase tracking-widest2
+                           text-ink-400 mb-3">
+              Encargos
+            </h2>
+            <div className="flex flex-col gap-3">
+              {activeEncargos.map((e) => <EncargoCard key={e.id} encargo={e} />)}
+            </div>
+          </section>
         )}
 
         {pending.length > 0 && (
@@ -136,5 +162,43 @@ export default function MyOrdersPage() {
         )}
       </AnimatePresence>
     </>
+  );
+}
+
+// Un encargo es una pieza pedida al proveedor: lo que más pregunta el cliente
+// es "¿por dónde viene?", así que el avance va al frente.
+function EncargoCard({ encargo }: { encargo: MySpecialOrder }) {
+  const step      = SPECIAL_ORDER_FLOW.indexOf(encargo.status);
+  const remaining = Math.max(0, encargo.estimated_price - encargo.paid);
+  return (
+    <div className="rounded-card border border-ink-100 bg-white p-4 flex flex-col gap-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-ink-900">{encargo.description}</p>
+          {encargo.size && <p className="text-xs text-ink-400 mt-0.5">Talla {encargo.size}</p>}
+        </div>
+        <span className="shrink-0 font-display uppercase text-[10px] tracking-wider rounded-chip bg-ink-900 text-bone px-2 py-1 leading-none">
+          {SPECIAL_ORDER_STATUS_LABEL[encargo.status]}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-4 gap-1" aria-label={`Paso ${step + 1} de ${SPECIAL_ORDER_FLOW.length}`}>
+        {SPECIAL_ORDER_FLOW.map((s, i) => (
+          <div key={s} className="flex flex-col gap-1">
+            <span className={cn("h-1 rounded-full", i <= step ? "bg-ink-900" : "bg-ink-100")} />
+            <span className={cn("text-[10px] leading-tight", i <= step ? "text-ink-700" : "text-ink-300")}>
+              {SPECIAL_ORDER_STATUS_LABEL[s]}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {encargo.estimated_price > 0 && (
+        <div className="flex items-center justify-between text-xs border-t border-ink-50 pt-2.5">
+          <span className="text-ink-500">Adelanto {fmt(encargo.paid)} de {fmt(encargo.estimated_price)}</span>
+          <span className="font-semibold text-ink-900">{remaining > 0 ? `Falta ${fmt(remaining)}` : "Pagado"}</span>
+        </div>
+      )}
+    </div>
   );
 }

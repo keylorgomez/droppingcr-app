@@ -10,7 +10,10 @@ import { useCart } from "../context/CartContext";
 import { trackViewItem } from "../lib/analytics";
 import Header from "../components/ui/Header";
 import WhatsAppIcon from "../components/ui/WhatsAppIcon";
+import FloatingWhatsApp from "../components/ui/FloatingWhatsApp";
 import ProductCard from "../components/catalog/ProductCard";
+import SizeGuide from "../components/catalog/SizeGuide";
+import { sizeKind } from "../lib/sizes";
 import Reveal from "../components/ui/Reveal";
 import SectionHeading from "../components/home/SectionHeading";
 import { CLOTHING_SIZES } from "../constants/domain";
@@ -660,6 +663,11 @@ function ProductContent({ product }: { product: ProductDetail }) {
 
           {/* Información */}
           <div className="mt-12">
+            {sizeKind(sizes) && (
+              <InfoRow title="Guía de tallas">
+                <SizeGuide kind={sizeKind(sizes)!} productName={product.name} />
+              </InfoRow>
+            )}
             <InfoRow title="Envíos y entrega">
               Mensajero privado en zonas de cobertura: {colones(SHIPPING_RATES.MENSAJERO)}.
               Correos de Costa Rica con número de guía: {colones(SHIPPING_RATES.CORREOS_GAM)} dentro
@@ -677,6 +685,11 @@ function ProductContent({ product }: { product: ProductDetail }) {
             <div className="border-t border-ink-200" />
           </div>
         </div>
+      </div>
+
+      {/* En celular ya está la barra fija con WhatsApp */}
+      <div className="hidden md:block">
+        <FloatingWhatsApp message={`Hola! Tengo una consulta sobre ${product.name} (${window.location.href})`} />
       </div>
 
       {/* ── Barra de compra fija (solo celular) ──────────────────── */}

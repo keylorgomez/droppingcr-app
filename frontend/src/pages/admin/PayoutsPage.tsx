@@ -14,7 +14,7 @@ import {
 } from "../../services/payoutsService";
 import { fmt, formatDate } from "../../lib/formatters";
 import { getFinanceSummary, periodRange } from "../../services/analyticsService";
-import { PAYOUT_SHARE, PAYOUT_SHARE_LABEL } from "../../config/finance";
+import { PAYOUT_SHARE, PAYOUT_SHARE_LABEL, payoutAllowance } from "../../config/finance";
 import { QUERY_KEYS } from "../../constants/queryKeys";
 
 // ── Summary card ───────────────────────────────────────────────────────────
@@ -63,7 +63,10 @@ function PayoutModal({
   onSave,
   saving,
   allowed,
+  cash,
 }: {
+  /** Caja del negocio: tope duro, la base rechaza un reparto mayor. */
+  cash: number;
   /** Lo que se puede repartir hoy respetando el 60/40 y la plata cobrada. */
   allowed: number;
   admins:  AdminUser[];
@@ -158,7 +161,11 @@ function PayoutModal({
                          focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20
                          transition"
             />
-            {Number(amount) > allowed && (
+            {Number(amount) > cash ? (
+              <p className="text-[11px] text-red-600 leading-snug font-semibold">
+                Supera la caja del negocio ({fmt(Math.max(0, cash))}). No se puede repartir plata que no ha entrado.
+              </p>
+            ) : Number(amount) > allowed && (
               <p className="text-[11px] text-red-600 leading-snug">
                 {allowed > 0
                   ? `Supera lo que pueden repartir hoy (${fmt(allowed)}). Se puede registrar, pero el negocio queda por debajo del 40% de reserva.`
@@ -186,7 +193,7 @@ function PayoutModal({
 
           <button
             type="submit"
-            disabled={saving || !amount || parseFloat(amount) <= 0}
+            disabled={saving || !amount || parseFloat(amount) <= 0 || Number(amount) > cash}
             className="mt-1 w-full py-3 rounded-xl bg-brand-primary text-white text-sm
                        font-medium flex items-center justify-center gap-2
                        hover:bg-[#2e2e2e] transition-colors disabled:opacity-50"
@@ -438,10 +445,9 @@ export default function PayoutsPage() {
   // Caja del negocio: toda la ganancia cobrada que no se ha repartido.
   const cash               = finance?.available    ?? 0;
   // Lo que todavía permite la regla 60/40 sobre la utilidad.
-  const ruleRemaining      = Math.round(netProfit * PAYOUT_SHARE) - totalDistributed;
   // Lo que se puede repartir hoy: lo que permite la regla, pero nunca más de
   // lo que hay en caja (lo que falta cobrar no se puede repartir).
-  const canDistribute      = Math.max(0, Math.min(ruleRemaining, cash));
+  const { rule: ruleRemaining, allowed: canDistribute } = payoutAllowance(netProfit, totalDistributed, cash);
   const perAdmin           = admins.length > 0 ? Math.floor(canDistribute / admins.length) : 0;
   const limitReason        =
     ruleRemaining <= 0
@@ -683,6 +689,7 @@ export default function PayoutsPage() {
             }
             saving={saveMutation.isPending}
             allowed={canDistribute}
+            cash={cash}
             onClose={() => setModalOpen(false)}
             onSave={(recipientId, amount, note) =>
               saveMutation.mutate({ recipientId, amount, note })

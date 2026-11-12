@@ -143,7 +143,7 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
     ),
     onSuccess: () => {
       showToast("Pedido actualizado correctamente.", "success");
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ADMIN_ORDERS });
+      invalidateAll();
       onClose();
     },
     onError: (err: Error) => showToast(err.message, "error"),
@@ -152,7 +152,6 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
   const abonoMutation = useMutation({
     mutationFn: () => addOrderPayment(
       order.id,
-      order.order_total,
       Number(abonoAmount),
       "Abono",
     ),
@@ -167,7 +166,7 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
 
   const deleteMutation = useMutation({
     mutationFn: (paymentId: string) =>
-      deletePayment(paymentId, null, order.id, order.order_total),
+      deletePayment(paymentId),
     onSuccess: () => {
       showToast("Pago eliminado.", "success");
       invalidateAll();

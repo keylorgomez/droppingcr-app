@@ -162,7 +162,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
       })
-      .catch(() => {})
+      .catch((err) => console.warn("[silencioso]", err))
       .finally(() => setLoading(false));
 
     // Listen for auth state changes
@@ -180,7 +180,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 if (needsWelcome) sendWelcome(profile);
               }
             })
-            .catch(() => {})
+            .catch((err) => console.warn("[silencioso]", err))
             .finally(() => setLoading(false));
         } else {
           setUser(null);

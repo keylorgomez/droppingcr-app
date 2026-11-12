@@ -210,3 +210,71 @@ export async function getDeliveryStatusDistribution(range: PeriodRange): Promise
     }))
     .sort((a, b) => b.value - a.value);
 }
+
+// ── Piezas quietas ─────────────────────────────────────────────────────────
+
+export interface StaleProduct {
+  product_id:   string;
+  name:         string;
+  slug:         string;
+  units:        number;
+  stock_cost:   number;
+  days_listed:  number;
+  last_sold_at: string | null;
+}
+
+/** Con stock, publicadas hace más de `days` días y sin ventas en ese tiempo. */
+export async function getStaleInventory(days = 60): Promise<StaleProduct[]> {
+  const { data, error } = await supabase.rpc("stale_inventory", { p_days: days });
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as Record<string, string | number | null>[]).map((row) => ({
+    product_id:   String(row.product_id),
+    name:         String(row.name),
+    slug:         String(row.slug),
+    units:        Number(row.units) || 0,
+    stock_cost:   Math.round(Number(row.stock_cost) || 0),
+    days_listed:  Number(row.days_listed) || 0,
+    last_sold_at: row.last_sold_at ? String(row.last_sold_at) : null,
+  }));
+}
+
+// ── Exportar a CSV ─────────────────────────────────────────────────────────
+
+const CSV_HEADERS = ["Fecha", "Tipo", "Cliente", "Teléfono", "Producto", "Talla", "Cantidad", "Ingreso", "Costo", "Margen", "Envío", "Estado"];
+const STATUS_ES: Record<string, string> = { completed: "Pagada", pending: "Pendiente" };
+
+export function toCsv(rows: (string | number | null)[][]): string {
+  const cell = (v: string | number | null) => {
+    const s = v == null ? "" : String(v);
+    return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  // BOM: sin él Excel abre los acentos como "Ã©".
+  return "﻿" + rows.map((r) => r.map(cell).join(",")).join("\r\n");
+}
+
+/** Descarga las ventas del periodo como CSV (abre en Excel / Google Sheets). */
+export async function downloadSalesCsv(range: PeriodRange, label: string): Promise<number> {
+  const { data, error } = await supabase.rpc("sales_export", { p_from: iso(range.from), p_to: iso(range.to) });
+  if (error) throw new Error(error.message);
+  const rows = (data ?? []) as Record<string, string | number | null>[];
+
+  const body = rows.map((r) => [
+    new Date(String(r.sold_at)).toLocaleDateString("es-CR"),
+    r.source, r.customer, r.phone, r.product, r.size,
+    Number(r.quantity) || 0,
+    Math.round(Number(r.revenue) || 0),
+    Math.round(Number(r.cost) || 0),
+    Math.round(Number(r.margin) || 0),
+    Math.round(Number(r.shipping) || 0),
+    STATUS_ES[String(r.status)] ?? r.status,
+  ]);
+
+  const blob = new Blob([toCsv([CSV_HEADERS, ...body])], { type: "text/csv;charset=utf-8" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href     = url;
+  a.download = `ventas-dropping-${label.toLowerCase().replace(/\s+/g, "-")}.csv`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return rows.length;
+}

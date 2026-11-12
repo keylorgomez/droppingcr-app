@@ -16,11 +16,28 @@ import { cn } from "../../lib/utils";
 import { fmt, formatPhone, normalizeText } from "../../lib/formatters";
 import { QUERY_KEYS } from "../../constants/queryKeys";
 import { MS_PER_DAY } from "../../constants/app";
+import { SINPE_MOVIL } from "../../config/payments";
+
+// ── Antigüedad de la deuda ─────────────────────────────────────────────────
+// Lo que lleva más de 30 días es lo que hay que perseguir primero.
+type Age = "all" | "0-15" | "16-30" | "30+";
+const AGE_LABEL: Record<Exclude<Age, "all">, string> = { "0-15": "0–15 días", "16-30": "16–30 días", "30+": "+30 días" };
+
+function oldestDebtDays(client: ClientDebt): number {
+  const dates = client.sales.filter((s) => s.remaining > 0).map((s) => new Date(s.sold_at).getTime());
+  if (dates.length === 0) return 0;
+  return Math.floor((Date.now() - Math.min(...dates)) / MS_PER_DAY);
+}
+
+function ageBucket(days: number): Exclude<Age, "all"> {
+  return days <= 15 ? "0-15" : days <= 30 ? "16-30" : "30+";
+}
 
 function waLink(phone: string | null, name: string | null, remaining: number): string {
   const p = formatPhone(phone) ?? "";
   const msg = encodeURIComponent(
-    `Hola${name ? ` ${name}` : ""}! 👋 Te recordamos que tenés un saldo pendiente de ${fmt(remaining)} en Dropping CR. ¡Gracias! 🙌`
+    `Hola${name ? ` ${name}` : ""}! 👋 Te recordamos que tenés un saldo pendiente de ${fmt(remaining)} en Dropping CR.\n\n` +
+    `Podés pagar por SINPE Móvil al ${SINPE_MOVIL.phone} (${SINPE_MOVIL.holder}). ¡Gracias! 🙌`
   );
   return `https://wa.me/${p}?text=${msg}`;
 }
@@ -320,8 +337,12 @@ export default function DebtPage() {
   });
 
   const [search, setSearch] = useState("");
+  const [age, setAge]       = useState<Age>("all");
 
-  const filtered = search.trim()
+  const byAge = { "0-15": 0, "16-30": 0, "30+": 0 } as Record<Exclude<Age, "all">, number>;
+  for (const c of clients) byAge[ageBucket(oldestDebtDays(c))] += c.remaining;
+
+  const searched = search.trim()
     ? clients.filter((c) => {
         const q         = normalizeText(search.trim());
         const phoneQ    = q.replace(/\D/g, "");
@@ -331,13 +352,14 @@ export default function DebtPage() {
         return nameMatch || phoneMatch;
       })
     : clients;
+  const filtered = age === "all" ? searched : searched.filter((c) => ageBucket(oldestDebtDays(c)) === age);
 
   const grandTotalSale = clients.reduce((sum, c) => sum + c.total_sale, 0);
   const grandTotalPaid = clients.reduce((sum, c) => sum + c.total_paid, 0);
   const grandTotal     = clients.reduce((sum, c) => sum + c.remaining, 0);
 
   // Se dibujan de a 20: con cientos de filas el celular se trababa.
-  const paged = usePaged(filtered, search);
+  const paged = usePaged(filtered, `${search}|${age}`);
 
   if (authLoading) return null;
 
@@ -408,6 +430,31 @@ export default function DebtPage() {
                 </p>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ── Antigüedad: tocar para filtrar ─────────────────────── */}
+        {!isLoading && clients.length > 0 && (
+          <div className="grid grid-cols-3 gap-2 mb-4">
+            {(Object.keys(AGE_LABEL) as Exclude<Age, "all">[]).map((key) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setAge(age === key ? "all" : key)}
+                aria-pressed={age === key}
+                className={cn(
+                  "rounded-xl border px-3 py-2.5 text-left transition-colors",
+                  age === key ? "border-brand-dark bg-brand-dark text-white" : "border-ink-100 bg-white hover:border-ink-300",
+                )}
+              >
+                <p className={cn("text-[10px] uppercase tracking-wider", age === key ? "text-white/60" : "text-ink-400")}>
+                  {AGE_LABEL[key]}
+                </p>
+                <p className={cn("text-sm font-semibold tnum", key === "30+" && age !== key && byAge[key] > 0 ? "text-red-500" : "")}>
+                  {fmt(byAge[key])}
+                </p>
+              </button>
+            ))}
           </div>
         )}
 

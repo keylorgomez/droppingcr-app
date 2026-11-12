@@ -362,7 +362,7 @@ export function triggerNewOrderEmail(
         total:         itemsTotal + shippingCost,
       },
     });
-  })().catch(() => {});
+  })().catch((err) => console.warn("[silencioso]", err));
 }
 
 // ── Record manual sale ─────────────────────────────────────────────────────
@@ -484,92 +484,54 @@ export async function getPaymentsForOrder(orderId: string): Promise<Payment[]> {
   return data as Payment[];
 }
 
-// ── Delete a payment record and revert status if balance becomes pending ──
+// ── Abonos: todo pasa en la base, en una transacción (add_payment /
+// delete_payment). Antes eran 3 llamadas sueltas y un doble toque registraba
+// el abono dos veces.
 
-export async function deletePayment(
-  paymentId: string,
-  saleId:    string | null,
-  orderId:   string | null,
-  totalOwed: number,
-): Promise<void> {
-  const { error: deleteError } = await supabase
-    .from("payments")
-    .delete()
-    .eq("id", paymentId);
-  if (deleteError) throw new Error(deleteError.message);
+export type PaymentParent = "sale" | "order" | "external";
 
-  if (saleId) {
-    const { data: remaining } = await supabase
-      .from("payments")
-      .select("amount")
-      .eq("sale_id", saleId);
-    const newTotal = (remaining ?? []).reduce(
-      (s, p: { amount: number }) => s + p.amount, 0
-    );
-    if (newTotal < totalOwed) {
-      await supabase.from("sales").update({ status: "pending" }).eq("id", saleId);
-    }
-  }
-
-  if (orderId) {
-    const { data: remaining } = await supabase
-      .from("payments")
-      .select("amount")
-      .eq("order_id", orderId);
-    const newTotal = (remaining ?? []).reduce(
-      (s, p: { amount: number }) => s + p.amount, 0
-    );
-    if (newTotal < totalOwed) {
-      await supabase.from("orders").update({ status: "pending" }).eq("id", orderId);
-    }
-  }
+export interface PaymentResult {
+  total_owed: number;
+  total_paid: number;
+  remaining:  number;
+  completed:  boolean;
 }
 
-// ── Add payment to a single sale ───────────────────────────────────────────
-
-export async function addPayment(
-  saleId:    string,
-  priceSold: number,
-  amount:    number,
-  note:      string | null,
-): Promise<void> {
-  const { error: payError } = await supabase.from("payments").insert({
-    sale_id: saleId,
-    amount,
-    note,
+export async function recordPayment(
+  kind:   PaymentParent,
+  id:     string,
+  amount: number,
+  note:   string | null,
+): Promise<PaymentResult> {
+  const { data, error } = await supabase.rpc("add_payment", {
+    p_kind: kind, p_id: id, p_amount: amount, p_note: note,
   });
-  if (payError) throw new Error(payError.message);
+  if (error) throw new Error(error.message);
+  const raw = data as Record<string, number | string | boolean>;
+  return {
+    total_owed: Number(raw.total_owed) || 0,
+    total_paid: Number(raw.total_paid) || 0,
+    remaining:  Number(raw.remaining)  || 0,
+    completed:  Boolean(raw.completed),
+  };
+}
 
-  const { data: payments, error: sumError } = await supabase
-    .from("payments")
-    .select("amount")
-    .eq("sale_id", saleId);
-  if (sumError) throw new Error(sumError.message);
+/** Borra un abono; si deja de estar saldada, la venta vuelve a pendiente. */
+export async function deletePayment(paymentId: string): Promise<void> {
+  const { error } = await supabase.rpc("delete_payment", { p_payment_id: paymentId });
+  if (error) throw new Error(error.message);
+}
 
-  const totalPaid = (payments ?? []).reduce(
-    (total, payment: { amount: number }) => total + payment.amount, 0
-  );
+/** Abono a una venta individual. */
+export async function addPayment(saleId: string, amount: number, note: string | null): Promise<void> {
+  await recordPayment("sale", saleId, amount, note);
+}
 
-  if (totalPaid >= priceSold) {
-    const { data: saleData } = await supabase
-      .from("sales")
-      .select("delivery_status, variant_id")
-      .eq("id", saleId)
-      .single();
-
-    const isApartada = saleData?.delivery_status === DELIVERY_STATUS.APARTADA;
-    const updates: Record<string, unknown> = { status: SALE_STATUS.COMPLETED };
-    if (isApartada) updates.delivery_status = DELIVERY_STATUS.CONFIRMED;
-
-    await supabase.from("sales").update(updates).eq("id", saleId);
-
-    if (isApartada && saleData?.variant_id) {
-      await supabase
-        .from("product_variants")
-        .update({ is_reserved: false })
-        .eq("id", saleData.variant_id);
-    }
-  }
+/** Cancela venta o pedido: stock de vuelta, apartado liberado y reembolso, todo o nada. */
+export async function cancelSale(kind: "sale" | "order", id: string, note: string | null): Promise<number> {
+  const { data, error } = await supabase.rpc("cancel_sale", { p_kind: kind, p_id: id, p_note: note });
+  if (error) throw new Error(error.message);
+  return Number(data) || 0;
 }
 
 // ── Claim orders matching user's WhatsApp ──────────────────────────────────
@@ -962,54 +924,20 @@ export async function updateSaleAdmin(
   note:            string | null,
   prevStatus?:     string,
   variantId?:      string,
-  quantity?:       number,
 ): Promise<void> {
   const isCancelling = delivery_status === DELIVERY_STATUS.CANCELLED;
   const wasApartada  = prevStatus === DELIVERY_STATUS.APARTADA;
 
-  const saleUpdate: Record<string, unknown> = { delivery_status, tracking_number, note };
-  if (isCancelling) saleUpdate.status = SALE_STATUS.CANCELLED;
+  if (isCancelling) {
+    await cancelSale("sale", saleId, note);
+    return;
+  }
 
   const { error } = await supabase
     .from("sales")
-    .update(saleUpdate)
+    .update({ delivery_status, tracking_number, note })
     .eq("id", saleId);
   if (error) throw new Error(error.message);
-
-  if (isCancelling) {
-    if (variantId) {
-      if (wasApartada) {
-        await supabase
-          .from("product_variants")
-          .update({ is_reserved: false })
-          .eq("id", variantId);
-      }
-      await supabase.rpc("increment_variant_stock", {
-        p_variant_id: variantId,
-        p_amount:     quantity ?? 1,
-      });
-    }
-
-    const { data: paymentRows } = await supabase
-      .from("payments")
-      .select("amount")
-      .eq("sale_id", saleId);
-
-    const totalPaid = (paymentRows ?? []).reduce(
-      (total, payment: { amount: number }) => total + payment.amount, 0
-    );
-
-    if (totalPaid > 0) {
-      const { data: { user } } = await supabase.auth.getUser();
-      await supabase.from("refunds").insert({
-        sale_id:    saleId,
-        amount:     totalPaid,
-        reason:     note?.trim() || "Cancelación de venta",
-        created_by: user?.id ?? null,
-      });
-    }
-    return;
-  }
 
   if (!variantId) return;
 

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { X, Settings2, CreditCard, Receipt, Coins, ShoppingBag, Printer, LayoutDashboard, PackagePlus, PackageSearch } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
@@ -32,7 +32,9 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
   const isAdmin        = user?.role === "admin";
   const navigate       = useNavigate();
   const [searchParams] = useSearchParams();
-  const activeFilter   = searchParams.get("filter") ?? "";
+  const { pathname }   = useLocation();
+  // El Sidebar vive fuera de <Routes>: el slug se lee del path a mano.
+  const activeFilter   = decodeURIComponent(pathname.match(/^\/catalogo\/([^/]+)/)?.[1] ?? "") || (searchParams.get("filter") ?? "");
 
   // Reuse the cached products query — no extra network request
   const { data: products = [], isLoading } = useQuery({

@@ -15,7 +15,7 @@ export const ROUTES = {
   CATALOG: "/catalogo",
   CART:    "/carrito",
   PRODUCT: (slug: string) => `/product/${slug}`,
-  catalogFilter: (slug: string) => `/catalogo?filter=${slug}`,
+  catalogFilter: (slug: string) => `/catalogo/${slug}`,
 } as const;
 
 // Frases de la cinta superior — tono de marca, no copy funcional.

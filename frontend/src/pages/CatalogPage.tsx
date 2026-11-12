@@ -1,5 +1,7 @@
+import FloatingWhatsApp from "../components/ui/FloatingWhatsApp";
 import { useMemo, useEffect, useLayoutEffect, useState, useRef } from "react";
-import { useNavigate, useSearchParams, useLocation, Link } from "react-router-dom";
+import { useNavigate, useSearchParams, useLocation, useParams, Link } from "react-router-dom";
+import { categoryCopy } from "../config/categoryCopy";
 import { useQuery } from "@tanstack/react-query";
 import { Search, X, ChevronDown, Check, SlidersHorizontal, ChevronLeft, ChevronRight, Share2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
@@ -77,7 +79,9 @@ export default function CatalogPage() {
   const { user }       = useAuth();
   const { showToast }  = useToast();
   const isAdmin        = user?.role === "admin";
-  const filter         = searchParams.get(PARAM.FILTER) ?? "";
+  // /catalogo/<slug> es la URL de cada categoría; ?filter= queda por links viejos.
+  const { slug: slugParam } = useParams();
+  const filter         = slugParam ?? searchParams.get(PARAM.FILTER) ?? "";
 
   // `catalog_state` solo vale cuando se vuelve desde el detalle de un producto.
   // Si no se comprueba, una visita nueva desde la home hereda página, filtros y
@@ -304,21 +308,21 @@ export default function CatalogPage() {
   // El canonical deja fuera `q` y `tallas`: son infinitas combinaciones de la
   // misma grilla y Google las tomaría como páginas duplicadas. Una categoría
   // (`?filter=`) sí es contenido propio y se apunta a sí misma.
+  const copy = filterLabel && filter !== "oculto" ? categoryCopy(filter, filterLabel) : null;
+
   useSeo({
-    title: filterLabel
-      ? `${filterLabel} — streetwear en Costa Rica`
-      : "Catálogo de streetwear y camisetas de fútbol",
-    description: filterLabel
-      ? `${filterLabel} en Dropping CR. Piezas únicas con envío a todo Costa Rica.`
+    title: copy ? copy.title : "Catálogo de streetwear y camisetas de fútbol",
+    description: copy
+      ? copy.intro
       : "Todo el catálogo de Dropping CR: streetwear, vintage, camisetas de fútbol, " +
         "sneakers y accesorios. Envíos a todo Costa Rica.",
-    path: filter ? `${ROUTES.CATALOG}?filter=${filter}` : ROUTES.CATALOG,
+    path: filter ? ROUTES.catalogFilter(filter) : ROUTES.CATALOG,
     // Una búsqueda sin resultados no aporta nada a un índice.
     noindex: filtered.length === 0,
     jsonLd: breadcrumbJsonLd([
       { name: "Inicio",   path: ROUTES.HOME },
       { name: "Catálogo", path: ROUTES.CATALOG },
-      ...(filterLabel ? [{ name: filterLabel, path: `${ROUTES.CATALOG}?filter=${filter}` }] : []),
+      ...(filterLabel ? [{ name: filterLabel, path: ROUTES.catalogFilter(filter) }] : []),
     ]),
   });
 
@@ -365,6 +369,7 @@ export default function CatalogPage() {
             <h1 className="type-display text-[clamp(2.25rem,7vw,4.5rem)] text-ink-900">
               {filterLabel ?? "Catálogo"}
             </h1>
+            {copy && <p className="text-[13px] leading-relaxed text-ink-500 max-w-[52ch]">{copy.intro}</p>}
           </div>
 
           {!isLoading && (
@@ -618,6 +623,8 @@ export default function CatalogPage() {
           </div>
         )}
       </main>
+
+      <FloatingWhatsApp message="Hola! Estoy viendo el catálogo y tengo una consulta 👋" />
 
       {/* ── Mobile: botón flotante de filtros ────────────────────────── */}
       {!isLoading && products.length > 0 && (

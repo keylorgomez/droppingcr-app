@@ -49,7 +49,9 @@ export default function CategoryTiles({ categories }: CategoryTilesProps) {
                     {cat.name}
                   </h3>
                   <p className="type-eyebrow text-bone/50 mt-2">
-                    {cat.count} {cat.count === 1 ? "disponible" : "disponibles"}
+                    {cat.count === 0
+                      ? "Próximo drop"
+                      : `${cat.count} ${cat.count === 1 ? "disponible" : "disponibles"}`}
                   </p>
                 </div>
                 <motion.span

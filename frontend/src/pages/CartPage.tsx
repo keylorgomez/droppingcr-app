@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Trash2, ShoppingBag, Package, AlertTriangle, Truck } from "lucide-react";
@@ -10,7 +10,10 @@ import { getLiveStocks } from "../services/cartService";
 import { cn } from "../lib/utils";
 import { STORE_WHATSAPP, SITE_URL, ROUTES } from "../constants/app";
 import { SHIPPING_RATES } from "../config/shipping";
+import { SINPE_MOVIL } from "../config/payments";
 import WhatsAppIcon from "../components/ui/WhatsAppIcon";
+import ShippingPicker from "../components/cart/ShippingPicker";
+import { EMPTY_SHIPPING, shippingQuote, type ShippingChoice } from "../lib/shippingQuote";
 
 // ── Skeleton ───────────────────────────────────────────────────────────────
 
@@ -202,6 +205,21 @@ export default function CartPage() {
     staleTime:          30_000,
   });
 
+  // La dirección se recuerda en este navegador: quien vuelve a comprar no la
+  // escribe de nuevo. Si el almacenamiento falla, simplemente arranca vacía.
+  const [shipping, setShippingState] = useState<ShippingChoice>(() => {
+    try {
+      const saved = localStorage.getItem("dropping:cart-shipping");
+      return saved ? { ...EMPTY_SHIPPING, ...JSON.parse(saved) } : EMPTY_SHIPPING;
+    } catch { return EMPTY_SHIPPING; }
+  });
+  const [payMethod, setPayMethod] = useState<string>("");
+  function setShipping(next: ShippingChoice) {
+    setShippingState(next);
+    try { localStorage.setItem("dropping:cart-shipping", JSON.stringify(next)); } catch { /* sin almacenamiento */ }
+  }
+  const quote = shippingQuote(shipping);
+
   const hasOutOfStock = items.some((i) => (liveStocks[i.variant_id] ?? i.stock) === 0);
   const validItems    = items.filter((i) => (liveStocks[i.variant_id] ?? i.stock) > 0);
 
@@ -212,12 +230,20 @@ export default function CartPage() {
     const lines = validItems.map(
       (i) => `• ${i.product_name} — Talla ${i.variant_size} x${i.quantity} — ₡${(i.price * i.quantity).toLocaleString("en-US")}\n  ${SITE_URL}${ROUTES.PRODUCT(i.slug)}`
     );
+    const validSubtotal = validItems.reduce((t, i) => t + i.price * i.quantity, 0);
+    const money = (n: number) => `₡${n.toLocaleString("en-US")}`;
+    const totals = quote
+      ? `Subtotal: ${money(validSubtotal)}\nEnvío (${quote.label}): ${quote.cost === 0 ? "gratis" : money(quote.cost)}\n*Total: ${money(validSubtotal + quote.cost)}*`
+      : `Subtotal: ${money(validSubtotal)} + envío`;
+    const where = quote
+      ? `${shipping.district}, ${shipping.canton}, ${shipping.province}`
+      : "(provincia, cantón y distrito)";
     return (
       `Hola! Quiero comprar:\n\n` +
       lines.join("\n") +
-      `\n\nSubtotal: ₡${subtotal.toLocaleString("en-US")} + envío\n\n` +
-      `Envío a (provincia, cantón y distrito): \n` +
-      `Pago con (SINPE / contra entrega): `
+      `\n\n${totals}\n\n` +
+      `Envío a: ${where}\n` +
+      `Pago con: ${payMethod || "(SINPE / transferencia / contra entrega)"}`
     );
   }
 
@@ -311,14 +337,59 @@ export default function CartPage() {
                     </span>
                   </div>
 
-                  {/* Shipping note */}
-                  <div className="flex items-start gap-2 bg-ink-50 rounded-btn px-3 py-2.5">
-                    <Truck size={14} className="text-ink-400 shrink-0 mt-0.5" strokeWidth={1.8} />
-                    <div className="text-[12px] text-ink-500 leading-relaxed">
-                      <p className="font-medium text-ink-700">Envío según tu zona</p>
-                      <p>Mensajero ₡{SHIPPING_RATES.MENSAJERO.toLocaleString("en-US")} · Correos GAM ₡{SHIPPING_RATES.CORREOS_GAM.toLocaleString("en-US")} · Fuera del GAM ₡{SHIPPING_RATES.CORREOS_FUERA_GAM.toLocaleString("en-US")}</p>
-                      <p className="mt-1">Pagás por SINPE Móvil, transferencia o contra entrega.</p>
+                  {/* Envío: calculado con la dirección */}
+                  <div className="flex flex-col gap-2 pt-1">
+                    <div className="flex items-center gap-2 text-[12px] font-medium text-ink-700">
+                      <Truck size={14} className="text-ink-400" strokeWidth={1.8} />
+                      ¿A dónde lo enviamos?
                     </div>
+                    <ShippingPicker value={shipping} onChange={setShipping} />
+                    {!quote && (
+                      <p className="text-[11px] text-ink-400 leading-relaxed">
+                        Mensajero ₡{SHIPPING_RATES.MENSAJERO.toLocaleString("en-US")} · Correos GAM ₡{SHIPPING_RATES.CORREOS_GAM.toLocaleString("en-US")} · Fuera del GAM ₡{SHIPPING_RATES.CORREOS_FUERA_GAM.toLocaleString("en-US")} · Grecia gratis
+                      </p>
+                    )}
+                  </div>
+
+                  {quote && (
+                    <>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-ink-500">Envío · {quote.label}</span>
+                        <span className="font-medium text-brand-dark">
+                          {quote.cost === 0 ? "Gratis" : `₡${quote.cost.toLocaleString("en-US")}`}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm border-t border-ink-100 pt-2">
+                        <span className="text-ink-900 font-medium">Total</span>
+                        <span className="font-bold text-brand-dark text-lg tnum">
+                          ₡{(subtotal + quote.cost).toLocaleString("en-US")}
+                        </span>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Forma de pago */}
+                  <div className="flex flex-col gap-2 pt-1">
+                    <p className="text-[12px] font-medium text-ink-700">¿Cómo vas a pagar?</p>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {["SINPE Móvil", "Transferencia", "Contra entrega"].map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setPayMethod(payMethod === m ? "" : m)}
+                          aria-pressed={payMethod === m}
+                          className={cn(
+                            "min-h-11 rounded-btn border px-1.5 text-[11.5px] leading-tight transition-colors",
+                            payMethod === m ? "bg-ink-900 text-bone border-ink-900" : "border-ink-200 text-ink-700 hover:border-ink-900"
+                          )}
+                        >
+                          {m}
+                        </button>
+                      ))}
+                    </div>
+                    {payMethod === "SINPE Móvil" && (
+                      <p className="text-[11px] text-ink-500">SINPE Móvil al {SINPE_MOVIL.phone}. Te confirmamos el pago por WhatsApp.</p>
+                    )}
                   </div>
                 </div>
 

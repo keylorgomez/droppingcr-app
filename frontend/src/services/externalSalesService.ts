@@ -2,6 +2,7 @@ import { supabase } from "../lib/supabaseClient";
 import { fetchAll } from "../lib/fetchAll";
 import { SALE_STATUS } from "../constants/domain";
 import { sendTransactionalEmail } from "../lib/emailService";
+import { recordPayment } from "./salesService";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -159,32 +160,11 @@ export async function createExternalSale(
 
 export async function addExternalSalePayment(
   externalSaleId: string,
-  salePrice:      number,
   amount:         number,
   note:           string | null,
 ): Promise<void> {
-  const { error } = await supabase.from("payments").insert({
-    external_sale_id: externalSaleId,
-    amount,
-    note,
-  });
-  if (error) throw new Error(error.message);
-
-  // Al quedar saldada, deja de ser un cobro pendiente.
-  const { data: paid, error: sumError } = await supabase
-    .from("payments")
-    .select("amount")
-    .eq("external_sale_id", externalSaleId);
-  if (sumError) throw new Error(sumError.message);
-
-  const totalPaid = (paid ?? []).reduce((total, p) => total + p.amount, 0);
-  if (totalPaid >= salePrice) {
-    const { error: statusError } = await supabase
-      .from("external_sales")
-      .update({ status: SALE_STATUS.COMPLETED })
-      .eq("id", externalSaleId);
-    if (statusError) throw new Error(statusError.message);
-  }
+  // Atómico en la base: al quedar saldada deja de ser un cobro pendiente.
+  await recordPayment("external", externalSaleId, amount, note);
 }
 
 // ── Queries ────────────────────────────────────────────────────────────────

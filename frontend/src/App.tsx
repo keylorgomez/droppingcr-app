@@ -61,8 +61,19 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 function HomeOrLegacyCatalog() {
   const [searchParams] = useSearchParams();
   const filter = searchParams.get("filter");
-  if (filter) return <Navigate to={`${ROUTES.CATALOG}?filter=${filter}`} replace />;
+  if (filter) return <Navigate to={ROUTES.catalogFilter(filter)} replace />;
   return <HomePage />;
+}
+
+/** /catalogo?filter=x (links viejos ya compartidos) → /catalogo/x, conservando búsqueda y tallas. */
+function LegacyCatalogFilter() {
+  const [searchParams] = useSearchParams();
+  const filter = searchParams.get("filter");
+  if (!filter) return <CatalogPage />;
+  const rest = new URLSearchParams(searchParams);
+  rest.delete("filter");
+  const qs = rest.toString();
+  return <Navigate to={`${ROUTES.catalogFilter(filter)}${qs ? `?${qs}` : ""}`} replace />;
 }
 
 export default function App() {
@@ -80,7 +91,8 @@ export default function App() {
               <Routes>
                 {/* Public routes */}
                 <Route path="/"                        element={<HomeOrLegacyCatalog />} />
-                <Route path="/catalogo"                element={<CatalogPage />} />
+                <Route path="/catalogo"                element={<LegacyCatalogFilter />} />
+                <Route path="/catalogo/:slug"          element={<CatalogPage />} />
                 <Route path="/product/:slug"           element={<ProductDetailPage />} />
                 <Route path="/carrito"                 element={<CartPage />} />
                 <Route path="/profile"                 element={<ProfilePage />} />

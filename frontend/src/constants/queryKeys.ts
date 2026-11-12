@@ -39,10 +39,12 @@ export const QUERY_KEYS = {
   FINANCE:              ["finance"]                as const,
   FINANCE_SUMMARY:      (period: string) =>        ["finance", "summary", period] as const,
   DASH_AREA:            (period: string) =>        ["finance", "area",    period] as const,
+  STALE_INVENTORY:      ["finance", "stale"]       as const,
   DASH_TOP:             (period: string) =>        ["finance", "top",     period] as const,
   DASH_PIE:             (period: string) =>        ["finance", "pie",     period] as const,
 
   // ── User ──────────────────────────────────────────────────────────────────
   MY_ORDERS:            (userId: string) =>        ["my-orders",  userId] as const,
+  MY_SPECIAL_ORDERS:    (userId: string) =>        ["my-orders",  userId, "encargos"] as const,
   MY_PAYOUTS:           (userId: string) =>        ["my-payouts", userId] as const,
 } as const;

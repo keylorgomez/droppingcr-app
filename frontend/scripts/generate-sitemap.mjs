@@ -72,7 +72,7 @@ async function main() {
     entrada("/",          { cambio: "daily",  prioridad: "1.0" }),
     entrada("/catalogo",  { cambio: "daily",  prioridad: "0.9" }),
     ...categorias.map((c) =>
-      entrada(`/catalogo?filter=${escapar(c.slug)}`, { cambio: "weekly", prioridad: "0.7" })
+      entrada(`/catalogo/${escapar(c.slug)}`, { cambio: "weekly", prioridad: "0.7" })
     ),
     ...productos.map((p) =>
       entrada(`/product/${escapar(p.slug)}`, {

@@ -102,18 +102,24 @@ export default function HomePage() {
     const byslug = new Map<string, CategoryTile>();
     // Solo cuenta lo que se puede comprar hoy: un agotado inflaba el número.
     for (const product of visible) {
-      if (product.is_sold_out || product.is_reserved) continue;
+      const available = !product.is_sold_out && !product.is_reserved;
       for (const cat of product.categories) {
         const entry = byslug.get(cat.slug);
-        if (entry) entry.count += 1;
-        else byslug.set(cat.slug, { slug: cat.slug, name: cat.name, count: 1, image: product.image_url });
+        if (entry) entry.count += available ? 1 : 0;
+        else if (available || cat.slug in CATEGORY_IMAGES)
+          byslug.set(cat.slug, { slug: cat.slug, name: cat.name, count: available ? 1 : 0, image: product.image_url });
       }
     }
-    return [...byslug.values()]
+    // Las de foto fija (CATEGORY_IMAGES) son la cara de la tienda: siempre van,
+    // aunque hoy estén agotadas. El resto se gana el lugar por stock.
+    const tiles = [...byslug.values()]
       .map((c) => ({ ...c, image: CATEGORY_IMAGES[c.slug] ?? c.image }))
-      .filter((c) => c.image)
+      .filter((c) => c.image);
+    const pinned = tiles.filter((c) => c.slug in CATEGORY_IMAGES);
+    const rest   = tiles.filter((c) => !(c.slug in CATEGORY_IMAGES) && c.count > 0)
       .sort((a, b) => b.count - a.count)
-      .slice(0, MAX_TILES);
+      .slice(0, Math.max(0, MAX_TILES - pinned.length));
+    return [...pinned, ...rest].sort((a, b) => b.count - a.count);
   }, [visible]);
 
   useSeo({

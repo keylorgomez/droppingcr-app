@@ -2,7 +2,7 @@ import { supabase } from "../lib/supabaseClient";
 import { sendTransactionalEmail } from "../lib/emailService";
 import { DELIVERY_STATUS, SALE_STATUS } from "../constants/domain";
 import {
-  getPendingSales,
+  getPendingSales, recordPayment,
   type PendingSale, type ClientDebt, type Payment,
 } from "./salesService";
 import { addOrderPayment } from "./ordersService";
@@ -243,47 +243,18 @@ export async function addGeneralPayment(
     const amountToApply = Math.min(leftover, sale.remaining);
 
     if (sale.isOrder) {
-      const orderTotal = sale.sale_price + sale.shipping_cost;
-      await addOrderPayment(sale.id, orderTotal, amountToApply, note, true);
+      await addOrderPayment(sale.id, amountToApply, note, true);
       leftover -= amountToApply;
       continue;
     }
 
     if (sale.isExternal) {
-      await addExternalSalePayment(sale.id, sale.sale_price, amountToApply, note);
+      await addExternalSalePayment(sale.id, amountToApply, note);
       leftover -= amountToApply;
       continue;
     }
 
-    const { error: payError } = await supabase.from("payments").insert({
-      sale_id: sale.id,
-      amount:  amountToApply,
-      note,
-    });
-    if (payError) throw new Error(payError.message);
-
-    const newTotalPaid = sale.total_paid + amountToApply;
-    const totalOwed    = sale.sale_price + sale.shipping_cost;
-
-    if (newTotalPaid >= totalOwed) {
-      const isApartada = sale.delivery_status === DELIVERY_STATUS.APARTADA;
-      const updates: Record<string, unknown> = { status: SALE_STATUS.COMPLETED };
-      if (isApartada) updates.delivery_status = DELIVERY_STATUS.CONFIRMED;
-
-      const { error: statusError } = await supabase
-        .from("sales")
-        .update(updates)
-        .eq("id", sale.id);
-      if (statusError) throw new Error(statusError.message);
-
-      if (isApartada && sale.variant_id) {
-        await supabase
-          .from("product_variants")
-          .update({ is_reserved: false })
-          .eq("id", sale.variant_id);
-      }
-    }
-
+    await recordPayment("sale", sale.id, amountToApply, note);
     leftover -= amountToApply;
   }
 

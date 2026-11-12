@@ -142,18 +142,17 @@ export default function SaleDetailModal({ sale, onClose }: SaleDetailModalProps)
       note.trim() || null,
       sale.delivery_status,
       sale.variant_id,
-      sale.quantity
     ),
     onSuccess: () => {
       showToast("Pedido actualizado correctamente.", "success");
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ADMIN_SALES });
+      invalidateAll();
       onClose();
     },
     onError: (err: Error) => showToast(err.message, "error"),
   });
 
   const abonoMutation = useMutation({
-    mutationFn: () => addPayment(sale.id, total, Number(abonoAmount), "Abono"),
+    mutationFn: () => addPayment(sale.id, Number(abonoAmount), "Abono"),
     onSuccess: () => {
       showToast("Abono registrado.", "success");
       invalidateAll();
@@ -165,7 +164,7 @@ export default function SaleDetailModal({ sale, onClose }: SaleDetailModalProps)
 
   const deleteMutation = useMutation({
     mutationFn: (paymentId: string) =>
-      deletePayment(paymentId, sale.id, null, total),
+      deletePayment(paymentId),
     onSuccess: () => {
       showToast("Pago eliminado.", "success");
       invalidateAll();

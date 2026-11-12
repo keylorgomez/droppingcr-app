@@ -1,15 +1,17 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
   ResponsiveContainer, AreaChart, Area,
   BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 } from "recharts";
-import { ArrowLeft, TrendingUp, AlertCircle, ShoppingBag, Receipt, Wallet, Package, Tag } from "lucide-react";
+import { ArrowLeft, TrendingUp, AlertCircle, ShoppingBag, Receipt, Wallet, Package, Tag, Download } from "lucide-react";
+import { ROUTES } from "../../constants/app";
 import Header from "../../components/ui/Header";
 import {
   getFinanceSummary, getDailySales, getTopProducts, getDeliveryStatusDistribution,
+  getStaleInventory, downloadSalesCsv,
   periodRange, previousRange, PERIOD_LABELS, type Period,
 } from "../../services/analyticsService";
 import { fmt as fmtFull, fmtCompact as fmt } from "../../lib/formatters";
@@ -117,6 +119,23 @@ export default function Dashboard() {
   const { data: areaData, isLoading: loadingArea  } = useQuery({ queryKey: QUERY_KEYS.DASH_AREA(period), queryFn: () => getDailySales(range) });
   const { data: topProds, isLoading: loadingTop   } = useQuery({ queryKey: QUERY_KEYS.DASH_TOP(period),  queryFn: () => getTopProducts(5, range) });
   const { data: pie,      isLoading: loadingPie   } = useQuery({ queryKey: QUERY_KEYS.DASH_PIE(period),  queryFn: () => getDeliveryStatusDistribution(range) });
+  const { data: stale = [] }                        = useQuery({ queryKey: QUERY_KEYS.STALE_INVENTORY, queryFn: () => getStaleInventory(60) });
+  const staleCost = stale.reduce((t, p) => t + p.stock_cost, 0);
+
+  const [exporting, setExporting]   = useState(false);
+  const [exportMsg, setExportMsg]   = useState<string | null>(null);
+  async function handleExport() {
+    setExporting(true);
+    setExportMsg(null);
+    try {
+      const n = await downloadSalesCsv(range, PERIOD_LABELS[period]);
+      setExportMsg(n === 0 ? "No hay ventas en este periodo." : `${n} líneas exportadas.`);
+    } catch (err) {
+      setExportMsg(`No se pudo exportar: ${(err as Error).message}`);
+    } finally {
+      setExporting(false);
+    }
+  }
 
   const marginPct = stats && stats.revenue > 0 ? ((stats.gross_margin / stats.revenue) * 100).toFixed(1) : "0";
   const avgTicket = stats && stats.tickets > 0 ? stats.revenue / stats.tickets : 0;
@@ -162,6 +181,18 @@ export default function Dashboard() {
               </button>
             ))}
           </div>
+        </div>
+
+        <div className="flex items-center gap-3 -mt-2">
+          <button
+            onClick={handleExport}
+            disabled={exporting}
+            className="inline-flex items-center gap-1.5 h-9 px-4 rounded-full border border-ink-200 bg-white text-xs font-semibold text-ink-700 hover:border-ink-400 disabled:opacity-50"
+          >
+            <Download size={13} strokeWidth={2} />
+            {exporting ? "Exportando…" : `Exportar ventas (${PERIOD_LABELS[period].toLowerCase()})`}
+          </button>
+          {exportMsg && <span className="text-[11px] text-ink-400">{exportMsg}</span>}
         </div>
 
         {/* Si la base no responde, decirlo en vez de dejar el esqueleto eterno */}
@@ -386,6 +417,36 @@ export default function Dashboard() {
             )}
           </ChartCard>
         </div>
+
+        {/* ── Piezas quietas: plata parada en bodega ───────────────── */}
+        {stale.length > 0 && (
+          <ChartCard title={`Sin venderse en más de 60 días — ${stale.length} ${stale.length === 1 ? "pieza" : "piezas"} · ${fmtFull(staleCost)} a costo`}>
+            <p className="text-[11px] text-ink-400 -mt-3 mb-3">
+              Candidatas a rebaja. Si se repite una marca o categoría, no volver a comprarla igual.
+            </p>
+            <div className="flex flex-col divide-y divide-ink-50">
+              {stale.slice(0, 10).map((p) => (
+                <Link
+                  key={p.product_id}
+                  to={ROUTES.PRODUCT(p.slug)}
+                  className="flex items-center justify-between gap-3 py-2.5 hover:bg-ink-50/60 -mx-2 px-2 rounded-lg"
+                >
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium text-brand-dark truncate">{p.name}</p>
+                    <p className="text-[11px] text-ink-400">
+                      {p.units} {p.units === 1 ? "unidad" : "unidades"} · {p.days_listed} días publicada
+                      {p.last_sold_at ? "" : " · nunca vendida"}
+                    </p>
+                  </div>
+                  <span className="text-xs font-semibold tnum text-ink-700 shrink-0">{fmtFull(p.stock_cost)}</span>
+                </Link>
+              ))}
+            </div>
+            {stale.length > 10 && (
+              <p className="text-[11px] text-ink-400 mt-2">Y {stale.length - 10} más.</p>
+            )}
+          </ChartCard>
+        )}
       </main>
     </>
   );

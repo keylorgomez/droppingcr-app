@@ -38,5 +38,5 @@ type EmailPayload =
 export function sendTransactionalEmail(payload: EmailPayload): void {
   supabase.functions
     .invoke("send-email", { body: payload })
-    .catch(() => {}); // silencioso — el flujo principal no se interrumpe
+    .catch((err) => console.warn("[silencioso]", err)); // silencioso — el flujo principal no se interrumpe
 }

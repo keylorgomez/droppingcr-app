@@ -1,9 +1,9 @@
 import { supabase } from "../lib/supabaseClient";
 import { fetchAll } from "../lib/fetchAll";
 import { sendTransactionalEmail } from "../lib/emailService";
-import { DELIVERY_STATUS, SALE_STATUS, SHIPPING_METHOD } from "../constants/domain";
+import { DELIVERY_STATUS, SHIPPING_METHOD } from "../constants/domain";
 import {
-  triggerNewOrderEmail,
+  triggerNewOrderEmail, recordPayment, cancelSale,
   type DeliveryStatus, type ShippingMethod,
 } from "./salesService";
 
@@ -103,11 +103,6 @@ interface RawOrderRow {
     } | null;
   }>;
   payments: Array<{ amount: number }>;
-}
-
-interface RawOrderItemVariant {
-  variant_id: string;
-  quantity:   number;
 }
 
 interface RawOrderItemVariantId {
@@ -242,55 +237,16 @@ export async function updateOrderAdmin(
   const isCancelling = delivery_status === DELIVERY_STATUS.CANCELLED;
   const wasApartada  = prevStatus === DELIVERY_STATUS.APARTADA;
 
-  const orderUpdate: Record<string, unknown> = { delivery_status, tracking_number, note };
-  if (isCancelling) orderUpdate.status = SALE_STATUS.CANCELLED;
+  if (isCancelling) {
+    await cancelSale("order", orderId, note);
+    return;
+  }
 
   const { error } = await supabase
     .from("orders")
-    .update(orderUpdate)
+    .update({ delivery_status, tracking_number, note })
     .eq("id", orderId);
   if (error) throw new Error(error.message);
-
-  if (isCancelling) {
-    const { data: orderItems } = await supabase
-      .from("order_items")
-      .select("variant_id, quantity")
-      .eq("order_id", orderId);
-
-    for (const item of (orderItems ?? []) as RawOrderItemVariant[]) {
-      if (wasApartada) {
-        await supabase
-          .from("product_variants")
-          .update({ is_reserved: false })
-          .eq("id", item.variant_id);
-      }
-      await supabase.rpc("increment_variant_stock", {
-        p_variant_id: item.variant_id,
-        p_amount:     item.quantity,
-      });
-    }
-
-    const { data: paymentRows } = await supabase
-      .from("payments")
-      .select("amount")
-      .eq("order_id", orderId);
-
-    const totalPaid = (paymentRows ?? []).reduce(
-      (total, payment: { amount: number }) => total + payment.amount, 0
-    );
-
-    if (totalPaid > 0) {
-      const { data: { user } } = await supabase.auth.getUser();
-      await supabase.from("refunds").insert({
-        order_id:   orderId,
-        sale_id:    null,
-        amount:     totalPaid,
-        reason:     note?.trim() || "Cancelación de pedido",
-        created_by: user?.id ?? null,
-      });
-    }
-    return;
-  }
 
   if (delivery_status === DELIVERY_STATUS.APARTADA) {
     const { data: orderItems } = await supabase
@@ -312,64 +268,30 @@ export async function updateOrderAdmin(
 // ── Add payment to an order ────────────────────────────────────────────────
 
 export async function addOrderPayment(
-  orderId:    string,
-  orderTotal: number,
-  amount:     number,
-  note:       string | null,
+  orderId:   string,
+  amount:    number,
+  note:      string | null,
   skipEmail = false,
 ): Promise<void> {
-  const { error: payError } = await supabase.from("payments").insert({
-    order_id: orderId,
-    sale_id:  null,
-    amount,
-    note,
-  });
-  if (payError) throw new Error(payError.message);
-
-  const { data: paymentRows } = await supabase
-    .from("payments")
-    .select("amount")
-    .eq("order_id", orderId);
-
-  const totalPaid = (paymentRows ?? []).reduce(
-    (total, payment: { amount: number }) => total + payment.amount, 0
-  );
+  const result = await recordPayment("order", orderId, amount, note);
+  if (skipEmail) return;
 
   const { data: orderData } = await supabase
     .from("orders")
-    .select("delivery_status, guest_phone, guest_name")
+    .select("guest_phone, guest_name")
     .eq("id", orderId)
     .single();
+  if (!orderData?.guest_phone) return;
 
-  if (totalPaid >= orderTotal) {
-    const isApartada = orderData?.delivery_status === DELIVERY_STATUS.APARTADA;
-    const updates: Record<string, unknown> = { status: SALE_STATUS.COMPLETED };
-    if (isApartada) updates.delivery_status = DELIVERY_STATUS.CONFIRMED;
-
-    await supabase.from("orders").update(updates).eq("id", orderId);
-
-    if (isApartada) {
-      const { data: orderItems } = await supabase
-        .from("order_items").select("variant_id").eq("order_id", orderId);
-      for (const item of (orderItems ?? []) as RawOrderItemVariantId[]) {
-        await supabase.from("product_variants")
-          .update({ is_reserved: false }).eq("id", item.variant_id);
-      }
-    }
-  }
-
-  if (!skipEmail && orderData?.guest_phone) {
-    const remaining = Math.max(0, orderTotal - totalPaid);
-    sendTransactionalEmail({
-      type: "payment_receipt",
-      data: {
-        guest_phone: orderData.guest_phone,
-        guest_name:  orderData.guest_name ?? null,
-        amount_paid: amount,
-        total_owed:  orderTotal,
-        remaining,
-        note,
-      },
-    });
-  }
+  sendTransactionalEmail({
+    type: "payment_receipt",
+    data: {
+      guest_phone: orderData.guest_phone,
+      guest_name:  orderData.guest_name ?? null,
+      amount_paid: amount,
+      total_owed:  result.total_owed,
+      remaining:   result.remaining,
+      note,
+    },
+  });
 }

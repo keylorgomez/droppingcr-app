@@ -127,3 +127,43 @@ export async function cancelSpecialOrder(id: string, refund: boolean, reason: st
   });
   if (error) throw new Error(error.message);
 }
+
+// ── Lado del cliente ───────────────────────────────────────────────────────
+
+export interface MySpecialOrder {
+  id:              string;
+  description:     string;
+  size:            string | null;
+  estimated_price: number;
+  status:          SpecialOrderStatus;
+  created_at:      string;
+  delivered_at:    string | null;
+  /** Adelantos registrados (al entregar pasan a la venta y aquí queda 0). */
+  paid:            number;
+}
+
+/** Los encargos del cliente con sesión, sin datos internos (costo, notas). */
+export async function getMySpecialOrders(): Promise<MySpecialOrder[]> {
+  const { data, error } = await supabase.rpc("my_special_orders");
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as Record<string, string | number | null>[]).map((row) => ({
+    id:              String(row.id),
+    description:     String(row.description),
+    size:            row.size ? String(row.size) : null,
+    estimated_price: Number(row.estimated_price) || 0,
+    status:          row.status as SpecialOrderStatus,
+    created_at:      String(row.created_at),
+    delivered_at:    row.delivered_at ? String(row.delivered_at) : null,
+    paid:            Number(row.paid) || 0,
+  }));
+}
+
+export async function claimSpecialOrders(userId: string, whatsapp: string): Promise<number> {
+  const last8 = whatsapp.replace(/\D/g, "").slice(-8);
+  if (last8.length < 8) return 0;
+  const { data, error } = await supabase.rpc("claim_special_orders_by_phone", {
+    p_user_id: userId, p_phone_last8: last8,
+  });
+  if (error) throw new Error(error.message);
+  return Number(data) || 0;
+}

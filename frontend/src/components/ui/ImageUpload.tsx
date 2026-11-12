@@ -58,7 +58,7 @@ export default function ImageUpload({ images, onChange, error }: ImageUploadProp
   imagesRef.current = images;
 
   // Se empieza a descargar al abrir el formulario, para que el botón responda al toque.
-  useEffect(() => { loadWidget().catch(() => {}); }, []);
+  useEffect(() => { loadWidget().catch((err) => console.warn("[silencioso]", err)); }, []);
 
   async function openWidget() {
     try {
