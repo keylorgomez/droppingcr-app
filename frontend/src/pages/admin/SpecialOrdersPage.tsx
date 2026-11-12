@@ -45,7 +45,9 @@ const parseAmount = (value: string) => Number(value.replace(/[^\d.]/g, "")) || 0
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
-    <label className="flex flex-col gap-1.5">
+    // justify-between: si una etiqueta pasa a dos líneas, los inputs de la fila
+    // siguen alineados abajo.
+    <label className="flex flex-col justify-between gap-1.5">
       <span className="text-xs font-medium text-ink-500 uppercase tracking-wider">
         {label}{hint && <span className="normal-case tracking-normal text-ink-300"> {hint}</span>}
       </span>
@@ -253,8 +255,8 @@ function EditModal({ order, onClose, onSaved }: { order: SpecialOrder; onClose: 
           <Field label="Precio al cliente ₡">
             <input inputMode="numeric" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0" className={inputCls} />
           </Field>
-          <Field label="Costo estimado ₡" hint="(opcional)">
-            <input inputMode="numeric" value={cost} onChange={(e) => setCost(e.target.value)} placeholder="0" className={inputCls} />
+          <Field label="Costo est. ₡">
+            <input inputMode="numeric" value={cost} onChange={(e) => setCost(e.target.value)} placeholder="Opcional" className={inputCls} />
           </Field>
         </div>
         {profit !== null && (
