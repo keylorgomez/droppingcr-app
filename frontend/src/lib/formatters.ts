@@ -35,6 +35,14 @@ export function formatPhone(raw: string | null): string | null {
   return digits.length === 8 ? `506${digits}` : digits;
 }
 
+/** Para mostrar: 88364879 / +506 8836-4879 → "8836 - 4879". Otros largos quedan como vinieron. */
+export function displayPhone(raw: string | null): string | null {
+  if (!raw) return null;
+  const digits = raw.replace(/\D/g, "");
+  const local  = digits.length === 11 && digits.startsWith("506") ? digits.slice(3) : digits;
+  return local.length === 8 ? `${local.slice(0, 4)} - ${local.slice(4)}` : raw.trim() || null;
+}
+
 /**
  * Normalize phone for matching — strips non-digits and keeps last 8 digits.
  * Handles +506XXXXXXXX, 506XXXXXXXX, or bare XXXXXXXX equally.

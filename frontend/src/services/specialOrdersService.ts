@@ -97,6 +97,15 @@ export async function createSpecialOrder(input: SpecialOrderInput): Promise<void
   if (error) throw new Error(error.message);
 }
 
+export type SpecialOrderEdit = Pick<SpecialOrder,
+  "guest_name" | "guest_phone" | "description" | "size" | "estimated_price" | "estimated_cost" | "note">;
+
+/** Corrige los datos de un encargo activo. Los adelantos se manejan aparte. */
+export async function updateSpecialOrder(id: string, fields: SpecialOrderEdit): Promise<void> {
+  const { error } = await supabase.from("special_orders").update(fields).eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
 export async function updateSpecialOrderStatus(id: string, status: SpecialOrderStatus): Promise<void> {
   const { error } = await supabase.from("special_orders").update({ status }).eq("id", id);
   if (error) throw new Error(error.message);

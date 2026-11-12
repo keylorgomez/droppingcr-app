@@ -6,17 +6,17 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "motion/react";
 import {
   ArrowLeft, Plus, X, Loader2, PackageSearch, Wallet, Clock, ExternalLink,
-  ChevronRight, CheckCircle2, Ban, Info, Search,
+  ChevronRight, CheckCircle2, Ban, Info, Search, Pencil,
 } from "lucide-react";
 import Header from "../../components/ui/Header";
 import WhatsAppIcon from "../../components/ui/WhatsAppIcon";
 import { useToast } from "../../components/ui/Toast";
-import { fmt, formatDate } from "../../lib/formatters";
+import { fmt, formatDate, displayPhone, normalizePhone } from "../../lib/formatters";
 import { cn } from "../../lib/utils";
 import { QUERY_KEYS } from "../../constants/queryKeys";
 import { lookupCustomerProfileByPhone } from "../../services/customerService";
 import {
-  getSpecialOrders, createSpecialOrder, updateSpecialOrderStatus, addSpecialOrderAdvance,
+  getSpecialOrders, createSpecialOrder, updateSpecialOrder, updateSpecialOrderStatus, addSpecialOrderAdvance,
   deliverSpecialOrder, cancelSpecialOrder, isActiveSpecialOrder,
   SPECIAL_ORDER_FLOW, SPECIAL_ORDER_STATUS_LABEL,
   type SpecialOrder, type SpecialOrderStatus,
@@ -200,6 +200,81 @@ function NewOrderModal({ onClose, onSaved }: { onClose: () => void; onSaved: () 
   );
 }
 
+// ── Editar ─────────────────────────────────────────────────────────────────
+
+function EditModal({ order, onClose, onSaved }: { order: SpecialOrder; onClose: () => void; onSaved: () => void }) {
+  const { showToast } = useToast();
+  const [name, setName]               = useState(order.guest_name ?? "");
+  const [phone, setPhone]             = useState(order.guest_phone ?? "");
+  const [description, setDescription] = useState(order.description);
+  const [size, setSize]               = useState(order.size ?? "");
+  const [price, setPrice]             = useState(order.estimated_price ? String(order.estimated_price) : "");
+  const [cost, setCost]               = useState(order.estimated_cost !== null ? String(order.estimated_cost) : "");
+  const [note, setNote]               = useState(order.note ?? "");
+
+  const priceValue = parseAmount(price);
+  const costValue  = cost ? parseAmount(cost) : null;
+  const profit     = costValue !== null && priceValue > 0 ? priceValue - costValue : null;
+
+  const mutation = useMutation({
+    mutationFn: () => updateSpecialOrder(order.id, {
+      guest_name:      name.trim() || null,
+      guest_phone:     phone.trim() || null,
+      description:     description.trim(),
+      size:            size.trim() || null,
+      estimated_price: priceValue,
+      estimated_cost:  costValue,
+      note:            note.trim() || null,
+    }),
+    onSuccess:  () => { showToast("Encargo actualizado.", "success"); onSaved(); },
+    onError:    (err: Error) => showToast(err.message, "error"),
+  });
+
+  return (
+    <Modal title="Editar encargo" onClose={onClose}>
+      <form onSubmit={(e) => { e.preventDefault(); if (description.trim()) mutation.mutate(); }} className="flex flex-col gap-4">
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Cliente">
+            <input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} />
+          </Field>
+          <Field label="Teléfono">
+            <input type="tel" inputMode="numeric" value={phone} onChange={(e) => setPhone(e.target.value)} className={inputCls} />
+          </Field>
+        </div>
+        <div className="grid grid-cols-[1fr_6rem] gap-3">
+          <Field label="Producto">
+            <input value={description} onChange={(e) => setDescription(e.target.value)} className={inputCls} />
+          </Field>
+          <Field label="Talla">
+            <input value={size} onChange={(e) => setSize(e.target.value)} className={inputCls} />
+          </Field>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Precio al cliente ₡">
+            <input inputMode="numeric" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0" className={inputCls} />
+          </Field>
+          <Field label="Costo estimado ₡" hint="(opcional)">
+            <input inputMode="numeric" value={cost} onChange={(e) => setCost(e.target.value)} placeholder="0" className={inputCls} />
+          </Field>
+        </div>
+        {profit !== null && (
+          <p className={cn("text-[12px] -mt-1", profit >= 0 ? "text-green-600" : "text-red-500")}>
+            Ganancia proyectada: {fmt(profit)}
+            {profit < 0 && " · ¿quedaron invertidos el precio y el costo?"}
+          </p>
+        )}
+        <Field label="Nota" hint="(opcional)">
+          <input value={note} onChange={(e) => setNote(e.target.value)} className={inputCls} />
+        </Field>
+        <p className="text-[11.5px] text-ink-400 -mt-1">
+          Los adelantos no se editan aquí. Si registraste uno mal, corregilo en Movimientos.
+        </p>
+        <SubmitButton saving={mutation.isPending} disabled={!description.trim()}>Guardar cambios</SubmitButton>
+      </form>
+    </Modal>
+  );
+}
+
 // ── Abonar ─────────────────────────────────────────────────────────────────
 
 function AdvanceModal({ order, onClose, onSaved }: { order: SpecialOrder; onClose: () => void; onSaved: () => void }) {
@@ -348,32 +423,27 @@ function StatusChip({ status }: { status: SpecialOrderStatus }) {
 }
 
 function OrderCard({
-  order, onAdvance, onDeliver, onCancel, onStep, stepping,
+  order, onEdit, onAdvance, onDeliver, onCancel, onStep, stepping,
 }: {
   order: SpecialOrder;
-  onAdvance: () => void; onDeliver: () => void; onCancel: () => void;
+  onEdit: () => void; onAdvance: () => void; onDeliver: () => void; onCancel: () => void;
   onStep: (next: SpecialOrderStatus) => void; stepping: boolean;
 }) {
   const active    = isActiveSpecialOrder(order);
   const stepIndex = SPECIAL_ORDER_FLOW.indexOf(order.status);
   const next      = stepIndex >= 0 && stepIndex < SPECIAL_ORDER_FLOW.length - 1 ? SPECIAL_ORDER_FLOW[stepIndex + 1] : null;
   const pending   = Math.max(0, order.estimated_price - order.advance);
-  const phone     = order.guest_phone?.replace(/\D/g, "");
 
+  // El cliente (nombre, teléfono, WhatsApp) va en la cabecera del grupo.
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-      className="bg-white rounded-2xl border border-ink-100 shadow-sm p-4 flex flex-col gap-3.5"
-    >
+    <div className="p-4 flex flex-col gap-3.5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="font-semibold text-sm text-brand-dark leading-snug">
             {order.description}{order.size && <span className="text-ink-400 font-normal"> · Talla {order.size}</span>}
           </p>
           <p className="text-[12px] text-ink-400 mt-0.5 flex flex-wrap items-center gap-x-2">
-            <span>{order.guest_name ?? "Sin nombre"}</span>
-            <span>· {formatDate(order.created_at)}</span>
+            <span>{formatDate(order.created_at)}</span>
             {order.reference_url && (
               <a href={order.reference_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 underline">
                 referencia <ExternalLink size={11} />
@@ -431,20 +501,81 @@ function OrderCard({
           <button onClick={onDeliver} className="h-9 px-3 rounded-lg bg-ink-900 text-bone text-[12px] font-medium hover:bg-ink-700 transition-colors inline-flex items-center gap-1.5">
             <CheckCircle2 size={14} /> Entregar
           </button>
-          {phone && (
-            <a
-              href={`https://wa.me/${phone.length === 8 ? `506${phone}` : phone}`}
-              target="_blank" rel="noopener noreferrer" aria-label="Escribir al cliente"
-              className="h-9 w-9 rounded-lg border border-ink-200 flex items-center justify-center text-ink-600 hover:border-ink-900"
-            >
-              <WhatsAppIcon size={15} />
-            </a>
-          )}
+          <button onClick={onEdit} aria-label="Editar encargo" className="h-9 w-9 rounded-lg border border-ink-200 flex items-center justify-center text-ink-600 hover:border-ink-900 transition-colors">
+            <Pencil size={14} />
+          </button>
           <button onClick={onCancel} className="h-9 px-3 rounded-lg text-[12px] font-medium text-red-500 hover:bg-red-50 transition-colors inline-flex items-center gap-1.5 ml-auto">
             <Ban size={13} /> Cancelar
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Grupo por cliente ──────────────────────────────────────────────────────
+
+interface CustomerGroup {
+  key:    string;
+  name:   string;
+  phone:  string | null;
+  orders: SpecialOrder[];
+}
+
+/**
+ * Junta los encargos de una misma persona: por teléfono, si no por cuenta y
+ * si no por nombre. Los grupos quedan en el orden de su encargo más reciente
+ * (la lista ya viene de más nuevo a más viejo).
+ */
+function groupByCustomer(orders: SpecialOrder[]): CustomerGroup[] {
+  const groups = new Map<string, CustomerGroup>();
+  for (const order of orders) {
+    const phone = order.guest_phone ? normalizePhone(order.guest_phone) : "";
+    const key   = phone.length >= 8 ? `tel:${phone}` : order.customer_id ?? `name:${normalize(order.guest_name ?? "").trim()}`;
+    const group = groups.get(key);
+    if (group) {
+      group.orders.push(order);
+      group.phone ??= order.guest_phone;
+    } else {
+      groups.set(key, { key, name: order.guest_name ?? "Sin nombre", phone: order.guest_phone, orders: [order] });
+    }
+  }
+  return [...groups.values()];
+}
+
+function GroupCard({ group, children }: { group: CustomerGroup; children: ReactNode }) {
+  const digits  = group.phone?.replace(/\D/g, "");
+  const active  = group.orders.filter(isActiveSpecialOrder);
+  const pending = active.reduce((total, order) => total + Math.max(0, order.estimated_price - order.advance), 0);
+
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+      className="bg-white rounded-2xl border border-ink-100 shadow-sm overflow-hidden"
+    >
+      <div className="flex items-center justify-between gap-3 px-4 py-3 bg-ink-50/60 border-b border-ink-100">
+        <div className="min-w-0">
+          <p className="font-semibold text-[15px] text-brand-dark truncate">{group.name}</p>
+          <p className="text-[12px] text-ink-500 tnum mt-0.5">
+            {displayPhone(group.phone) ?? "Sin teléfono"}
+            <span className="text-ink-400">
+              {" · "}{group.orders.length} {group.orders.length === 1 ? "encargo" : "encargos"}
+              {pending > 0 && <> · falta aprox. {fmt(pending)}</>}
+            </span>
+          </p>
+        </div>
+        {digits && (
+          <a
+            href={`https://wa.me/${digits.length === 8 ? `506${digits}` : digits}`}
+            target="_blank" rel="noopener noreferrer" aria-label={`Escribir a ${group.name}`}
+            className="shrink-0 h-9 w-9 rounded-lg border border-ink-200 bg-white flex items-center justify-center text-ink-600 hover:border-ink-900"
+          >
+            <WhatsAppIcon size={15} />
+          </a>
+        )}
+      </div>
+      <div className="divide-y divide-ink-100">{children}</div>
     </motion.div>
   );
 }
@@ -458,6 +589,7 @@ export default function SpecialOrdersPage() {
 
   const [tab, setTab]           = useState<Tab>("active");
   const [creating, setCreating] = useState(false);
+  const [editFor, setEditFor]       = useState<SpecialOrder | null>(null);
   const [advanceFor, setAdvanceFor] = useState<SpecialOrder | null>(null);
   const [deliverFor, setDeliverFor] = useState<SpecialOrder | null>(null);
   const [cancelFor, setCancelFor]   = useState<SpecialOrder | null>(null);
@@ -472,7 +604,7 @@ export default function SpecialOrdersPage() {
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.FINANCE });
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PAYMENTS_LOG });
     queryClient.invalidateQueries({ queryKey: QUERY_KEYS.EXTERNAL_SALES_LOG });
-    setCreating(false); setAdvanceFor(null); setDeliverFor(null); setCancelFor(null);
+    setCreating(false); setEditFor(null); setAdvanceFor(null); setDeliverFor(null); setCancelFor(null);
   }
 
   const stepMutation = useMutation({
@@ -501,7 +633,8 @@ export default function SpecialOrdersPage() {
 
 
   // Se dibujan de a 20: con cientos de filas el celular se trababa.
-  const paged = usePaged(shown, `${tab}|${query}`);
+  const groups = useMemo(() => groupByCustomer(shown), [shown]);
+  const paged  = usePaged(groups, `${tab}|${query}`);
   return (
     <>
       <Header />
@@ -597,16 +730,21 @@ export default function SpecialOrdersPage() {
           </p>
         ) : (
           <div className="flex flex-col gap-3">
-            {paged.visible.map((order) => (
-              <OrderCard
-                key={order.id}
-                order={order}
-                stepping={stepMutation.isPending}
-                onStep={(status) => stepMutation.mutate({ id: order.id, status })}
-                onAdvance={() => setAdvanceFor(order)}
-                onDeliver={() => setDeliverFor(order)}
-                onCancel={() => setCancelFor(order)}
-              />
+            {paged.visible.map((group) => (
+              <GroupCard key={group.key} group={group}>
+                {group.orders.map((order) => (
+                  <OrderCard
+                    key={order.id}
+                    order={order}
+                    stepping={stepMutation.isPending}
+                    onStep={(status) => stepMutation.mutate({ id: order.id, status })}
+                    onEdit={() => setEditFor(order)}
+                    onAdvance={() => setAdvanceFor(order)}
+                    onDeliver={() => setDeliverFor(order)}
+                    onCancel={() => setCancelFor(order)}
+                  />
+                ))}
+              </GroupCard>
             ))}
             <ShowMore remaining={paged.remaining} pageSize={paged.pageSize} onClick={paged.showMore} />
           </div>
@@ -615,6 +753,7 @@ export default function SpecialOrdersPage() {
 
       <AnimatePresence>
         {creating   && <NewOrderModal key="new" onClose={() => setCreating(false)} onSaved={refresh} />}
+        {editFor    && <EditModal    key="edit" order={editFor} onClose={() => setEditFor(null)} onSaved={refresh} />}
         {advanceFor && <AdvanceModal key="adv" order={advanceFor} onClose={() => setAdvanceFor(null)} onSaved={refresh} />}
         {deliverFor && <DeliverModal key="del" order={deliverFor} onClose={() => setDeliverFor(null)} onSaved={refresh} />}
         {cancelFor  && <CancelModal  key="can" order={cancelFor}  onClose={() => setCancelFor(null)}  onSaved={refresh} />}
