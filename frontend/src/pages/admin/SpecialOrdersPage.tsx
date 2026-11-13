@@ -628,8 +628,9 @@ function GroupCard({
   const pending = active.reduce((total, order) => total + Math.max(0, order.estimated_price - order.advance), 0);
 
   return (
+    // Sin `layout`: esa animación escala la tarjeta para cambiarle la altura y
+    // al abrir se veía estirada. La altura la anima el contenido de abajo.
     <motion.div
-      layout
       initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
       className="bg-white rounded-2xl border border-ink-100 shadow-sm overflow-hidden"
     >
@@ -672,7 +673,15 @@ function GroupCard({
       </div>
 
       {expanded ? (
-        <div className="divide-y divide-ink-100">{children}</div>
+        <motion.div
+          key="detail"
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: "auto", opacity: 1 }}
+          transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+          className="divide-y divide-ink-100 overflow-hidden"
+        >
+          {children}
+        </motion.div>
       ) : (
         // Resumen: una línea por encargo con lo que más se pregunta (qué, en
         // qué va y cuánto falta). Tocar cualquiera abre el detalle.
