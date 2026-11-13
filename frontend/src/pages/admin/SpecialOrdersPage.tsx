@@ -6,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "motion/react";
 import {
   ArrowLeft, Plus, X, Loader2, PackageSearch, Wallet, Clock, ExternalLink,
-  ChevronRight, CheckCircle2, Ban, Info, Search, Pencil,
+  ChevronRight, ChevronDown, CheckCircle2, Ban, Info, Search, Pencil,
 } from "lucide-react";
 import Header from "../../components/ui/Header";
 import WhatsAppIcon from "../../components/ui/WhatsAppIcon";
@@ -620,7 +620,9 @@ function groupByCustomer(orders: SpecialOrder[]): CustomerGroup[] {
   return [...groups.values()];
 }
 
-function GroupCard({ group, children }: { group: CustomerGroup; children: ReactNode }) {
+function GroupCard({
+  group, expanded, onToggle, children,
+}: { group: CustomerGroup; expanded: boolean; onToggle: () => void; children: ReactNode }) {
   const digits  = group.phone?.replace(/\D/g, "");
   const active  = group.orders.filter(isActiveSpecialOrder);
   const pending = active.reduce((total, order) => total + Math.max(0, order.estimated_price - order.advance), 0);
@@ -631,17 +633,33 @@ function GroupCard({ group, children }: { group: CustomerGroup; children: ReactN
       initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
       className="bg-white rounded-2xl border border-ink-100 shadow-sm overflow-hidden"
     >
-      <div className="flex items-center justify-between gap-3 px-4 py-3 bg-ink-50/60 border-b border-ink-100">
-        <div className="min-w-0">
-          <p className="font-semibold text-[15px] text-brand-dark truncate">{group.name}</p>
-          <p className="text-[12px] text-ink-500 tnum mt-0.5">
-            {displayPhone(group.phone) ?? "Sin teléfono"}
-            <span className="text-ink-400">
-              {" · "}{group.orders.length} {group.orders.length === 1 ? "encargo" : "encargos"}
-              {pending > 0 && <> · falta aprox. {fmt(pending)}</>}
+      <div className={cn("flex items-center gap-3 px-4 py-3 bg-ink-50/60", expanded && "border-b border-ink-100")}>
+        <button
+          type="button" onClick={onToggle} aria-expanded={expanded}
+          className="flex-1 min-w-0 flex items-center gap-3 text-left"
+        >
+          <span className="flex-1 min-w-0">
+            <span className="block font-semibold text-[15px] text-brand-dark truncate">{group.name}</span>
+            <span className="block text-[12px] text-ink-500 tnum mt-0.5">
+              {displayPhone(group.phone) ?? "Sin teléfono"}
+              <span className="text-ink-400">
+                {" · "}{group.orders.length} {group.orders.length === 1 ? "encargo" : "encargos"}
+              </span>
             </span>
-          </p>
-        </div>
+          </span>
+          {pending > 0 ? (
+            <span className="shrink-0 text-right">
+              <span className="block text-[10px] uppercase tracking-wider text-ink-400 leading-none">Falta aprox.</span>
+              <span className="block text-lg font-bold text-brand-dark tnum leading-tight mt-1">{fmt(pending)}</span>
+            </span>
+          ) : active.length > 0 ? (
+            <span className="shrink-0 text-[12px] font-semibold text-green-600">Pagado</span>
+          ) : null}
+          <ChevronDown
+            size={18}
+            className={cn("shrink-0 text-ink-400 transition-transform duration-200", expanded && "rotate-180")}
+          />
+        </button>
         {digits && (
           <a
             href={`https://wa.me/${digits.length === 8 ? `506${digits}` : digits}`}
@@ -652,7 +670,30 @@ function GroupCard({ group, children }: { group: CustomerGroup; children: ReactN
           </a>
         )}
       </div>
-      <div className="divide-y divide-ink-100">{children}</div>
+
+      {expanded ? (
+        <div className="divide-y divide-ink-100">{children}</div>
+      ) : (
+        // Resumen: una línea por encargo con lo que más se pregunta (qué, en
+        // qué va y cuánto falta). Tocar cualquiera abre el detalle.
+        <button type="button" onClick={onToggle} className="w-full text-left divide-y divide-ink-100 border-t border-ink-100">
+          {group.orders.map((order) => {
+            const falta = Math.max(0, order.estimated_price - order.advance);
+            return (
+              <span key={order.id} className="flex items-center gap-3 px-4 py-2.5">
+                <span className="flex-1 min-w-0 text-[13px] text-brand-dark truncate">
+                  {order.description}
+                  {order.size && <span className="text-ink-400"> · {order.size}</span>}
+                </span>
+                {isActiveSpecialOrder(order) && falta > 0 && (
+                  <span className="shrink-0 text-[12px] text-ink-500 tnum">{fmt(falta)}</span>
+                )}
+                <StatusChip status={order.status} />
+              </span>
+            );
+          })}
+        </button>
+      )}
     </motion.div>
   );
 }
@@ -720,6 +761,16 @@ export default function SpecialOrdersPage() {
   // Se dibujan de a 20: con cientos de filas el celular se trababa.
   const groups = useMemo(() => groupByCustomer(shown), [shown]);
   const paged  = usePaged(groups, `${tab}|${query}`);
+
+  // Los grupos arrancan cerrados (solo el resumen) para no scrollear de más.
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const allOpen = groups.length > 0 && groups.every((g) => expanded.has(g.key));
+  const toggleGroup = (key: string) => setExpanded((prev) => {
+    const next = new Set(prev);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    return next;
+  });
+  const toggleAll = () => setExpanded(allOpen ? new Set() : new Set(groups.map((g) => g.key)));
   return (
     <>
       <Header />
@@ -815,8 +866,11 @@ export default function SpecialOrdersPage() {
           </p>
         ) : (
           <div className="flex flex-col gap-3">
+            <button type="button" onClick={toggleAll} className="self-end -mb-1 text-[12px] font-medium text-ink-500 hover:text-brand-dark">
+              {allOpen ? "Contraer todo" : "Expandir todo"}
+            </button>
             {paged.visible.map((group) => (
-              <GroupCard key={group.key} group={group}>
+              <GroupCard key={group.key} group={group} expanded={expanded.has(group.key)} onToggle={() => toggleGroup(group.key)}>
                 {group.orders.map((order) => (
                   <OrderCard
                     key={order.id}
