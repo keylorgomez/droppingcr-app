@@ -107,7 +107,7 @@ export function organizationJsonLd(): object {
     "@type": "Store",
     name: BRAND,
     url: SITE_URL,
-    logo: `${SITE_URL}/logo-tile.svg`,
+    logo: `${SITE_URL}/favicon-512.png`,
     image: DEFAULT_IMAGE,
     description:
       "Tienda de streetwear, vintage y camisetas de fútbol en Grecia, Costa Rica. " +
