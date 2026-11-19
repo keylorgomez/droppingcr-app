@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import MoneyInput from "../../components/ui/MoneyInput";
 import { useNavigate } from "react-router-dom";
 import { Plus, Printer, Trash2, ArrowLeft } from "lucide-react";
 import Header from "../../components/ui/Header";
@@ -230,11 +231,9 @@ export default function LabelsPage() {
                 Monto contra entrega (₡)
                 <span className="ml-1 normal-case font-normal text-ink-300">(opcional)</span>
               </label>
-              <input
-                type="number"
-                min={0}
+              <MoneyInput
                 value={cashOnDelivery}
-                onChange={(e) => setCashOnDelivery(e.target.value)}
+                onChange={(raw) => setCashOnDelivery(raw)}
                 placeholder="Ej: 25000"
                 className={inputCls}
               />

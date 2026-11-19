@@ -4,6 +4,7 @@ import HomePage          from "./pages/HomePage";
 import Footer            from "./components/ui/Footer";
 import GATracker         from "./components/GATracker";
 import ScrollToTop       from "./components/ScrollToTop";
+import { LiveStock }     from "./hooks/useLiveStock";
 import CartDrawer        from "./components/ui/CartDrawer";
 import CompleteProfileModal from "./components/ui/CompleteProfileModal";
 import { useAuth }       from "./context/AuthContext";
@@ -86,6 +87,7 @@ export default function App() {
           <div className="min-h-screen flex flex-col bg-bone">
             <GATracker />
             <ScrollToTop />
+            <LiveStock />
             <div className="flex-1">
               <Suspense fallback={<RouteFallback />}>
               <Routes>

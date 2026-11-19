@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useCatalogProducts } from "../../hooks/useCatalogProducts";
 import { Menu, User, ShoppingBag } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion, useScroll, useMotionValueEvent } from "motion/react";
@@ -8,8 +8,7 @@ import { useCart } from "../../context/CartContext";
 import { useToast } from "./Toast";
 import { t } from "../../lib/i18n";
 import { cn } from "../../lib/utils";
-import { getProducts, type CatalogProduct } from "../../services/productService";
-import { QUERY_KEYS } from "../../constants/queryKeys";
+import { type CatalogProduct } from "../../services/productService";
 import { ROUTES, MARQUEE_ITEMS } from "../../constants/app";
 import Logo from "./Logo";
 import Marquee from "./Marquee";
@@ -38,17 +37,13 @@ interface HeaderProps {
 
 export default function Header({ overlay = false }: HeaderProps) {
   const { user, signOut } = useAuth();
-  const isAdmin           = user?.role === "admin";
   const { itemCount }     = useCart();
   const navigate          = useNavigate();
   const location          = useLocation();
   const { showToast }     = useToast();
 
   // Se sirve de la caché que ya llenaron el catálogo y el sidebar
-  const { data: products = [] } = useQuery({
-    queryKey: [...QUERY_KEYS.PRODUCTS, isAdmin],
-    queryFn:  () => getProducts(isAdmin),
-  });
+  const { data: products = [] } = useCatalogProducts();
 
   const [sidebarOpen, setSidebarOpen]         = useState(false);
   const [userSidebarOpen, setUserSidebarOpen] = useState(false);

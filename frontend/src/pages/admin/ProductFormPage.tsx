@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import MoneyInput from "../../components/ui/MoneyInput";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -514,23 +515,17 @@ export default function ProductFormPage() {
           <SectionCard title="Precios" hasError={!!(errors.pricePurchase || errors.priceSale)}>
             <div className="grid grid-cols-2 gap-3">
               <Field id="field-pricePurchase" label="Precio costo (₡)" error={errors.pricePurchase}>
-                <input
-                  type="number"
-                  min={0}
-                  step="0.01"
+                <MoneyInput
                   value={pricePurchase}
-                  onChange={(e) => setPricePurchase(e.target.value)}
+                  onChange={(raw) => setPricePurchase(raw)}
                   placeholder="0.00"
                   className={inputCls(!!errors.pricePurchase)}
                 />
               </Field>
               <Field id="field-priceSale" label="Precio venta (₡)" error={errors.priceSale}>
-                <input
-                  type="number"
-                  min={0}
-                  step="0.01"
+                <MoneyInput
                   value={priceSale}
-                  onChange={(e) => setPriceSale(e.target.value)}
+                  onChange={(raw) => setPriceSale(raw)}
                   placeholder="0.00"
                   className={inputCls(!!errors.priceSale)}
                 />

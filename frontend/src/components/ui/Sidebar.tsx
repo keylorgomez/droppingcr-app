@@ -1,12 +1,10 @@
 import { useMemo } from "react";
+import { useCatalogProducts } from "../../hooks/useCatalogProducts";
 import { motion, AnimatePresence } from "motion/react";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
 import { X, Settings2, CreditCard, Receipt, Coins, ShoppingBag, Printer, LayoutDashboard, PackagePlus, PackageSearch } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
-import { getProducts } from "../../services/productService";
 import { cn } from "../../lib/utils";
-import { QUERY_KEYS } from "../../constants/queryKeys";
 import { ROUTES } from "../../constants/app";
 import Logo from "./Logo";
 
@@ -37,10 +35,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
   const activeFilter   = decodeURIComponent(pathname.match(/^\/catalogo\/([^/]+)/)?.[1] ?? "") || (searchParams.get("filter") ?? "");
 
   // Reuse the cached products query — no extra network request
-  const { data: products = [], isLoading } = useQuery({
-    queryKey: [...QUERY_KEYS.PRODUCTS, isAdmin],
-    queryFn:  () => getProducts(isAdmin),
-  });
+  const { data: products = [], isLoading } = useCatalogProducts();
 
   const hasNew       = products.some((p) => p.is_new);
   const hasDiscounts = products.some((p) => p.discount_percentage > 0);

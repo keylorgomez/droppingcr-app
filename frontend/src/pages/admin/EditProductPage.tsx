@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import MoneyInput from "../../components/ui/MoneyInput";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Loader2, Plus, Trash2, ShoppingCart, AlertTriangle } from "lucide-react";
@@ -74,6 +75,8 @@ interface VariantRowState {
   id?:   string;
   size:  string;
   stock: string;
+  /** Stock en la base al cargar la página: para detectar ventas mientras se edita. */
+  loadedStock?: number;
 }
 
 function IgIcon() {
@@ -130,8 +133,22 @@ export default function EditProductPage() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [igOpen,            setIgOpen]            = useState(false);
 
+  // El formulario se llena UNA vez por producto. Después, si el stock cambia en
+  // vivo (otra venta), solo se actualizan las tallas que no se han tocado: no
+  // se borra lo que se está editando.
+  const filledFor = useRef<string | null>(null);
   useEffect(() => {
     if (!product) return;
+    if (filledFor.current === product.id) {
+      setVariants((prev) => prev.map((row) => {
+        const fresh = product.variants.find((variant) => variant.id === row.id);
+        if (!fresh || row.loadedStock === undefined) return row;
+        const untouched = Number(row.stock) === row.loadedStock;
+        return untouched ? { ...row, stock: String(fresh.stock), loadedStock: fresh.stock } : row;
+      }));
+      return;
+    }
+    filledFor.current = product.id;
     setName(product.name);
     setDescription(product.description ?? "");
     setPricePurchase(String(product.price_purchase));
@@ -145,6 +162,7 @@ export default function EditProductPage() {
     setVariants(
       product.variants.map((productVariant) => ({
         _key: newKey(), id: productVariant.id, size: productVariant.size, stock: String(productVariant.stock),
+        loadedStock: productVariant.stock,
       }))
     );
     setImages(
@@ -230,6 +248,7 @@ export default function EditProductPage() {
         id:    variantRow.id,
         size:  variantRow.size.trim(),
         stock: Number(variantRow.stock),
+        loaded_stock: variantRow.loadedStock,
       })),
       images: images.map((img, index) => ({
         image_url:     img.image_url,
@@ -376,12 +395,9 @@ export default function EditProductPage() {
                 <label className="text-xs font-medium text-ink-500 uppercase tracking-wider">
                   Precio costo (₡)
                 </label>
-                <input
-                  type="number"
-                  min={0}
-                  step="0.01"
+                <MoneyInput
                   value={pricePurchase}
-                  onChange={(e) => setPricePurchase(e.target.value)}
+                  onChange={(raw) => setPricePurchase(raw)}
                   placeholder="0.00"
                   className={inputCls}
                 />
@@ -390,12 +406,9 @@ export default function EditProductPage() {
                 <label className="text-xs font-medium text-ink-500 uppercase tracking-wider">
                   Precio venta (₡)
                 </label>
-                <input
-                  type="number"
-                  min={0}
-                  step="0.01"
+                <MoneyInput
                   value={priceSale}
-                  onChange={(e) => setPriceSale(e.target.value)}
+                  onChange={(raw) => setPriceSale(raw)}
                   placeholder="0.00"
                   className={inputCls}
                 />

@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import StockAlert from "../components/ui/StockAlert";
+import { useCatalogProducts } from "../hooks/useCatalogProducts";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, ShoppingBag, Pencil, X, ChevronLeft, ChevronRight, Plus, Minus } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { cloudinaryUrl } from "../lib/cloudinary";
-import { getProducts, getProductBySlug, type ProductDetail, type CatalogProduct } from "../services/productService";
+import { getProductBySlug, type ProductDetail, type CatalogProduct } from "../services/productService";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 import { trackViewItem } from "../lib/analytics";
@@ -344,6 +346,22 @@ function ProductContent({ product }: { product: ProductDetail }) {
     ],
   });
 
+  // Stock en vivo: si la talla elegida se vende mientras la persona mira la
+  // página, se le avisa en vez de dejar un botón que no hace nada.
+  const [soldOutAlert, setSoldOutAlert] = useState<string | null>(null);
+  const [dismissedSize, setDismissedSize] = useState<string | null>(null);
+  const selectedGone = !!selectedSize && (stockBySize[selectedSize] ?? 0) === 0 && !isSoldOut;
+  const liveSoldOut  = selectedGone && dismissedSize !== selectedSize
+    ? `Alguien acaba de comprar la talla ${selectedSize}. Podés elegir otra talla o escribirnos para avisarte si vuelve.`
+    : null;
+  const allGoneWhileViewing = isSoldOut && !!selectedSize && dismissedSize !== selectedSize;
+
+  function closeSoldOut() {
+    setDismissedSize(selectedSize);
+    setSelectedSize(null);
+    setSoldOutAlert(null);
+  }
+
   async function handleAddToCart() {
     if (!selectedSize) {
       setSizeError(true);
@@ -353,7 +371,10 @@ function ProductContent({ product }: { product: ProductDetail }) {
     }
     setSizeError(false);
     const variant = product.variants.find((v) => v.size === selectedSize && v.stock > 0);
-    if (!variant) return;
+    if (!variant) {
+      setSoldOutAlert(`La talla ${selectedSize} ya no está disponible: se acaba de vender.`);
+      return;
+    }
     setAddingToCart(true);
     try {
       await addItem({
@@ -398,6 +419,13 @@ function ProductContent({ product }: { product: ProductDetail }) {
 
   return (
     <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 pt-6 pb-20">
+      {(soldOutAlert || liveSoldOut || allGoneWhileViewing) && (
+        <StockAlert
+          title="Se acaba de vender"
+          message={soldOutAlert ?? liveSoldOut ?? "Esta pieza se acaba de agotar. Escribinos por WhatsApp y te avisamos si vuelve."}
+          onClose={closeSoldOut}
+        />
+      )}
 
       {/* ── Migas + admin ─────────────────────────────────────────── */}
       <div className="flex items-center justify-between gap-4 mb-4 lg:mb-8">
@@ -739,13 +767,8 @@ function ProductContent({ product }: { product: ProductDetail }) {
 
 // ── Relacionados ───────────────────────────────────────────────────────────
 function RelatedProducts({ product }: { product: ProductDetail }) {
-  const { user } = useAuth();
-  const isAdmin  = user?.role === "admin";
 
-  const { data: products = [] } = useQuery({
-    queryKey: [...QUERY_KEYS.PRODUCTS, isAdmin],
-    queryFn:  () => getProducts(isAdmin),
-  });
+  const { data: products = [] } = useCatalogProducts();
 
   const related = useMemo(() => {
     const slugs = new Set(product.categories.map((c) => c.slug));

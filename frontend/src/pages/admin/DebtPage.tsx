@@ -1,4 +1,5 @@
 import { usePaged } from "../../lib/usePaged";
+import MoneyInput from "../../components/ui/MoneyInput";
 import ShowMore from "../../components/ui/ShowMore";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -99,12 +100,9 @@ function AbonoGeneralForm({ client, onDone }: { client: ClientDebt; onDone: () =
 
       <div className="grid grid-cols-[1fr_160px] gap-2">
         <div className="flex flex-col gap-1">
-          <input
-            type="number"
-            min={1}
-            max={client.remaining}
+          <MoneyInput
             value={amount}
-            onChange={(e) => { setAmount(e.target.value); setError(""); }}
+            onChange={(raw) => { setAmount(raw); setError(""); }}
             placeholder="Monto (₡)"
             className={inputCls}
             autoFocus

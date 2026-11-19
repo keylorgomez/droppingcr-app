@@ -9,6 +9,7 @@ import {
   ChevronRight, ChevronDown, CheckCircle2, Ban, Info, Search, Pencil,
 } from "lucide-react";
 import Header from "../../components/ui/Header";
+import MoneyInput from "../../components/ui/MoneyInput";
 import WhatsAppIcon from "../../components/ui/WhatsAppIcon";
 import { useToast } from "../../components/ui/Toast";
 import { fmt, formatDate, displayPhone, normalizePhone } from "../../lib/formatters";
@@ -175,16 +176,16 @@ function NewOrderModal({ onClose, onSaved }: { onClose: () => void; onSaved: () 
             <input value={size} onChange={(e) => setSize(e.target.value)} placeholder="M" className={inputCls} />
           </Field>
           <Field label="Adelanto ₡">
-            <input inputMode="numeric" value={advance} onChange={(e) => setAdvance(e.target.value)} placeholder="0" className={inputCls} />
+            <MoneyInput value={advance} onChange={setAdvance} placeholder="0" className={inputCls} />
           </Field>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <Field label="Precio est. ₡">
-            <input inputMode="numeric" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0" className={inputCls} />
+            <MoneyInput value={price} onChange={setPrice} placeholder="0" className={inputCls} />
           </Field>
           <Field label="Costo est. ₡">
-            <input inputMode="numeric" value={cost} onChange={(e) => setCost(e.target.value)} placeholder="Opcional" className={inputCls} />
+            <MoneyInput value={cost} onChange={setCost} placeholder="Opcional" className={inputCls} />
           </Field>
         </div>
 
@@ -254,10 +255,10 @@ function EditModal({ order, onClose, onSaved }: { order: SpecialOrder; onClose: 
         </div>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Precio al cliente ₡">
-            <input inputMode="numeric" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0" className={inputCls} />
+            <MoneyInput value={price} onChange={setPrice} placeholder="0" className={inputCls} />
           </Field>
           <Field label="Costo est. ₡">
-            <input inputMode="numeric" value={cost} onChange={(e) => setCost(e.target.value)} placeholder="Opcional" className={inputCls} />
+            <MoneyInput value={cost} onChange={setCost} placeholder="Opcional" className={inputCls} />
           </Field>
         </div>
         {profit !== null && (
@@ -300,7 +301,7 @@ function AdvanceModal({ order, onClose, onSaved }: { order: SpecialOrder; onClos
           {order.estimated_price > 0 && <> · falta aprox. <b className="text-brand-dark">{fmt(pending)}</b></>}
         </p>
         <Field label="Monto ₡">
-          <input autoFocus inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0" className={inputCls} />
+          <MoneyInput autoFocus value={amount} onChange={setAmount} placeholder="0" className={inputCls} />
         </Field>
         <Field label="Nota" hint="(opcional)">
           <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="SINPE, efectivo…" className={inputCls} />
@@ -384,10 +385,10 @@ function DeliverModal({ order, onClose, onSaved }: { order: SpecialOrder; onClos
         </Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Precio final ₡">
-            <input inputMode="numeric" value={price} onChange={(e) => setPrice(e.target.value)} className={inputCls} />
+            <MoneyInput value={price} onChange={setPrice} className={inputCls} />
           </Field>
           <Field label="Costo real ₡">
-            <input inputMode="numeric" value={cost} onChange={(e) => setCost(e.target.value)} placeholder="Puesto en CR" className={inputCls} />
+            <MoneyInput value={cost} onChange={setCost} placeholder="Puesto en CR" className={inputCls} />
           </Field>
         </div>
 
@@ -408,7 +409,7 @@ function DeliverModal({ order, onClose, onSaved }: { order: SpecialOrder; onClos
             </div>
             {settlement === "installments" && (
               <Field label="Abono al entregar ₡">
-                <input inputMode="numeric" value={partial} onChange={(e) => setPartial(e.target.value)} placeholder="0 si no dio nada" className={inputCls} />
+                <MoneyInput value={partial} onChange={setPartial} placeholder="0 si no dio nada" className={inputCls} />
               </Field>
             )}
             {partialError && <p className="text-[11.5px] text-red-500 -mt-1">{partialError}</p>}

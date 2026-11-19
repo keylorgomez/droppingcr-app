@@ -1,6 +1,6 @@
 import { useMemo } from "react";
+import { useCatalogProducts } from "../hooks/useCatalogProducts";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
 import { Truck, Wallet, MessageCircle, ArrowRight } from "lucide-react";
 import Header from "../components/ui/Header";
 import Marquee from "../components/ui/Marquee";
@@ -13,10 +13,8 @@ import SectionHeading from "../components/home/SectionHeading";
 import CategoryTiles, { type CategoryTile } from "../components/home/CategoryTiles";
 import HowToBuy from "../components/home/HowToBuy";
 import { SHIPPING_RATES } from "../config/shipping";
-import { getProducts, catalogSortRank, type CatalogProduct } from "../services/productService";
-import { QUERY_KEYS } from "../constants/queryKeys";
+import { catalogSortRank, type CatalogProduct } from "../services/productService";
 import { ROUTES, MARQUEE_ITEMS, HERO_IMAGES, CATEGORY_IMAGES, MAX_HERO_SLIDES } from "../constants/app";
-import { useAuth } from "../context/AuthContext";
 import { useSeo, organizationJsonLd } from "../lib/seo";
 
 const CURATED_COUNT = 8;
@@ -51,14 +49,9 @@ function CuratedSkeleton() {
 
 export default function HomePage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const isAdmin  = user?.role === "admin";
 
   // Misma query key que el catálogo y el sidebar: se sirve de caché.
-  const { data: products = [], isLoading } = useQuery({
-    queryKey: [...QUERY_KEYS.PRODUCTS, isAdmin],
-    queryFn:  () => getProducts(isAdmin),
-  });
+  const { data: products = [], isLoading } = useCatalogProducts();
 
   const visible = useMemo(() => products.filter((p) => p.is_active), [products]);
 

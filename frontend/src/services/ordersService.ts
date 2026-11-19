@@ -17,6 +17,8 @@ export interface OrderItemInput {
 }
 
 export interface OrderInput {
+  /** Id único por intento: un doble toque o reintento no registra dos pedidos. */
+  request_id?:     string;
   items:           OrderItemInput[];
   guest_name:      string | null;
   guest_phone:     string | null;
@@ -129,6 +131,7 @@ export async function recordManualOrder(data: OrderInput): Promise<void> {
       district:        data.district       ?? null,
       address_detail:  data.address_detail ?? null,
       initial_payment: data.initial_payment,
+      request_id:      data.request_id ?? null,
       items: data.items.map((item) => ({
         product_id: item.product_id,
         variant_id: item.variant_id,

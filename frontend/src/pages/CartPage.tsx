@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import StockAlert from "../components/ui/StockAlert";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Trash2, ShoppingBag, Package, AlertTriangle, Truck } from "lucide-react";
@@ -220,6 +221,25 @@ export default function CartPage() {
   }
   const quote = shippingQuote(shipping);
 
+  // Aviso cuando algo del carrito se vende mientras la persona está acá
+  // (el stock llega en vivo). Una vez por cambio: cerrar no lo vuelve a abrir.
+  const shortItems = items.filter((i) => liveStocks[i.variant_id] !== undefined && liveStocks[i.variant_id] < i.quantity);
+  const shortKey   = shortItems.map((i) => `${i.variant_id}:${liveStocks[i.variant_id]}`).join("|");
+  const [dismissedShort, setDismissedShort] = useState("");
+  const stockAlert = shortItems.length > 0 && dismissedShort !== shortKey
+    ? shortItems.map((i) => liveStocks[i.variant_id] === 0
+        ? `${i.product_name} (talla ${i.variant_size}) se acaba de vender.`
+        : `De ${i.product_name} (talla ${i.variant_size}) ahora quedan ${liveStocks[i.variant_id]}.`
+      ).join(" ")
+    : null;
+  function closeStockAlert() {
+    for (const i of shortItems) {
+      const left = liveStocks[i.variant_id];
+      if (left > 0) updateQty(i.variant_id, left);
+    }
+    setDismissedShort(shortKey);
+  }
+
   const hasOutOfStock = items.some((i) => (liveStocks[i.variant_id] ?? i.stock) === 0);
   const validItems    = items.filter((i) => (liveStocks[i.variant_id] ?? i.stock) > 0);
 
@@ -251,6 +271,9 @@ export default function CartPage() {
 
   return (
     <>
+      {stockAlert && (
+        <StockAlert title="Cambió tu carrito" message={stockAlert} actionLabel="Ver carrito" onClose={closeStockAlert} />
+      )}
       <Header />
       <main className="max-w-5xl mx-auto px-4 pt-8 pb-24 md:pb-16">
 

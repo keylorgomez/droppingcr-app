@@ -1,4 +1,7 @@
 import { useState, useEffect, useRef } from "react";
+import MoneyInput from "../ui/MoneyInput";
+import StockAlert from "../ui/StockAlert";
+import { isStockError } from "../../lib/stockErrors";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { QUERY_KEYS } from "../../constants/queryKeys";
@@ -53,6 +56,8 @@ export default function SaleModal({
   const navigate          = useNavigate();
   const availableVariants = variants.filter((variant) => variant.stock > 0);
 
+  // Un id por intento de venta; se renueva al registrar.
+  const requestId = useRef(crypto.randomUUID());
   const [variantId,         setVariantId]         = useState("");
   const [quantity,          setQuantity]          = useState(1);
   const [priceSold,         setPriceSold]         = useState(String(effectivePrice));
@@ -61,6 +66,9 @@ export default function SaleModal({
   const [customerFound,     setCustomerFound]     = useState(false);
   const autoFilledRef = useRef(false);
   const [isPagos,           setIsPagos]           = useState(false);
+  // Aviso de "ya se vendió": por error de la base o por el stock en vivo.
+  const [stockError,        setStockError]        = useState<string | null>(null);
+  const [dismissedLive,     setDismissedLive]     = useState<string | null>(null);
   const [initialPayment,    setInitialPayment]    = useState("");
   const [note,              setNote]              = useState("");
   const [deliveryStatus,    setDeliveryStatus]    = useState<DeliveryStatus>("validating");
@@ -86,13 +94,18 @@ export default function SaleModal({
   }, [guestPhone]);
 
   const selectedVariant    = availableVariants.find((variant) => variant.id === variantId);
+  // El precio del formulario es POR UNIDAD; record_sale guarda el total de la
+  // línea. Antes se mandaba el unitario y con 2+ unidades se registraba (y se
+  // cobraba como "pagada") la mitad.
   const priceNum           = Number(priceSold) || 0;
-  const totalNum           = priceNum + shippingCost;
+  const lineTotal          = priceNum * quantity;
+  const totalNum           = lineTotal + shippingCost;
 
   const queryClient = useQueryClient();
   const saleMutation = useMutation({
     mutationFn: recordManualSale,
     onSuccess: () => {
+      requestId.current = crypto.randomUUID();
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.FINANCE });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PRODUCTS });
       setSaleConfirmed(true);
@@ -102,8 +115,31 @@ export default function SaleModal({
       });
       onSuccess();
     },
-    onError: (err: Error) => showToast(err.message, "error"),
+    onError: (err: Error) => {
+      if (isStockError(err.message)) setStockError(err.message);
+      else showToast(err.message, "error");
+    },
   });
+
+  // Stock en vivo: si otro admin (o una compra) se llevó la talla elegida
+  // mientras este formulario estaba abierto, se avisa antes de intentar vender.
+  const liveVariant = variants.find((variant) => variant.id === variantId);
+  const liveKey     = liveVariant ? `${liveVariant.id}:${liveVariant.stock}` : null;
+  const liveShort   = !saleConfirmed && !saleMutation.isPending && liveVariant && liveVariant.stock < quantity;
+  const liveAlert   = liveShort && dismissedLive !== liveKey
+    ? liveVariant.stock === 0
+      ? `La talla ${liveVariant.size} se acaba de vender o apartar. Elegí otra talla.`
+      : `De la talla ${liveVariant.size} ahora quedan ${liveVariant.stock}. Ajustá la cantidad.`
+    : null;
+
+  function closeStockAlert() {
+    if (liveVariant && liveVariant.stock < quantity) {
+      if (liveVariant.stock === 0) setVariantId("");
+      else setQuantity(liveVariant.stock);
+    }
+    setDismissedLive(liveKey);
+    setStockError(null);
+  }
 
   function validate(): boolean {
     const validationErrors: Record<string, string> = shipping.validate();
@@ -124,10 +160,11 @@ export default function SaleModal({
     if (!validate()) return;
     const rawPhone = guestPhone.replace(/\D/g, "");
     saleMutation.mutate({
+      request_id:      requestId.current,
       product_id:      productId,
       variant_id:      variantId,
       quantity,
-      sale_price:      priceNum,
+      sale_price:      lineTotal,
       note:            note.trim() || null,
       guest_name:      guestName.trim() || null,
       guest_phone:     rawPhone ? `+506${rawPhone}` : null,
@@ -143,6 +180,9 @@ export default function SaleModal({
 
   return (
     <>
+      {(stockError || liveAlert) && (
+        <StockAlert message={stockError ?? liveAlert!} onClose={closeStockAlert} />
+      )}
       <div className="fixed inset-0 bg-black/40 z-40 backdrop-blur-sm" onClick={onClose} />
 
       <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50
@@ -264,14 +304,11 @@ export default function SaleModal({
             {/* Price */}
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium text-ink-500 uppercase tracking-wider">
-                Precio de venta (₡)
+                {quantity > 1 ? "Precio por unidad (₡)" : "Precio de venta (₡)"}
               </label>
-              <input
-                type="number"
-                min={0}
-                step="0.01"
+              <MoneyInput
                 value={priceSold}
-                onChange={(e) => setPriceSold(e.target.value)}
+                onChange={(raw) => setPriceSold(raw)}
                 className={inputCls}
               />
               {errors.priceSold && <span className="text-[11px] text-red-500">{errors.priceSold}</span>}
@@ -327,8 +364,8 @@ export default function SaleModal({
             {/* Total breakdown */}
             <div className="rounded-xl bg-ink-50 px-4 py-3 flex flex-col gap-1.5 text-sm">
               <div className="flex justify-between text-ink-500">
-                <span>Producto</span>
-                <span>₡{priceNum.toLocaleString("en-US")}</span>
+                <span>{quantity > 1 ? `Producto (${quantity} × ₡${priceNum.toLocaleString("en-US")})` : "Producto"}</span>
+                <span>₡{lineTotal.toLocaleString("en-US")}</span>
               </div>
               <div className="flex justify-between text-ink-500">
                 <span>Envío</span>
@@ -430,13 +467,9 @@ export default function SaleModal({
                   <label className="text-xs font-medium text-ink-500 uppercase tracking-wider">
                     Abono inicial (₡)
                   </label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={totalNum}
-                    step="0.01"
+                  <MoneyInput
                     value={initialPayment}
-                    onChange={(e) => setInitialPayment(e.target.value)}
+                    onChange={(raw) => setInitialPayment(raw)}
                     placeholder="0.00"
                     className={inputCls}
                   />

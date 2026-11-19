@@ -1,17 +1,16 @@
 import FloatingWhatsApp from "../components/ui/FloatingWhatsApp";
+import { useCatalogProducts } from "../hooks/useCatalogProducts";
 import { useMemo, useEffect, useLayoutEffect, useState, useRef } from "react";
 import { useNavigate, useSearchParams, useLocation, useParams, Link } from "react-router-dom";
 import { categoryCopy } from "../config/categoryCopy";
-import { useQuery } from "@tanstack/react-query";
 import { Search, X, ChevronDown, Check, SlidersHorizontal, ChevronLeft, ChevronRight, Share2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import Header from "../components/ui/Header";
 import PromoBanner from "../components/PromoBanner";
 import ProductCard from "../components/catalog/ProductCard";
-import { getProducts, catalogSortRank } from "../services/productService";
+import { catalogSortRank } from "../services/productService";
 import { CLOTHING_SIZES } from "../constants/domain";
 import { matchesSearch } from "../lib/formatters";
-import { QUERY_KEYS } from "../constants/queryKeys";
 import { ROUTES } from "../constants/app";
 import { useAuth } from "../context/AuthContext";
 import { useSeo, breadcrumbJsonLd } from "../lib/seo";
@@ -185,10 +184,7 @@ export default function CatalogPage() {
     return () => { document.body.style.overflow = ""; };
   }, [modalOpen]);
 
-  const { data: products = [], isLoading, isError } = useQuery({
-    queryKey: [...QUERY_KEYS.PRODUCTS, isAdmin],
-    queryFn:  () => getProducts(isAdmin),
-  });
+  const { data: products = [], isLoading, isError } = useCatalogProducts();
 
   const maxDiscountPercent = useMemo(
     () => products.reduce((max, p) => (p.is_active && p.discount_percentage > max ? p.discount_percentage : max), 0),

@@ -1,4 +1,5 @@
 import { usePaged } from "../../lib/usePaged";
+import MoneyInput from "../../components/ui/MoneyInput";
 import ShowMore from "../../components/ui/ShowMore";
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -79,10 +80,12 @@ function NewExpenseModal({
 
           <div className="grid grid-cols-2 gap-3">
             <Field label="Monto total (₡)">
-              <input
-                type="number" min={1} step={1} value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="0" required className={inputCls}
+              <MoneyInput
+                value={amount}
+                onChange={(raw) => setAmount(raw)}
+                placeholder="0"
+                className={inputCls}
+                required
               />
             </Field>
             <Field label="Categoría (opcional)">
@@ -207,10 +210,11 @@ function PaymentModal({
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <Field label={`Monto a pagar (₡) — máx. ${fmt(remaining)}`}>
-            <input
-              type="number" min={1} max={remaining} step={1}
-              value={amount} onChange={(e) => setAmount(e.target.value)}
-              required className={inputCls}
+            <MoneyInput
+              value={amount}
+              onChange={(raw) => setAmount(raw)}
+              className={inputCls}
+              required
             />
           </Field>
 

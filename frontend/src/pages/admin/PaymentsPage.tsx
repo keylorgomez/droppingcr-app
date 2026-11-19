@@ -1,4 +1,5 @@
 import { usePaged } from "../../lib/usePaged";
+import MoneyInput from "../../components/ui/MoneyInput";
 import ShowMore from "../../components/ui/ShowMore";
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -174,23 +175,21 @@ function ExternalSaleModal({
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <label className={labelCls}>Precio costo (₡)</label>
-              <input
+              <MoneyInput
                 value={costPrice}
-                onChange={(e) => setCostPrice(e.target.value)}
+                onChange={(raw) => setCostPrice(raw)}
                 placeholder="0"
-                inputMode="decimal"
                 className={inputCls}
               />
             </div>
             <div className="flex flex-col gap-1.5">
               <label className={labelCls}>Precio venta (₡)</label>
-              <input
+              <MoneyInput
                 value={salePrice}
-                onChange={(e) => setSalePrice(e.target.value)}
+                onChange={(raw) => setSalePrice(raw)}
                 placeholder="0"
-                inputMode="decimal"
-                required
                 className={inputCls}
+                required
               />
             </div>
           </div>
@@ -281,11 +280,10 @@ function ExternalSaleModal({
             {isPagos && (
               <div className="flex flex-col gap-1.5">
                 <label className={labelCls}>Abono inicial (₡)</label>
-                <input
+                <MoneyInput
                   value={initialPayment}
-                  onChange={(e) => setInitialPayment(e.target.value)}
+                  onChange={(raw) => setInitialPayment(raw)}
                   placeholder="0"
-                  inputMode="decimal"
                   className={inputCls}
                 />
                 {abonoError

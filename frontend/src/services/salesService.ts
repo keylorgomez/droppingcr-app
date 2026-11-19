@@ -172,6 +172,8 @@ interface RawOrderPaymentLogRow {
 // ── Shared types ───────────────────────────────────────────────────────────
 
 export interface SaleInput {
+  /** Id único por intento: un doble toque o reintento no registra dos ventas. */
+  request_id?:      string;
   product_id:       string;
   variant_id:       string;
   quantity:         number;
@@ -389,6 +391,7 @@ export async function recordManualSale(data: SaleInput): Promise<void> {
       district:        data.district       ?? null,
       address_detail:  data.address_detail ?? null,
       initial_payment: data.initial_payment,
+      request_id:      data.request_id ?? null,
     },
   });
   if (error) throw new Error(error.message);

@@ -1,4 +1,5 @@
 import { usePaged } from "../../lib/usePaged";
+import MoneyInput from "../../components/ui/MoneyInput";
 import ShowMore from "../../components/ui/ShowMore";
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -148,18 +149,15 @@ function PayoutModal({
             <label className="text-xs font-medium text-ink-500 uppercase tracking-wider">
               Monto (₡)
             </label>
-            <input
-              type="number"
-              min={1}
-              step={1}
+            <MoneyInput
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              onChange={(raw) => setAmount(raw)}
               placeholder="0"
-              required
               className="w-full rounded-xl border border-ink-200 px-4 py-2.5 text-sm
                          text-brand-dark placeholder:text-ink-300 outline-none
                          focus:border-brand-primary focus:ring-1 focus:ring-brand-primary/20
                          transition"
+              required
             />
             {Number(amount) > cash ? (
               <p className="text-[11px] text-red-600 leading-snug font-semibold">

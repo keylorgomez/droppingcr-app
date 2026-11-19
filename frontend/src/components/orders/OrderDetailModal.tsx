@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import MoneyInput from "../ui/MoneyInput";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { X, Package, Check, Loader2, MessageCircle, Plus, Trash2, Printer } from "lucide-react";
 import { motion } from "motion/react";
@@ -381,11 +382,9 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
                     Monto del abono (₡)
                   </p>
                   <div className="flex gap-2">
-                    <input
-                      type="number"
-                      min={1}
+                    <MoneyInput
                       value={abonoAmount}
-                      onChange={(e) => setAbonoAmount(e.target.value)}
+                      onChange={(raw) => setAbonoAmount(raw)}
                       placeholder="Ej: 5000"
                       className={cn(inputCls, "flex-1")}
                       autoFocus

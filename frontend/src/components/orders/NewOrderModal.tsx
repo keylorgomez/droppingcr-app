@@ -1,4 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
+import MoneyInput from "../ui/MoneyInput";
+import StockAlert from "../ui/StockAlert";
+import { isStockError } from "../../lib/stockErrors";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   X, Package, Loader2, ShoppingBag,
@@ -56,6 +59,8 @@ interface NewOrderModalProps {
 // ── Component ──────────────────────────────────────────────────────────────
 
 export default function NewOrderModal({ onClose }: NewOrderModalProps) {
+  // Un id por intento de pedido; se renueva al registrar.
+  const requestId = useRef(crypto.randomUUID());
   const { showToast } = useToast();
   const queryClient   = useQueryClient();
 
@@ -134,6 +139,22 @@ export default function NewOrderModal({ onClose }: NewOrderModalProps) {
   function addToCart(product: ProductWithVariants, variantId: string) {
     const variant = product.variants.find((variantEntry) => variantEntry.id === variantId);
     if (!variant) return;
+    // La misma talla dos veces se suma a la línea existente: dos líneas de la
+    // última unidad hacían fallar todo el pedido al guardar.
+    const existing = cartItems.find((cartItem) => cartItem.variant_id === variant.id);
+    if (existing) {
+      if (existing.quantity >= variant.stock) {
+        showToast(`Ya agregaste todo el stock de la talla ${variant.size} (${variant.stock}).`, "error");
+      } else {
+        setCartItems((prev) => prev.map((cartItem) =>
+          cartItem.tempId === existing.tempId ? { ...cartItem, quantity: cartItem.quantity + 1, maxStock: variant.stock } : cartItem
+        ));
+      }
+      setPickerProduct(null);
+      setPickerSearch("");
+      setShowPicker(false);
+      return;
+    }
     const tempId = `${Date.now()}-${Math.random()}`;
     setCartItems((prev) => [
       ...prev,
@@ -173,6 +194,7 @@ export default function NewOrderModal({ onClose }: NewOrderModalProps) {
 
   const submitMutation = useMutation({
     mutationFn: () => recordManualOrder({
+      request_id: requestId.current,
       items: cartItems.map((cartItem) => ({
         product_id: cartItem.product_id,
         variant_id: cartItem.variant_id,
@@ -182,7 +204,9 @@ export default function NewOrderModal({ onClose }: NewOrderModalProps) {
       guest_name:      guestName.trim() || null,
       guest_phone:     guestPhone.trim() || null,
       status:          payStatus,
-      initial_payment: Number(initialPayment) || 0,
+      // "Pago completo" cobra el total AL GUARDAR: antes se copiaba el total del
+      // momento del clic y, si después se agregaba algo, quedaba un pago menor.
+      initial_payment: payStatus === "completed" ? orderTotal : Number(initialPayment) || 0,
       shipping_method: shippingMethod,
       shipping_cost:   shippingCost,
       delivery_status: deliveryStatus,
@@ -191,18 +215,68 @@ export default function NewOrderModal({ onClose }: NewOrderModalProps) {
       note:            note.trim() || null,
     }),
     onSuccess: () => {
+      requestId.current = crypto.randomUUID();
       showToast("Compra registrada correctamente.", "success");
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PRODUCTS });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PRODUCTS_WITH_VARIANTS });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ADMIN_SALES });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ADMIN_ORDERS });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.FINANCE });
       onClose();
     },
-    onError: (err: Error) => showToast(err.message, "error"),
+    onError: (err: Error) => {
+      if (isStockError(err.message)) {
+        queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PRODUCTS_WITH_VARIANTS });
+        setStockError(err.message);
+      } else {
+        showToast(err.message, "error");
+      }
+    },
   });
+
+  // ── Stock en vivo ──────────────────────────────────────────────────────
+  // La lista de productos se recarga sola cuando cambia el stock (useLiveStock).
+  // Una talla que se vendió desaparece de la lista: su stock vivo es 0.
+  const liveStockOf = (variantId: string) => {
+    for (const product of products) {
+      const variant = product.variants.find((entry) => entry.id === variantId);
+      if (variant) return variant.stock;
+    }
+    return 0;
+  };
+  const shortItems = productsLoading || submitMutation.isPending ? [] : cartItems.filter(
+    (item) => liveStockOf(item.variant_id) < item.quantity
+  );
+  const shortKey = shortItems.map((item) => `${item.variant_id}:${liveStockOf(item.variant_id)}`).join("|");
+  const [stockError, setStockError]       = useState<string | null>(null);
+  const [dismissedShort, setDismissedShort] = useState("");
+  const liveAlert = shortItems.length > 0 && dismissedShort !== shortKey
+    ? shortItems.map((item) => {
+        const left = liveStockOf(item.variant_id);
+        return left === 0
+          ? `${item.product_name} talla ${item.variant_size} se acaba de vender.`
+          : `${item.product_name} talla ${item.variant_size}: ahora quedan ${left}.`;
+      }).join(" ") + " Al cerrar este aviso se ajusta el pedido."
+    : null;
+
+  function closeStockAlert() {
+    // Se quitan las que ya no hay y se baja la cantidad de las que quedan menos.
+    setCartItems((prev) => prev.flatMap((item) => {
+      const left = liveStockOf(item.variant_id);
+      if (left >= item.quantity) return [item];
+      return left === 0 ? [] : [{ ...item, quantity: left, maxStock: left }];
+    }));
+    setDismissedShort(shortKey);
+    setStockError(null);
+  }
 
   function handleSubmit() {
     if (cartItems.length === 0) {
       showToast("Agregá al menos un producto.", "error");
+      return;
+    }
+    if (payStatus === "pending" && Number(initialPayment) > orderTotal) {
+      showToast(`El abono no puede superar el total (₡${orderTotal.toLocaleString("en-US")}).`, "error");
       return;
     }
     const addressErrors = shipping.validate();
@@ -224,6 +298,13 @@ export default function NewOrderModal({ onClose }: NewOrderModalProps) {
                  flex items-center justify-center px-4"
       onClick={onClose}
     >
+      {(stockError || liveAlert) && (
+        <StockAlert
+          title={stockError ? "No se pudo registrar el pedido" : "Cambió el stock"}
+          message={stockError ?? liveAlert!}
+          onClose={closeStockAlert}
+        />
+      )}
       <motion.div
         key="modal-new"
         initial={{ opacity: 0, scale: 0.97, y: 16 }}
@@ -351,11 +432,9 @@ export default function NewOrderModal({ onClose }: NewOrderModalProps) {
                       <div className="flex flex-col items-end shrink-0 gap-0.5">
                         <div className="flex items-center">
                           <span className="text-xs text-ink-400 mr-0.5">₡</span>
-                          <input
-                            type="number"
-                            min={0}
-                            value={item.sale_price}
-                            onChange={(e) => updateCartItem(item.tempId, "sale_price", Number(e.target.value))}
+                          <MoneyInput
+                            value={String(item.sale_price)}
+                            onChange={(raw) => updateCartItem(item.tempId, "sale_price", Number(raw) || 0)}
                             className="w-20 text-right text-xs border border-ink-200 rounded-md
                                        px-2 py-1 outline-none focus:border-brand-primary transition"
                           />
@@ -568,11 +647,9 @@ export default function NewOrderModal({ onClose }: NewOrderModalProps) {
               <p className="text-xs font-medium text-ink-500 uppercase tracking-wider">
                 Abono inicial (₡)
               </p>
-              <input
-                type="number"
-                min={0}
+              <MoneyInput
                 value={initialPayment}
-                onChange={(e) => setInitialPayment(e.target.value)}
+                onChange={(raw) => setInitialPayment(raw)}
                 placeholder="0"
                 className={inputCls}
               />

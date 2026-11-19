@@ -136,6 +136,28 @@ async function fetchOrCreateProfile(
   };
 }
 
+/**
+ * getSession y onAuthStateChange (INITIAL_SESSION, TOKEN_REFRESHED cada hora,
+ * otra pestaña…) pedían el perfil cada uno: 3 lecturas de `profiles` por carga.
+ * Se comparte la petición en curso y, si ya está cargado el mismo usuario, no
+ * se vuelve a pedir salvo que se fuerce (refreshUser, USER_UPDATED).
+ */
+let inflight: { userId: string; promise: ReturnType<typeof fetchOrCreateProfile> } | null = null;
+let loadedUserId: string | null = null;
+
+function loadProfileOnce(authUser: User, force = false): ReturnType<typeof fetchOrCreateProfile> | null {
+  if (!force && loadedUserId === authUser.id) return null;
+  if (inflight?.userId === authUser.id) return inflight.promise;
+  const promise = fetchOrCreateProfile(authUser).then((result) => {
+    if (result.profile) loadedUserId = authUser.id;
+    return result;
+  }).finally(() => {
+    if (inflight?.promise === promise) inflight = null;
+  });
+  inflight = { userId: authUser.id, promise };
+  return promise;
+}
+
 function sendWelcome(profile: UserProfile) {
   if (!profile.email) return;
   sendTransactionalEmail({
@@ -154,8 +176,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Initial session check
     supabase.auth.getSession()
       .then(async ({ data: { session } }) => {
-        if (session?.user) {
-          const { profile, needsWelcome } = await fetchOrCreateProfile(session.user);
+        const pending = session?.user ? loadProfileOnce(session.user) : null;
+        if (pending) {
+          const { profile, needsWelcome } = await pending;
           if (profile) {
             setUser(profile);
             if (needsWelcome) sendWelcome(profile);
@@ -169,9 +192,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // IMPORTANT: callback must be synchronous — Supabase SDK v2 awaits async
     // callbacks internally, which blocks signInWithPassword from resolving.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
         if (session?.user) {
-          fetchOrCreateProfile(session.user)
+          const pending = loadProfileOnce(session.user, event === "USER_UPDATED");
+          if (!pending) { setLoading(false); return; }
+          pending
             .then(({ profile, needsWelcome }) => {
               if (profile) {
                 setUser(profile);
@@ -183,6 +208,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .catch((err) => console.warn("[silencioso]", err))
             .finally(() => setLoading(false));
         } else {
+          loadedUserId = null;
           setUser(null);
           setLoading(false);
         }
@@ -195,7 +221,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function refreshUser() {
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.user) {
-      const { profile } = await fetchOrCreateProfile(session.user);
+      const { profile } = await (loadProfileOnce(session.user, true) ?? fetchOrCreateProfile(session.user));
       setUser(profile);
     }
   }

@@ -288,7 +288,8 @@ export interface InventoryUpdate {
   is_featured:         boolean;
   new_since:           string | null;
   category_ids: string[];
-  variants: { id?: string; size: string; stock: number }[];
+  /** `loaded_stock`: el stock que había cuando se abrió el formulario. */
+  variants: { id?: string; size: string; stock: number; loaded_stock?: number }[];
   images:   { image_url: string; is_primary: boolean; display_order: number }[];
 }
 
@@ -333,19 +334,34 @@ export async function updateProductInventory(
     if (imgError) throw new Error(imgError.message);
   }
 
+  const conflicts: string[] = [];
   for (const v of data.variants) {
     if (v.id) {
-      const { error: variantError } = await supabase
+      // Stock sin tocar en el formulario: no se escribe. Así una venta que
+      // entró mientras se editaba el nombre o las fotos no se "deshace".
+      const touched = v.loaded_stock === undefined || v.stock !== v.loaded_stock;
+      let query = supabase
         .from("product_variants")
-        .update({ size: v.size, stock: v.stock })
+        .update(touched ? { size: v.size, stock: v.stock } : { size: v.size })
         .eq("id", v.id);
+      // Si se cambió, solo vale si nadie lo movió mientras tanto.
+      if (touched && v.loaded_stock !== undefined) query = query.eq("stock", v.loaded_stock);
+      const { data: updated, error: variantError } = await query.select("id");
       if (variantError) throw new Error(variantError.message);
+      if (!updated?.length) conflicts.push(v.size);
     } else {
       const { error: variantError } = await supabase
         .from("product_variants")
         .insert({ product_id: productId, size: v.size, stock: v.stock });
       if (variantError) throw new Error(variantError.message);
     }
+  }
+
+  if (conflicts.length) {
+    throw new Error(
+      `El stock de la talla ${conflicts.join(", ")} cambió mientras editabas (se vendió o apartó). ` +
+      "Lo demás se guardó; revisá el stock actual y volvé a ajustarlo."
+    );
   }
 }
 

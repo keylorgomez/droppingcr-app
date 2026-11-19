@@ -113,3 +113,31 @@ describe("CSV", () => {
     expect(csv.endsWith(",5")).toBe(true);
   });
 });
+
+import { cleanAmount, displayAmount } from "../lib/money";
+
+describe("montos en formularios", () => {
+  it("muestra separador de miles", () => {
+    expect(displayAmount("12500")).toBe("12,500");
+    expect(displayAmount("1234567.5")).toBe("1,234,567.5");
+    expect(displayAmount("")).toBe("");
+    expect(displayAmount("0.")).toBe("0.");
+  });
+
+  it("limpia lo que se escribe o pega", () => {
+    expect(cleanAmount("12,500")).toBe("12500");
+    expect(cleanAmount("₡ 18,500.50")).toBe("18500.50");
+    expect(cleanAmount("1,25")).toBe("125");          // borrar un cero no lo vuelve decimal
+    expect(cleanAmount("007")).toBe("7");
+    expect(cleanAmount(".5")).toBe("0.5");
+    expect(cleanAmount("10.555")).toBe("10.55");
+    expect(cleanAmount("1.2.3")).toBe("1.23");
+    expect(cleanAmount("12.5", 0)).toBe("12");
+  });
+
+  it("ida y vuelta sin perder el valor", () => {
+    for (const raw of ["0", "5", "1000", "18500", "917376.97", "1000000"]) {
+      expect(cleanAmount(displayAmount(raw))).toBe(raw);
+    }
+  });
+});
