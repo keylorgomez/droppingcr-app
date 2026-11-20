@@ -17,7 +17,7 @@ import { ShippingFields } from "../shipping/ShippingFields";
 import { useShippingForm } from "../shipping/useShippingForm";
 import { recordManualOrder } from "../../services/ordersService";
 import { lookupCustomerByPhone } from "../../services/customerService";
-import { discountedPrice, localPhone } from "../../lib/formatters";
+import { discountedPrice, cleanPhoneInput } from "../../lib/formatters";
 import {
   getProductsWithVariants,
   type ProductWithVariants,
@@ -77,7 +77,7 @@ export default function NewOrderModal({ onClose }: NewOrderModalProps) {
       try {
         const draft = JSON.parse(draftJson);
         if (draft.guest_name)  setGuestName(draft.guest_name);
-        if (draft.guest_phone) setGuestPhone(localPhone(draft.guest_phone).slice(-8));
+        if (draft.guest_phone) setGuestPhone(cleanPhoneInput(draft.guest_phone));
       } catch {}
       sessionStorage.removeItem("order_draft");
     }
@@ -345,7 +345,7 @@ export default function NewOrderModal({ onClose }: NewOrderModalProps) {
               <input
                 type="tel"
                 value={guestPhone}
-                onChange={(e) => setGuestPhone(e.target.value.replace(/\D/g, "").slice(0, 8))}
+                onChange={(e) => setGuestPhone(cleanPhoneInput(e.target.value))}
                 placeholder="WhatsApp (ej: 88887777)"
                 maxLength={8}
                 className="flex-1 px-3 py-2.5 text-sm text-brand-dark outline-none bg-white"

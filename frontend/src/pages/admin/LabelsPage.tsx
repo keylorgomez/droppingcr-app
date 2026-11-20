@@ -5,6 +5,7 @@ import { Plus, Printer, Trash2, ArrowLeft } from "lucide-react";
 import Header from "../../components/ui/Header";
 import { preloadLabelPdf, printLabel } from "../../lib/printLabel";
 import { cn } from "../../lib/utils";
+import { cleanPhoneInput } from "../../lib/formatters";
 
 const inputCls =
   "w-full rounded-xl border border-ink-200 px-4 py-2.5 text-sm text-brand-dark " +
@@ -152,7 +153,7 @@ export default function LabelsPage() {
                 <input
                   type="tel"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 8))}
+                  onChange={(e) => setPhone(cleanPhoneInput(e.target.value))}
                   placeholder="88887777"
                   maxLength={8}
                   className="flex-1 px-3 py-2.5 text-sm text-brand-dark outline-none bg-white"

@@ -31,3 +31,21 @@ describe("fmt", () => {
     expect(fmt(120000.48000000001)).toBe("₡120,000.48");
   });
 });
+
+import { cleanPhoneInput } from "../lib/formatters";
+describe("cleanPhoneInput (pegar teléfonos)", () => {
+  it("quita código de país, espacios y guiones", () => {
+    expect(cleanPhoneInput("+506 8836-4879")).toBe("88364879");
+    expect(cleanPhoneInput("(506) 8836 4879")).toBe("88364879");
+    expect(cleanPhoneInput("50688364879")).toBe("88364879");
+    expect(cleanPhoneInput("8836-4879")).toBe("88364879");
+    expect(cleanPhoneInput("+506 8836 - 4879")).toBe("88364879");
+  });
+  it("deja escribir números que empiezan con 506", () => {
+    expect(cleanPhoneInput("506")).toBe("506");
+    expect(cleanPhoneInput("50612345")).toBe("50612345");
+  });
+  it("nunca pasa de 8 dígitos", () => {
+    expect(cleanPhoneInput("883648791234")).toBe("88364879");
+  });
+});

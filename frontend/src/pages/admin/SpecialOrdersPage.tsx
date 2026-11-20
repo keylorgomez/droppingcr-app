@@ -12,7 +12,7 @@ import Header from "../../components/ui/Header";
 import MoneyInput from "../../components/ui/MoneyInput";
 import WhatsAppIcon from "../../components/ui/WhatsAppIcon";
 import { useToast } from "../../components/ui/Toast";
-import { fmt, formatDate, displayPhone, localPhone, normalizePhone } from "../../lib/formatters";
+import { fmt, formatDate, displayPhone, localPhone, normalizePhone, cleanPhoneInput } from "../../lib/formatters";
 import { cn } from "../../lib/utils";
 import { QUERY_KEYS } from "../../constants/queryKeys";
 import { lookupCustomerProfileByPhone } from "../../services/customerService";
@@ -155,7 +155,7 @@ function NewOrderModal({ onClose, onSaved }: { onClose: () => void; onSaved: () 
           <Field label="WhatsApp">
             <input
               type="tel" inputMode="numeric" value={phone}
-              onChange={(e) => { setPhone(e.target.value); setCustomerId(null); }}
+              onChange={(e) => { setPhone(cleanPhoneInput(e.target.value)); setCustomerId(null); }}
               onBlur={autofillFromPhone} placeholder="8888 8888" className={inputCls}
             />
           </Field>
@@ -244,7 +244,7 @@ function EditModal({ order, onClose, onSaved }: { order: SpecialOrder; onClose: 
             <input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} />
           </Field>
           <Field label="Teléfono">
-            <input type="tel" inputMode="numeric" value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 8))} placeholder="8888 8888" className={inputCls} />
+            <input type="tel" inputMode="numeric" value={phone} onChange={(e) => setPhone(cleanPhoneInput(e.target.value))} placeholder="8888 8888" className={inputCls} />
           </Field>
         </div>
         <div className="grid grid-cols-[1fr_6rem] gap-3">

@@ -4,6 +4,7 @@ import { Eye, EyeOff, Loader2, Mail } from "lucide-react";
 import { signIn, signUp, resetPassword, signInWithGoogle } from "../../services/authService";
 import { useToast } from "./Toast";
 import { Dialog, DialogContent } from "./dialog";
+import { cleanPhoneInput } from "../../lib/formatters";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -308,7 +309,7 @@ function RegisterForm({ onSwitch, onSuccess }: { onSwitch: () => void; onSuccess
           </span>
           <input
             type="tel" value={whatsapp}
-            onChange={(e) => setWhatsapp(e.target.value.replace(/\D/g, "").slice(0, 8))}
+            onChange={(e) => setWhatsapp(cleanPhoneInput(e.target.value))}
             placeholder="88887777" maxLength={8}
             className="flex-1 px-3 py-2.5 text-sm text-brand-dark outline-none bg-white"
           />

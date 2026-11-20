@@ -39,6 +39,18 @@ export function formatPhone(raw: string | null): string | null {
   return digits.length === 8 ? `506${digits}` : digits;
 }
 
+/**
+ * Para campos de teléfono mientras se escribe o se pega: deja solo los 8
+ * dígitos locales. "+506 8836-4879", "(506) 8836 4879" o "50688364879" →
+ * "88364879". El código de país solo se quita si sobra (más de 8 dígitos),
+ * así un número que empieza con 506 se puede escribir normal.
+ */
+export function cleanPhoneInput(raw: string): string {
+  const digits = raw.replace(/\D/g, "");
+  const local  = digits.length > 8 && digits.startsWith("506") ? digits.slice(3) : digits;
+  return local.slice(0, 8);
+}
+
 /** Los 8 dígitos locales: "+50688364879" / "8836-4879" → "88364879". Otros largos quedan solo en dígitos. */
 export function localPhone(raw: string | null | undefined): string {
   const digits = (raw ?? "").replace(/\D/g, "");

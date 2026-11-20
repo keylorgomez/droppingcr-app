@@ -5,6 +5,7 @@ import { updateProfile } from "../../services/profileService";
 import { useToast } from "./Toast";
 import { t } from "../../lib/i18n";
 import { Dialog, DialogContent } from "./dialog";
+import { cleanPhoneInput } from "../../lib/formatters";
 
 const SESSION_KEY = "whatsapp_prompt_dismissed";
 
@@ -84,7 +85,7 @@ export default function CompleteProfileModal() {
               </span>
               <input
                 type="tel" value={whatsapp}
-                onChange={(e) => setWhatsapp(e.target.value.replace(/\D/g, "").slice(0, 8))}
+                onChange={(e) => setWhatsapp(cleanPhoneInput(e.target.value))}
                 placeholder={t.completeProfile.placeholder} maxLength={8} autoFocus
                 className="flex-1 px-3 py-2.5 text-sm text-brand-dark outline-none bg-white"
               />

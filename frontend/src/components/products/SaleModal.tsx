@@ -15,7 +15,7 @@ import { ShippingFields } from "../shipping/ShippingFields";
 import { useShippingForm } from "../shipping/useShippingForm";
 import { useToast } from "../ui/Toast";
 import { cn } from "../../lib/utils";
-import { discountedPrice } from "../../lib/formatters";
+import { discountedPrice, cleanPhoneInput } from "../../lib/formatters";
 import { type ProductVariant } from "../../services/productService";
 import { lookupCustomerByPhone } from "../../services/customerService";
 
@@ -416,7 +416,7 @@ export default function SaleModal({
                     <input
                       type="tel"
                       value={guestPhone}
-                      onChange={(e) => setGuestPhone(e.target.value.replace(/\D/g, "").slice(0, 8))}
+                      onChange={(e) => setGuestPhone(cleanPhoneInput(e.target.value))}
                       placeholder="88887777"
                       maxLength={8}
                       className="flex-1 px-3 py-2.5 text-sm text-brand-dark outline-none bg-white"

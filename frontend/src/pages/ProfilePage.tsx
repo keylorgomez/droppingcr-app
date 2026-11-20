@@ -8,6 +8,7 @@ import { getMyPayouts, type AdminPayout } from "../services/payoutsService";
 import { useToast } from "../components/ui/Toast";
 import Header from "../components/ui/Header";
 import { QUERY_KEYS } from "../constants/queryKeys";
+import { cleanPhoneInput } from "../lib/formatters";
 
 // ── Small field components ─────────────────────────────────────────────────
 
@@ -265,7 +266,7 @@ export default function ProfilePage() {
               <input
                 type="tel"
                 value={whatsapp}
-                onChange={(e) => setWhatsapp(e.target.value.replace(/\D/g, "").slice(0, 8))}
+                onChange={(e) => setWhatsapp(cleanPhoneInput(e.target.value))}
                 placeholder="88887777"
                 maxLength={8}
                 className="flex-1 px-3 py-2.5 text-sm text-brand-dark

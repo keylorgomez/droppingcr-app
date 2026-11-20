@@ -26,7 +26,7 @@ import {
 import { lookupCustomerProfileByPhone } from "../../services/customerService";
 import { SALE_STATUS } from "../../constants/domain";
 import { cn } from "../../lib/utils";
-import { normalizeText } from "../../lib/formatters";
+import { normalizeText, cleanPhoneInput } from "../../lib/formatters";
 import { QUERY_KEYS } from "../../constants/queryKeys";
 import { getFinanceSummary, periodRange } from "../../services/analyticsService";
 import ExternalSaleDetailModal from "../../components/orders/ExternalSaleDetailModal";
@@ -228,7 +228,7 @@ function ExternalSaleModal({
                   <span className="px-2.5 py-2.5 text-sm text-ink-400 bg-ink-50 border-r border-ink-200">+506</span>
                   <input
                     value={rawPhone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    onChange={(e) => setPhone(cleanPhoneInput(e.target.value))}
                     placeholder="88887777"
                     inputMode="numeric"
                     className="flex-1 w-full px-3 py-2.5 text-sm text-brand-dark outline-none bg-white"
