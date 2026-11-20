@@ -20,18 +20,24 @@ export default function SectionHeading({ index, eyebrow, title, link }: SectionH
           {index && <span className="mr-2 text-ink-900">{index}</span>}
           {eyebrow}
         </span>
-        {/* El título sube desde detrás de una máscara, igual que la frase del hero */}
-        <h2 className="type-display text-[clamp(2rem,6vw,3.75rem)] text-ink-900 overflow-hidden pb-[0.06em]">
+        {/* El título sube desde detrás de una máscara, igual que la frase del hero.
+            Lo que se observa es el h2 (siempre visible), no el texto: el texto
+            arranca escondido por la máscara y el navegador nunca lo daba por
+            "visible", así que la animación no corría y quedaba un hueco. */}
+        <motion.h2
+          className="type-display text-[clamp(2rem,6vw,3.75rem)] text-ink-900 overflow-hidden pb-[0.06em]"
+          initial="hidden"
+          whileInView="shown"
+          viewport={{ once: true, amount: 0.1 }}
+        >
           <motion.span
             className="block"
-            initial={{ y: "105%" }}
-            whileInView={{ y: 0 }}
-            viewport={{ once: true, margin: "-40px" }}
+            variants={{ hidden: { y: "105%" }, shown: { y: 0 } }}
             transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
           >
             {title}
           </motion.span>
-        </h2>
+        </motion.h2>
       </div>
 
       {link && (
