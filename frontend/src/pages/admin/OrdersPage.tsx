@@ -80,11 +80,11 @@ function ExternalRow({ sale, onClick }: { sale: ExternalSale; onClick: () => voi
           {sale.product_name}
         </p>
         <p className="text-xs text-ink-400 truncate mt-0.5">
-          {sale.guest_name ?? "Cliente sin nombre"}{" "}
-          {sale.guest_phone && (
-            <span className="text-ink-300">· {displayPhone(sale.guest_phone)}</span>
-          )}
+          {sale.guest_name ?? "Cliente sin nombre"}
         </p>
+        {sale.guest_phone && (
+          <p className="text-[11px] text-ink-300 truncate">{displayPhone(sale.guest_phone)}</p>
+        )}
         <span className="inline-block mt-1 text-[10px] font-semibold rounded-full px-2 py-0.5 bg-purple-50 text-purple-600">
           {sale.from_special_order ? "Encargo" : "Externa"}
         </span>
@@ -135,11 +135,11 @@ function SaleRow({ sale, onClick }: { sale: AdminSale; onClick: () => void }) {
           {sale.product_name}
         </p>
         <p className="text-xs text-ink-400 truncate mt-0.5">
-          {sale.guest_name ?? "Cliente sin nombre"}{" "}
-          {sale.guest_phone && (
-            <span className="text-ink-300">· {displayPhone(sale.guest_phone)}</span>
-          )}
+          {sale.guest_name ?? "Cliente sin nombre"}
         </p>
+        {sale.guest_phone && (
+          <p className="text-[11px] text-ink-300 truncate">{displayPhone(sale.guest_phone)}</p>
+        )}
         <div className="flex items-center gap-1.5 mt-0.5">
           {isPersonal
             ? <MapPin size={10} className="text-ink-300 shrink-0" />
@@ -229,11 +229,11 @@ function OrderRow({ order, onClick }: { order: AdminOrder; onClick: () => void }
           </div>
         )}
         <p className="text-xs text-ink-400 truncate">
-          {order.guest_name ?? "Cliente sin nombre"}{" "}
-          {order.guest_phone && (
-            <span className="text-ink-300">· {displayPhone(order.guest_phone)}</span>
-          )}
+          {order.guest_name ?? "Cliente sin nombre"}
         </p>
+        {order.guest_phone && (
+          <p className="text-[11px] text-ink-300 truncate">{displayPhone(order.guest_phone)}</p>
+        )}
         <div className="flex items-center gap-1.5 mt-0.5">
           {isPersonal
             ? <MapPin size={10} className="text-ink-300 shrink-0" />

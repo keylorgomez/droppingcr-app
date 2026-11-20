@@ -344,7 +344,7 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
               <p className="text-[10px] text-ink-400 uppercase tracking-wider mb-0.5">Saldo</p>
               <p className={cn(
                 "font-semibold text-sm",
-                remaining > 0 ? "text-red-500" : "text-green-600"
+                locked ? "text-ink-400" : remaining > 0 ? "text-red-500" : "text-green-600"
               )}>
                 {locked ? "Cancelada" : remaining > 0 ? `₡${remaining.toLocaleString("en-US")}` : "Pagado ✓"}
               </p>
@@ -371,9 +371,9 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
                   />
                 ))}
               </div>
-              <p className="text-[10px] text-ink-300 pl-1">
+              {!locked && <p className="text-[10px] text-ink-300 pl-1">
                 Eliminar un pago lo quita de movimientos y deja la orden como pendiente si queda saldo.
-              </p>
+              </p>}
             </div>
           )}
 
@@ -441,6 +441,7 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
                 Esta venta está cancelada: ya no cuenta en ventas ni ganancias y no se puede reactivar. Si se vuelve a vender, registrala como venta nueva.
               </p>
             )}
+            {!locked && (
             <div className="grid grid-cols-1 gap-1.5">
               {DELIVERY_STATUSES.map((statusOption) => (
                 <label
@@ -470,6 +471,7 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
                 </label>
               ))}
             </div>
+            )}
           </div>
 
           {/* Tracking number */}

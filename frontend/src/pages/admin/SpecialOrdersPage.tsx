@@ -482,7 +482,7 @@ function CancelModal({ order, onClose, onSaved }: { order: SpecialOrder; onClose
           onPartial={setPartial}
         />
         <Field label="Motivo" hint="(opcional)">
-          <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Nadie lo reclamó, el proveedor no tenía la talla…" className={inputCls} />
+          <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Ej: nadie lo reclamó" className={inputCls} />
         </Field>
         <SubmitButton saving={mutation.isPending} disabled={refundAmount === null}>Cancelar encargo</SubmitButton>
       </form>

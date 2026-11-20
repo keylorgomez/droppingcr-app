@@ -26,7 +26,7 @@ export default function RefundChoice({
     : "";
 
   const optionCls = (active: boolean) => cn(
-    "w-full text-left rounded-xl border px-4 py-3 text-sm transition-colors",
+    "w-full text-left rounded-xl border px-3.5 py-2.5 text-sm transition-colors",
     active ? "border-brand-primary bg-brand-bg text-brand-dark" : "border-ink-200 text-ink-500 hover:border-ink-300",
   );
 

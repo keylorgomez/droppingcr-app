@@ -1,6 +1,10 @@
 /** Full currency — ₡12,500 */
+/** ₡12,500 · con céntimos siempre a 2 decimales (₡125,000.50, no ₡125,000.5). */
 export function fmt(n: number): string {
-  return `₡${n.toLocaleString("en-US")}`;
+  const cents = Math.round(n * 100) / 100;
+  return Number.isInteger(cents)
+    ? `₡${cents.toLocaleString("en-US")}`
+    : `₡${cents.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 /** Compact currency for summaries — ₡1.2M / ₡500k / ₡850 */
@@ -41,11 +45,12 @@ export function localPhone(raw: string | null | undefined): string {
   return digits.length === 11 && digits.startsWith("506") ? digits.slice(3) : digits;
 }
 
-/** Para mostrar: 88364879 / +506 8836-4879 → "+506 8836 - 4879". Otros largos quedan como vinieron. */
+/** Para mostrar: 88364879 / +506 8836-4879 → "+506 8836 - 4879" (sin cortes de línea). Otros largos quedan como vinieron. */
 export function displayPhone(raw: string | null | undefined): string | null {
   if (!raw) return null;
   const local = localPhone(raw);
-  return local.length === 8 ? `+506 ${local.slice(0, 4)} - ${local.slice(4)}` : raw.trim() || null;
+  // Espacios que no cortan línea: en celular el número no se parte en dos.
+  return local.length === 8 ? `+506\u00a0${local.slice(0, 4)}\u00a0-\u00a0${local.slice(4)}` : raw.trim() || null;
 }
 
 /**

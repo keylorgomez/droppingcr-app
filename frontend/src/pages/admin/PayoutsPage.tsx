@@ -526,7 +526,7 @@ export default function PayoutsPage() {
           <SummaryCard
             label="Utilidad neta"
             value={loadingProfit ? "…" : fmt(netProfit)}
-            sub="Margen − gastos operativos"
+            sub={(finance?.retained ?? 0) > 0 ? "Margen − gastos + retenido" : "Margen − gastos operativos"}
             color="green"
           />
           <SummaryCard

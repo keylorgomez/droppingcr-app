@@ -81,10 +81,10 @@ export default function CancelSaleDialog({
       role="alertdialog" aria-modal="true" aria-labelledby="cancel-sale-title"
     >
       <div className="absolute inset-0 bg-ink-950/55 backdrop-blur-sm" onClick={() => !mutation.isPending && onClose()} />
-      <div className="relative w-full max-w-sm max-h-[92vh] overflow-y-auto rounded-2xl bg-white shadow-xl p-6 flex flex-col gap-4">
+      <div className="relative w-full max-w-sm max-h-[92vh] overflow-y-auto overscroll-contain rounded-2xl bg-white shadow-xl p-5 sm:p-6 flex flex-col gap-3.5">
         <div className="flex flex-col items-center text-center gap-2">
-          <span className="h-12 w-12 rounded-full bg-red-50 text-red-500 flex items-center justify-center">
-            <Undo2 size={22} strokeWidth={1.8} />
+          <span className="h-10 w-10 rounded-full bg-red-50 text-red-500 flex items-center justify-center">
+            <Undo2 size={20} strokeWidth={1.8} />
           </span>
           <h2 id="cancel-sale-title" className="font-semibold text-brand-dark text-lg leading-tight">
             ¿Cancelar esta venta?

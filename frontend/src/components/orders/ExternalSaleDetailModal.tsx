@@ -20,7 +20,9 @@ export default function ExternalSaleDetailModal({ sale, onClose }: { sale: Exter
     ["Precio",   `₡${sale.sale_price.toLocaleString("en-US")}`],
     ["Costo",    `₡${sale.cost_price.toLocaleString("en-US")}`],
     ["Ganancia", cancelled ? "— (cancelada)" : `₡${(sale.sale_price - sale.cost_price).toLocaleString("en-US")}`],
-    ["Pagado",   `₡${paid.toLocaleString("en-US")}`],
+    ...(cancelled
+      ? [["Devuelto", `₡${sale.refunded.toLocaleString("en-US")}`], ["Se quedó el negocio", `₡${sale.retained.toLocaleString("en-US")}`]] as Array<[string, string]>
+      : [["Pagado", `₡${paid.toLocaleString("en-US")}`]] as Array<[string, string]>),
     ...(sale.remaining > 0 ? [["Falta", `₡${sale.remaining.toLocaleString("en-US")}`] as [string, string]] : []),
   ];
 
@@ -89,11 +91,11 @@ export default function ExternalSaleDetailModal({ sale, onClose }: { sale: Exter
             <button
               type="button"
               onClick={() => setShowCancel(true)}
-              className="flex-1 py-2.5 rounded-xl border border-red-200 text-red-500 text-sm font-medium
+              className="flex-1 py-2.5 rounded-xl border border-red-200 text-red-500 text-sm font-medium whitespace-nowrap
                          flex items-center justify-center gap-2 hover:bg-red-50 transition-colors"
             >
               <Undo2 size={14} />
-              Cancelar y devolver
+              Cancelar venta
             </button>
           )}
         </div>

@@ -237,7 +237,7 @@ export default function Dashboard() {
                 title="Utilidad neta"
                 value={fmtFull(stats.net_profit)}
                 delta={<Delta now={stats.net_profit} before={before?.net_profit} />}
-                sub="Margen − gastos operativos"
+                sub={stats.retained > 0 ? "Margen − gastos + retenido" : "Margen − gastos operativos"}
                 icon={Wallet}
                 accent={stats.net_profit >= 0 ? "bg-green-50 text-green-600" : "bg-red-50 text-red-500"}
               />
