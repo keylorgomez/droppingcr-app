@@ -131,9 +131,10 @@ export async function deliverSpecialOrder(
   return String(data);
 }
 
-export async function cancelSpecialOrder(id: string, refund: boolean, reason: string | null): Promise<void> {
+/** Cancela el encargo. `refundAmount` = cuánto del adelanto se devolvió (0 = nada); el resto queda como ganancia. */
+export async function cancelSpecialOrder(id: string, refundAmount: number, reason: string | null): Promise<void> {
   const { error } = await supabase.rpc("cancel_special_order", {
-    p_id: id, p_refund: refund, p_reason: reason,
+    p_id: id, p_refund_amount: refundAmount, p_reason: reason,
   });
   if (error) throw new Error(error.message);
 }

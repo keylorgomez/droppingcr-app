@@ -258,6 +258,14 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* Plata de cancelaciones que no se devolvió: ya está sumada en la utilidad */}
+        {stats && stats.retained > 0 && (
+          <div className="rounded-2xl border border-ink-100 bg-white px-4 py-3 text-xs text-ink-500 flex flex-wrap gap-x-4 gap-y-1">
+            <span className="font-semibold text-ink-700">Retenido de cancelaciones {fmtFull(stats.retained)}</span>
+            <span className="opacity-70">Adelantos o partes que no se devolvieron; ya incluido en la utilidad neta.</span>
+          </div>
+        )}
+
         {/* Encargos: plata de clientes en custodia, aparte de la ganancia */}
         {stats && stats.special_orders_active > 0 && (
           <button

@@ -16,9 +16,10 @@ import {
   type Payment,
 } from "../../services/salesService";
 import { cn } from "../../lib/utils";
-import { formatDate, formatTime } from "../../lib/formatters";
+import { formatDate, formatTime, displayPhone } from "../../lib/formatters";
 import { QUERY_KEYS } from "../../constants/queryKeys";
 import { preloadLabelPdf, printLabel } from "../../lib/printLabel";
+import CancelSaleDialog from "./CancelSaleDialog";
 
 const inputCls =
   "w-full rounded-xl border border-ink-200 px-4 py-2.5 text-sm text-brand-dark " +
@@ -39,6 +40,7 @@ function PaymentHistoryRow({
   onConfirm,
   onCancel,
   isDeleting,
+  readOnly = false,
 }: {
   payment:      Payment;
   confirmingId: string | null;
@@ -46,6 +48,7 @@ function PaymentHistoryRow({
   onConfirm:    () => void;
   onCancel:     () => void;
   isDeleting:   boolean;
+  readOnly?:    boolean;
 }) {
   const isConfirming = confirmingId === payment.id;
   return (
@@ -81,7 +84,7 @@ function PaymentHistoryRow({
             No
           </button>
         </div>
-      ) : (
+      ) : readOnly ? null : (
         <button
           onClick={() => onDelete(payment.id)}
           className="p-1.5 rounded-lg text-ink-300 hover:text-red-400 hover:bg-red-50
@@ -174,7 +177,17 @@ export default function SaleDetailModal({ sale, onClose }: SaleDetailModalProps)
     onError: (err: Error) => showToast(err.message, "error"),
   });
 
+  const [showCancel, setShowCancel] = useState(false);
+  // Cancelada = deshecha: no se reactiva, no recibe abonos y sus pagos no se
+  // borran (la devolución ya se registró contra ellos).
+  const locked = sale.delivery_status === "cancelled";
+
   function handleSave() {
+    // Cancelar no es un cambio de estado más: deshace la venta. Se confirma aparte.
+    if (deliveryStatus === "cancelled" && sale.delivery_status !== "cancelled") {
+      setShowCancel(true);
+      return;
+    }
     if (isShipped && isCorreos && !trackingNumber.trim()) {
       setTrackingError("El número de guía es requerido cuando el envío es por Correos CR.");
       return;
@@ -257,7 +270,7 @@ export default function SaleDetailModal({ sale, onClose }: SaleDetailModalProps)
               <p className="text-xs text-brand-dark mt-0.5 font-medium">
                 {sale.guest_name}
                 {sale.guest_phone && (
-                  <span className="text-ink-400 font-normal"> · {sale.guest_phone}</span>
+                  <span className="text-ink-400 font-normal"> · {displayPhone(sale.guest_phone)}</span>
                 )}
               </p>
             )}
@@ -293,7 +306,7 @@ export default function SaleDetailModal({ sale, onClose }: SaleDetailModalProps)
                 "font-semibold text-sm",
                 remaining > 0 ? "text-red-500" : "text-green-600"
               )}>
-                {remaining > 0 ? `₡${remaining.toLocaleString("en-US")}` : "Pagado ✓"}
+                {locked ? "Cancelada" : remaining > 0 ? `₡${remaining.toLocaleString("en-US")}` : "Pagado ✓"}
               </p>
             </div>
           </div>
@@ -314,6 +327,7 @@ export default function SaleDetailModal({ sale, onClose }: SaleDetailModalProps)
                     onConfirm={() => deleteMutation.mutate(confirmingId!)}
                     onCancel={() => setConfirmingId(null)}
                     isDeleting={deleteMutation.isPending}
+                    readOnly={locked}
                   />
                 ))}
               </div>
@@ -324,7 +338,7 @@ export default function SaleDetailModal({ sale, onClose }: SaleDetailModalProps)
           )}
 
           {/* Abono panel */}
-          {remaining > 0 && (
+          {remaining > 0 && !locked && (
             <div>
               {!showAbono ? (
                 <button
@@ -382,11 +396,16 @@ export default function SaleDetailModal({ sale, onClose }: SaleDetailModalProps)
             <label className="text-xs font-medium text-ink-500 uppercase tracking-wider">
               Estado de entrega
             </label>
+            {locked && (
+              <p className="text-xs rounded-xl bg-red-50 text-red-600 px-3 py-2">
+                Esta venta está cancelada: ya no cuenta en ventas ni ganancias y no se puede reactivar. Si se vuelve a vender, registrala como venta nueva.
+              </p>
+            )}
             <div className="grid grid-cols-1 gap-1.5">
               {DELIVERY_STATUSES.map((statusOption) => (
                 <label
                   key={statusOption.value}
-                  onClick={() => setDeliveryStatus(statusOption.value as DeliveryStatus)}
+                  onClick={() => !locked && setDeliveryStatus(statusOption.value as DeliveryStatus)}
                   className={cn(
                     "flex items-center gap-3 rounded-xl border px-3.5 py-2.5 cursor-pointer transition-all",
                     deliveryStatus === statusOption.value
@@ -490,7 +509,7 @@ export default function SaleDetailModal({ sale, onClose }: SaleDetailModalProps)
           <button
             type="button"
             onClick={handleSave}
-            disabled={saveMutation.isPending}
+            disabled={saveMutation.isPending || locked}
             className="flex-1 py-2.5 rounded-xl bg-brand-primary text-white text-sm
                        font-medium flex items-center justify-center gap-2
                        hover:bg-[#2e2e2e] transition-colors disabled:opacity-60"
@@ -503,6 +522,17 @@ export default function SaleDetailModal({ sale, onClose }: SaleDetailModalProps)
           </button>
         </div>
       </motion.div>
+      {showCancel && (
+        <CancelSaleDialog
+          kind="sale"
+          id={sale.id}
+          label={`${sale.product_name} · Talla ${sale.variant_size}${sale.quantity > 1 ? ` · ${sale.quantity} unidades` : ""}`}
+          paid={totalPaid}
+          owed={remaining}
+          onClose={() => setShowCancel(false)}
+          onDone={onClose}
+        />
+      )}
     </motion.div>
   );
 }

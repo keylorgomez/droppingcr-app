@@ -12,11 +12,13 @@ import Header from "../../components/ui/Header";
 import MoneyInput from "../../components/ui/MoneyInput";
 import WhatsAppIcon from "../../components/ui/WhatsAppIcon";
 import { useToast } from "../../components/ui/Toast";
-import { fmt, formatDate, displayPhone, normalizePhone } from "../../lib/formatters";
+import { fmt, formatDate, displayPhone, localPhone, normalizePhone } from "../../lib/formatters";
 import { cn } from "../../lib/utils";
 import { QUERY_KEYS } from "../../constants/queryKeys";
 import { lookupCustomerProfileByPhone } from "../../services/customerService";
 import { addExternalSalePayment } from "../../services/externalSalesService";
+import RefundChoice from "../../components/orders/RefundChoice";
+import { refundAmountFor, type RefundMode } from "../../lib/refunds";
 import {
   getSpecialOrders, createSpecialOrder, updateSpecialOrder, updateSpecialOrderStatus, addSpecialOrderAdvance,
   deliverSpecialOrder, cancelSpecialOrder, isActiveSpecialOrder,
@@ -209,7 +211,7 @@ function NewOrderModal({ onClose, onSaved }: { onClose: () => void; onSaved: () 
 function EditModal({ order, onClose, onSaved }: { order: SpecialOrder; onClose: () => void; onSaved: () => void }) {
   const { showToast } = useToast();
   const [name, setName]               = useState(order.guest_name ?? "");
-  const [phone, setPhone]             = useState(order.guest_phone ?? "");
+  const [phone, setPhone]             = useState(localPhone(order.guest_phone));
   const [description, setDescription] = useState(order.description);
   const [size, setSize]               = useState(order.size ?? "");
   const [price, setPrice]             = useState(order.estimated_price ? String(order.estimated_price) : "");
@@ -223,7 +225,7 @@ function EditModal({ order, onClose, onSaved }: { order: SpecialOrder; onClose: 
   const mutation = useMutation({
     mutationFn: () => updateSpecialOrder(order.id, {
       guest_name:      name.trim() || null,
-      guest_phone:     phone.trim() || null,
+      guest_phone:     (() => { const digits = localPhone(phone); return digits ? (digits.length === 8 ? `+506${digits}` : phone.trim()) : null; })(),
       description:     description.trim(),
       size:            size.trim() || null,
       estimated_price: priceValue,
@@ -242,7 +244,7 @@ function EditModal({ order, onClose, onSaved }: { order: SpecialOrder; onClose: 
             <input value={name} onChange={(e) => setName(e.target.value)} className={inputCls} />
           </Field>
           <Field label="Teléfono">
-            <input type="tel" inputMode="numeric" value={phone} onChange={(e) => setPhone(e.target.value)} className={inputCls} />
+            <input type="tel" inputMode="numeric" value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 8))} placeholder="8888 8888" className={inputCls} />
           </Field>
         </div>
         <div className="grid grid-cols-[1fr_6rem] gap-3">
@@ -454,32 +456,35 @@ function DeliverModal({ order, onClose, onSaved }: { order: SpecialOrder; onClos
 
 function CancelModal({ order, onClose, onSaved }: { order: SpecialOrder; onClose: () => void; onSaved: () => void }) {
   const { showToast } = useToast();
-  const [refund, setRefund] = useState(true);
-  const [reason, setReason] = useState("");
+  const [mode,    setMode]    = useState<RefundMode | null>(order.advance > 0 ? null : "none");
+  const [partial, setPartial] = useState("");
+  const [reason,  setReason]  = useState("");
+  const refundAmount = refundAmountFor(mode, partial, order.advance);
 
   const mutation = useMutation({
-    mutationFn: () => cancelSpecialOrder(order.id, order.advance > 0 && refund, reason.trim() || null),
+    mutationFn: () => cancelSpecialOrder(order.id, refundAmount ?? 0, reason.trim() || null),
     onSuccess:  () => { showToast("Encargo cancelado.", "success"); onSaved(); },
     onError:    (err: Error) => showToast(err.message, "error"),
   });
 
   return (
     <Modal title="Cancelar encargo" onClose={onClose}>
-      <form onSubmit={(e) => { e.preventDefault(); mutation.mutate(); }} className="flex flex-col gap-4">
+      <form
+        onSubmit={(e) => { e.preventDefault(); if (refundAmount !== null) mutation.mutate(); }}
+        className="flex flex-col gap-4"
+      >
         <p className="text-sm text-ink-500">{order.description}</p>
-        {order.advance > 0 && (
-          <label className="flex items-start gap-3 rounded-xl border border-ink-200 px-4 py-3 cursor-pointer">
-            <input type="checkbox" checked={refund} onChange={(e) => setRefund(e.target.checked)} className="mt-0.5 accent-ink-900" />
-            <span className="text-sm text-brand-dark">
-              Le devolví el adelanto de <b>{fmt(order.advance)}</b>
-              <span className="block text-[11.5px] text-ink-400">Queda registrado como devolución en Movimientos.</span>
-            </span>
-          </label>
-        )}
+        <RefundChoice
+          paid={order.advance}
+          mode={mode}
+          onMode={setMode}
+          partial={partial}
+          onPartial={setPartial}
+        />
         <Field label="Motivo" hint="(opcional)">
-          <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="El proveedor no tenía la talla…" className={inputCls} />
+          <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Nadie lo reclamó, el proveedor no tenía la talla…" className={inputCls} />
         </Field>
-        <SubmitButton saving={mutation.isPending}>Cancelar encargo</SubmitButton>
+        <SubmitButton saving={mutation.isPending} disabled={refundAmount === null}>Cancelar encargo</SubmitButton>
       </form>
     </Modal>
   );

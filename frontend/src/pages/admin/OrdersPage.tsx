@@ -20,11 +20,13 @@ import {
   type AdminOrder,
 } from "../../services/ordersService";
 import { cn } from "../../lib/utils";
-import { formatDate, normalizeText } from "../../lib/formatters";
+import { formatDate, normalizeText, displayPhone } from "../../lib/formatters";
 import { QUERY_KEYS } from "../../constants/queryKeys";
 import SaleDetailModal  from "../../components/orders/SaleDetailModal";
 import OrderDetailModal from "../../components/orders/OrderDetailModal";
 import NewOrderModal    from "../../components/orders/NewOrderModal";
+import ExternalSaleDetailModal from "../../components/orders/ExternalSaleDetailModal";
+import { getExternalSalesLog, type ExternalSale } from "../../services/externalSalesService";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -39,6 +41,7 @@ const TABS = [
   { id: "pending",   label: "Pendientes", statuses: ["validating", "confirmed", "apartada"]   },
   { id: "shipped",   label: "Enviados",   statuses: ["shipped"]                               },
   { id: "delivered", label: "Entregados", statuses: ["delivered"]                             },
+  { id: "cancelled", label: "Cancelados", statuses: ["cancelled"]                             },
 ] as const;
 
 type TabId = typeof TABS[number]["id"];
@@ -46,8 +49,64 @@ type TabId = typeof TABS[number]["id"];
 // ── Unified list item ──────────────────────────────────────────────────────
 
 type UnifiedItem =
-  | { kind: "sale";  data: AdminSale;  sold_at: string }
-  | { kind: "order"; data: AdminOrder; sold_at: string };
+  | { kind: "sale";     data: AdminSale;    sold_at: string }
+  | { kind: "order";    data: AdminOrder;   sold_at: string }
+  | { kind: "external"; data: ExternalSale; sold_at: string };
+
+/** Las externas y los encargos no tienen envío: ya se entregaron, salvo que se cancelen. */
+function deliveryOf(item: UnifiedItem): string {
+  if (item.kind === "external") return item.data.status === "cancelled" ? "cancelled" : "delivered";
+  return item.data.delivery_status;
+}
+
+// ── External row (ventas externas y encargos entregados) ──────────────────
+
+function ExternalRow({ sale, onClick }: { sale: ExternalSale; onClick: () => void }) {
+  const statusMeta = deliveryStatusMeta(sale.status === "cancelled" ? "cancelled" : "delivered");
+  return (
+    <motion.button
+      type="button"
+      onClick={onClick}
+      whileHover={{ backgroundColor: "#fafafa" }}
+      className="w-full flex items-center gap-3 px-4 py-3.5 border-b border-ink-50
+                 text-left transition-colors last:border-b-0"
+    >
+      <div className="w-12 h-12 rounded-xl bg-ink-50 border border-ink-100 shrink-0 flex items-center justify-center">
+        <Package size={18} className="text-ink-200" />
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <p className="font-semibold text-sm italic text-brand-primary truncate">
+          {sale.product_name}
+        </p>
+        <p className="text-xs text-ink-400 truncate mt-0.5">
+          {sale.guest_name ?? "Cliente sin nombre"}{" "}
+          {sale.guest_phone && (
+            <span className="text-ink-300">· {displayPhone(sale.guest_phone)}</span>
+          )}
+        </p>
+        <span className="inline-block mt-1 text-[10px] font-semibold rounded-full px-2 py-0.5 bg-purple-50 text-purple-600">
+          {sale.from_special_order ? "Encargo" : "Externa"}
+        </span>
+      </div>
+
+      <div className="flex flex-col items-end gap-1.5 shrink-0">
+        <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5
+                          rounded-full ${statusMeta.bgCls}`}>
+          {statusMeta.label}
+        </span>
+        <span className="text-xs font-semibold text-brand-dark">
+          ₡{sale.sale_price.toLocaleString("en-US")}
+        </span>
+        <span className="text-[10px] text-ink-300">
+          {formatDate(sale.sold_at)}
+        </span>
+      </div>
+
+      <ChevronRight size={14} className="text-ink-200 shrink-0" />
+    </motion.button>
+  );
+}
 
 // ── Sale Row (single-product sales) ───────────────────────────────────────
 
@@ -78,7 +137,7 @@ function SaleRow({ sale, onClick }: { sale: AdminSale; onClick: () => void }) {
         <p className="text-xs text-ink-400 truncate mt-0.5">
           {sale.guest_name ?? "Cliente sin nombre"}{" "}
           {sale.guest_phone && (
-            <span className="text-ink-300">· {sale.guest_phone}</span>
+            <span className="text-ink-300">· {displayPhone(sale.guest_phone)}</span>
           )}
         </p>
         <div className="flex items-center gap-1.5 mt-0.5">
@@ -172,7 +231,7 @@ function OrderRow({ order, onClick }: { order: AdminOrder; onClick: () => void }
         <p className="text-xs text-ink-400 truncate">
           {order.guest_name ?? "Cliente sin nombre"}{" "}
           {order.guest_phone && (
-            <span className="text-ink-300">· {order.guest_phone}</span>
+            <span className="text-ink-300">· {displayPhone(order.guest_phone)}</span>
           )}
         </p>
         <div className="flex items-center gap-1.5 mt-0.5">
@@ -214,6 +273,7 @@ export default function OrdersPage() {
   const [search,        setSearch]        = useState("");
   const [selectedSale,  setSelectedSale]  = useState<AdminSale  | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
+  const [selectedExternal, setSelectedExternal] = useState<ExternalSale | null>(null);
   const [showNewModal,  setShowNewModal]  = useState(false);
 
 
@@ -239,23 +299,30 @@ export default function OrdersPage() {
     queryFn:  getAllOrders,
   });
 
-  const isLoading = salesLoading || ordersLoading;
-  const isError   = salesError   || ordersError;
+  const { data: externals = [], isLoading: externalsLoading, isError: externalsError } = useQuery({
+    queryKey: QUERY_KEYS.EXTERNAL_SALES_LOG,
+    queryFn:  getExternalSalesLog,
+  });
+
+  const isLoading = salesLoading || ordersLoading || externalsLoading;
+  const isError   = salesError   || ordersError   || externalsError;
 
   const unified = useMemo((): UnifiedItem[] => {
     const saleItems: UnifiedItem[]  = sales.map((sale) => ({ kind: "sale"  as const, data: sale,  sold_at: sale.sold_at  }));
     const orderItems: UnifiedItem[] = orders.map((order) => ({ kind: "order" as const, data: order, sold_at: order.sold_at }));
-    return [...saleItems, ...orderItems].sort(
+    const externalItems: UnifiedItem[] = externals.map((sale) => ({ kind: "external" as const, data: sale, sold_at: sale.sold_at }));
+    return [...saleItems, ...orderItems, ...externalItems].sort(
       (itemA, itemB) => new Date(itemB.sold_at).getTime() - new Date(itemA.sold_at).getTime()
     );
-  }, [sales, orders]);
+  }, [sales, orders, externals]);
 
   const byTab = useMemo(() => {
     const tab = TABS.find((tabOption) => tabOption.id === activeTab);
-    if (!tab?.statuses) return unified;
+    // "Todos" son los vigentes: los cancelados tienen su propia pestaña.
+    if (!tab?.statuses) return unified.filter((unifiedItem) => deliveryOf(unifiedItem) !== "cancelled");
     const activeStatuses = tab.statuses as readonly string[];
     return unified.filter((unifiedItem) =>
-      activeStatuses.includes(unifiedItem.data.delivery_status)
+      activeStatuses.includes(deliveryOf(unifiedItem))
     );
   }, [unified, activeTab]);
 
@@ -265,7 +332,8 @@ export default function OrdersPage() {
     if (!searchQuery) return byTab;
     return byTab.filter((unifiedItem) => {
       const { data } = unifiedItem;
-      const nameMatch  = normalizeText(data.guest_name ?? "").includes(searchQuery);
+      const nameMatch  = normalizeText(data.guest_name ?? "").includes(searchQuery)
+        || (unifiedItem.kind === "external" && normalizeText(unifiedItem.data.product_name).includes(searchQuery));
       const phoneMatch = phoneQuery.length > 0 &&
         (data.guest_phone ?? "").replace(/\D/g, "").includes(phoneQuery);
       return nameMatch || phoneMatch;
@@ -273,19 +341,21 @@ export default function OrdersPage() {
   }, [byTab, search]);
 
   const counts = useMemo(() => ({
-    all:       unified.length,
+    all:       unified.filter((unifiedItem) => deliveryOf(unifiedItem) !== "cancelled").length,
+    cancelled: unified.filter((unifiedItem) => deliveryOf(unifiedItem) === "cancelled").length,
     pending:   unified.filter((unifiedItem) =>
-      ["validating", "confirmed", "apartada"].includes(unifiedItem.data.delivery_status)
+      ["validating", "confirmed", "apartada"].includes(deliveryOf(unifiedItem))
     ).length,
-    shipped:   unified.filter((unifiedItem) => unifiedItem.data.delivery_status === "shipped").length,
-    delivered: unified.filter((unifiedItem) => unifiedItem.data.delivery_status === "delivered").length,
+    shipped:   unified.filter((unifiedItem) => deliveryOf(unifiedItem) === "shipped").length,
+    delivered: unified.filter((unifiedItem) => deliveryOf(unifiedItem) === "delivered").length,
   }), [unified]);
 
   const tabCount = (id: TabId) =>
     id === "all"       ? counts.all :
     id === "pending"   ? counts.pending :
     id === "shipped"   ? counts.shipped :
-    id === "delivered" ? counts.delivered : 0;
+    id === "delivered" ? counts.delivered :
+    id === "cancelled" ? counts.cancelled : 0;
 
 
   // Se dibujan de a 20: con cientos de filas el celular se trababa.
@@ -311,7 +381,8 @@ export default function OrdersPage() {
             </h1>
             {!isLoading && (
               <p className="text-xs text-ink-400 mt-1">
-                {unified.length} {unified.length === 1 ? "pedido" : "pedidos"} en total
+                {counts.all} {counts.all === 1 ? "pedido" : "pedidos"} en total
+                {counts.cancelled > 0 && ` · ${counts.cancelled} ${counts.cancelled === 1 ? "cancelado" : "cancelados"}`}
               </p>
             )}
           </div>
@@ -429,11 +500,17 @@ export default function OrdersPage() {
                   sale={unifiedItem.data}
                   onClick={() => setSelectedSale(unifiedItem.data)}
                 />
-              ) : (
+              ) : unifiedItem.kind === "order" ? (
                 <OrderRow
                   key={`order-${unifiedItem.data.id}`}
                   order={unifiedItem.data}
                   onClick={() => setSelectedOrder(unifiedItem.data)}
+                />
+              ) : (
+                <ExternalRow
+                  key={`ext-${unifiedItem.data.id}`}
+                  sale={unifiedItem.data}
+                  onClick={() => setSelectedExternal(unifiedItem.data)}
                 />
               )
             )}
@@ -456,6 +533,13 @@ export default function OrdersPage() {
             key={`order-modal-${selectedOrder.id}`}
             order={selectedOrder}
             onClose={() => setSelectedOrder(null)}
+          />
+        )}
+        {selectedExternal && (
+          <ExternalSaleDetailModal
+            key={`ext-modal-${selectedExternal.id}`}
+            sale={selectedExternal}
+            onClose={() => setSelectedExternal(null)}
           />
         )}
         {showNewModal && (

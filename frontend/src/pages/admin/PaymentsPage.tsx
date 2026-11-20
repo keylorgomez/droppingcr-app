@@ -29,6 +29,7 @@ import { cn } from "../../lib/utils";
 import { normalizeText } from "../../lib/formatters";
 import { QUERY_KEYS } from "../../constants/queryKeys";
 import { getFinanceSummary, periodRange } from "../../services/analyticsService";
+import ExternalSaleDetailModal from "../../components/orders/ExternalSaleDetailModal";
 import {
   type Movement,
   TableSkeleton, SummaryCard,
@@ -345,6 +346,8 @@ export default function PaymentsPage() {
   const { showToast }   = useToast();
   const [search, setSearch]       = useState("");
   const [modalOpen, setModalOpen] = useState(false);
+  // Tocar una venta externa abre su detalle, desde donde se puede cancelar.
+  const [selectedExternal, setSelectedExternal] = useState<ExternalSale | null>(null);
 
   const { data: logs    = [], isLoading: loadingLogs    } = useQuery({
     queryKey: QUERY_KEYS.PAYMENTS_LOG,
@@ -695,7 +698,7 @@ export default function PaymentsPage() {
                         : m.kind === "expense"
                         ? <ExpensePaymentRow   key={`exp-${m.data.id}`} ep={m.data}     />
                         : m.kind === "external"
-                        ? <ExternalSaleRow     key={`ext-${m.data.id}`} sale={m.data}   />
+                        ? <ExternalSaleRow     key={`ext-${m.data.id}`} sale={m.data}   onClick={() => setSelectedExternal(m.data as ExternalSale)} />
                         : <RefundRow           key={`ref-${m.data.id}`} refund={m.data} />
                     )}
                   </AnimatePresence>
@@ -713,7 +716,7 @@ export default function PaymentsPage() {
                       : m.kind === "expense"
                       ? <MobileExpenseCard       key={`exp-${m.data.id}`} ep={m.data}     />
                       : m.kind === "external"
-                      ? <MobileExternalSaleCard  key={`ext-${m.data.id}`} sale={m.data}   />
+                      ? <MobileExternalSaleCard  key={`ext-${m.data.id}`} sale={m.data}   onClick={() => setSelectedExternal(m.data as ExternalSale)} />
                       : <MobileRefundCard        key={`ref-${m.data.id}`} refund={m.data} />
                   )}
                 </AnimatePresence>
@@ -758,6 +761,13 @@ export default function PaymentsPage() {
             onClose={() => setModalOpen(false)}
             onSave={saveExternal}
             saving={savingExternal}
+          />
+        )}
+        {selectedExternal && (
+          <ExternalSaleDetailModal
+            key={`ext-${selectedExternal.id}`}
+            sale={selectedExternal}
+            onClose={() => setSelectedExternal(null)}
           />
         )}
       </AnimatePresence>

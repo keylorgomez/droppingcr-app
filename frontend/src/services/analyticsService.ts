@@ -67,7 +67,8 @@ export interface FinanceSummary {
   gross_margin:        number;  // revenue − cost
   operating_expenses:  number;  // gastos operativos (no compra de mercadería)
   inventory_purchases: number;  // compras de mercadería registradas como gasto
-  net_profit:          number;  // gross_margin − operating_expenses
+  net_profit:          number;  // gross_margin − operating_expenses + retained
+  retained:            number;  // plata que se quedó el negocio de ventas/encargos cancelados
   units:               number;
   tickets:             number;
   shipping_collected:  number;  // envío cobrado al cliente (dinero de paso)

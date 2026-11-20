@@ -1,7 +1,7 @@
 import { motion } from "motion/react";
 import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { deliveryStatusMeta } from "../../services/salesService";
-import { formatDate, formatTime } from "../../lib/formatters";
+import { formatDate, formatTime, displayPhone } from "../../lib/formatters";
 import { cn } from "../../lib/utils";
 import type { PaymentLog, RefundLog } from "../../services/salesService";
 import type { AdminPayout } from "../../services/payoutsService";
@@ -84,7 +84,7 @@ export function PaymentRow({ log }: { log: PaymentLog }) {
           {log.guest_name ?? <span className="text-ink-300 font-normal italic">Sin nombre</span>}
         </p>
         {log.guest_phone && (
-          <p className="text-[10px] text-ink-400 mt-0.5">{log.guest_phone}</p>
+          <p className="text-[10px] text-ink-400 mt-0.5">{displayPhone(log.guest_phone)}</p>
         )}
       </td>
       <td className="px-4 py-3 align-top min-w-0">
@@ -160,7 +160,7 @@ export function MobilePaymentCard({ log }: { log: PaymentLog }) {
         </div>
         <p className="text-[11px] text-ink-500">
           {log.guest_name ?? <span className="italic text-ink-300">Sin nombre</span>}
-          {log.guest_phone && <span className="text-ink-400"> · {log.guest_phone}</span>}
+          {log.guest_phone && <span className="text-ink-400"> · {displayPhone(log.guest_phone)}</span>}
         </p>
         {log.note && (
           <p className="text-[11px] text-ink-400 truncate">{log.note}</p>
@@ -399,7 +399,7 @@ export function RefundRow({ refund }: { refund: RefundLog }) {
           {refund.guest_name ?? <span className="text-ink-300 italic font-normal">Sin nombre</span>}
         </p>
         {refund.guest_phone && (
-          <p className="text-[10px] text-ink-400 mt-0.5">{refund.guest_phone}</p>
+          <p className="text-[10px] text-ink-400 mt-0.5">{displayPhone(refund.guest_phone)}</p>
         )}
       </td>
       <td className="px-4 py-3 align-top min-w-0">
@@ -470,7 +470,7 @@ export function MobileRefundCard({ refund }: { refund: RefundLog }) {
         </div>
         <p className="text-[11px] text-ink-500">
           {refund.guest_name ?? <span className="italic text-ink-300">Sin nombre</span>}
-          {refund.guest_phone && <span className="text-ink-400"> · {refund.guest_phone}</span>}
+          {refund.guest_phone && <span className="text-ink-400"> · {displayPhone(refund.guest_phone)}</span>}
         </p>
         {refund.reason && (
           <p className="text-[11px] text-ink-400 truncate">{refund.reason}</p>
@@ -482,7 +482,15 @@ export function MobileRefundCard({ refund }: { refund: RefundLog }) {
 
 // ── External sale row ──────────────────────────────────────────────────────
 
-export function ExternalSaleRow({ sale }: { sale: ExternalSale }) {
+/** Cancelada se marca aparte: la plata que entró sigue en caja y su devolución sale en otra fila. */
+function externalBadge(sale: ExternalSale): { label: string; cls: string } {
+  if (sale.status === "cancelled") return { label: "Cancelada", cls: "bg-red-100 text-red-600" };
+  return isInstallmentExternalSale(sale)
+    ? { label: "A pagos", cls: "bg-amber-100 text-amber-700" }
+    : { label: "Reventa", cls: "bg-purple-100 text-purple-600" };
+}
+
+export function ExternalSaleRow({ sale, onClick }: { sale: ExternalSale; onClick?: () => void }) {
   const profit = sale.sale_price - sale.cost_price;
   // A pagos la fila es un registro de la venta, no un ingreso: la plata entra
   // por los abonos, que aparecen como filas de pago aparte. Mostrarla con la
@@ -493,7 +501,9 @@ export function ExternalSaleRow({ sale }: { sale: ExternalSale }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="border-b border-ink-50 last:border-b-0 hover:bg-purple-50/30 transition-colors"
+      onClick={onClick}
+      title={onClick ? "Ver detalle o cancelar" : undefined}
+      className={cn("border-b border-ink-50 last:border-b-0 hover:bg-purple-50/30 transition-colors", onClick && "cursor-pointer")}
     >
       <td className="px-4 py-3 align-top shrink-0">
         <p className="text-xs text-brand-dark whitespace-nowrap">
@@ -510,7 +520,7 @@ export function ExternalSaleRow({ sale }: { sale: ExternalSale }) {
               {sale.guest_name ?? "Sin nombre"}
             </p>
             {sale.guest_phone && (
-              <p className="text-[10px] text-ink-300 mt-0.5">{sale.guest_phone}</p>
+              <p className="text-[10px] text-ink-300 mt-0.5">{displayPhone(sale.guest_phone)}</p>
             )}
           </>
         ) : (
@@ -526,7 +536,7 @@ export function ExternalSaleRow({ sale }: { sale: ExternalSale }) {
         </p>
         <span className="inline-block mt-0.5 text-[10px] rounded-full px-2 py-0.5
                          bg-purple-50 text-purple-500">
-          Ganancia: ₡{profit.toLocaleString("en-US")}
+          {sale.status === "cancelled" ? "Sin ganancia (cancelada)" : `Ganancia: ₡${profit.toLocaleString("en-US")}`}
         </span>
         {sale.remaining > 0 && (
           <span className="inline-block mt-0.5 ml-1 text-[10px] rounded-full px-2 py-0.5
@@ -552,9 +562,9 @@ export function ExternalSaleRow({ sale }: { sale: ExternalSale }) {
       <td className="px-4 py-3 align-top text-center shrink-0">
         <span className={cn(
           "text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full whitespace-nowrap",
-          aPagos ? "bg-amber-100 text-amber-700" : "bg-purple-100 text-purple-600"
+          externalBadge(sale).cls
         )}>
-          {aPagos ? "A pagos" : "Reventa"}
+          {externalBadge(sale).label}
         </span>
       </td>
       <td className="px-4 py-3 align-top min-w-0">
@@ -568,7 +578,7 @@ export function ExternalSaleRow({ sale }: { sale: ExternalSale }) {
 
 // ── Mobile external sale card ──────────────────────────────────────────────
 
-export function MobileExternalSaleCard({ sale }: { sale: ExternalSale }) {
+export function MobileExternalSaleCard({ sale, onClick }: { sale: ExternalSale; onClick?: () => void }) {
   const profit = sale.sale_price - sale.cost_price;
   const aPagos = isInstallmentExternalSale(sale);
   return (
@@ -576,7 +586,8 @@ export function MobileExternalSaleCard({ sale }: { sale: ExternalSale }) {
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0 }}
-      className="px-4 py-3.5 flex gap-3 bg-purple-50/20"
+      onClick={onClick}
+      className={cn("px-4 py-3.5 flex gap-3 bg-purple-50/20", onClick && "cursor-pointer")}
     >
       <div className="flex flex-col items-center gap-1 shrink-0 min-w-[80px]">
         <div className="flex items-center gap-0.5">
@@ -600,17 +611,17 @@ export function MobileExternalSaleCard({ sale }: { sale: ExternalSale }) {
           </p>
           <span className={cn(
             "shrink-0 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full",
-            aPagos ? "bg-amber-100 text-amber-700" : "bg-purple-100 text-purple-600"
+            externalBadge(sale).cls
           )}>
-            {aPagos ? "A pagos" : "Reventa"}
+            {externalBadge(sale).label}
           </span>
         </div>
         <p className="text-[11px] text-purple-500">
-          Ganancia: ₡{profit.toLocaleString("en-US")}
+          {sale.status === "cancelled" ? "Sin ganancia (cancelada)" : `Ganancia: ₡${profit.toLocaleString("en-US")}`}
         </p>
         {(sale.guest_name || sale.guest_phone) && (
           <p className="text-[11px] text-ink-500">
-            {sale.guest_name ?? sale.guest_phone}
+            {sale.guest_name ?? displayPhone(sale.guest_phone)}
             {sale.remaining > 0 && (
               <span className="text-amber-700"> · debe ₡{sale.remaining.toLocaleString("en-US")}</span>
             )}

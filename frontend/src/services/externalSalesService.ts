@@ -32,10 +32,16 @@ export interface ExternalSale {
   customer_id:  string | null;
   guest_name:   string | null;
   guest_phone:  string | null;
-  status:       "completed" | "pending";
+  status:       "completed" | "pending" | "cancelled";
   total_paid:   number;
   /** Lo que falta por cobrar. 0 en las ventas de contado. */
   remaining:    number;
+  /** Se creó al entregar un encargo. */
+  from_special_order: boolean;
+  /** Devuelto al cliente al cancelar. */
+  refunded:     number;
+  /** Lo que el negocio se quedó al cancelar (no se devolvió). */
+  retained:     number;
 }
 
 interface RawExternalSaleRow {
@@ -51,17 +57,25 @@ interface RawExternalSaleRow {
   guest_phone:  string | null;
   status:       string | null;
   payments:     Array<{ amount: number }> | null;
+  special_orders?: Array<{ id: string }> | null;
+  refunds?:       Array<{ amount: number }> | null;
+  retained_amount?: number | null;
 }
 
 const SELECT_COLUMNS = `
   id, product_name, cost_price, sale_price, note, created_by, sold_at,
   customer_id, guest_name, guest_phone, status,
-  payments ( amount )
+  payments ( amount ),
+  special_orders ( id ),
+  refunds ( amount ),
+  retained_amount
 `;
 
 function toExternalSale(row: RawExternalSaleRow): ExternalSale {
   const totalPaid = (row.payments ?? []).reduce((total, p) => total + p.amount, 0);
-  const status    = row.status === SALE_STATUS.PENDING ? "pending" : "completed";
+  const status    = row.status === SALE_STATUS.PENDING ? "pending"
+                  : row.status === "cancelled"         ? "cancelled"
+                  : "completed";
   return {
     id:           row.id,
     product_name: row.product_name,
@@ -76,6 +90,9 @@ function toExternalSale(row: RawExternalSaleRow): ExternalSale {
     status,
     total_paid:   totalPaid,
     remaining:    status === "pending" ? Math.max(row.sale_price - totalPaid, 0) : 0,
+    from_special_order: (row.special_orders ?? []).length > 0,
+    refunded:     (row.refunds ?? []).reduce((total, r) => total + Number(r.amount), 0),
+    retained:     Number(row.retained_amount ?? 0),
   };
 }
 
@@ -84,6 +101,7 @@ function toExternalSale(row: RawExternalSaleRow): ExternalSale {
  * vista de caja el dinero ya lo aporta el log de pagos.
  */
 export function isInstallmentExternalSale(sale: ExternalSale): boolean {
+  if (sale.status === "cancelled") return externalSaleCashIn(sale) === 0;
   return sale.status === SALE_STATUS.PENDING || sale.total_paid > 0;
 }
 
@@ -98,7 +116,16 @@ export function isInstallmentExternalSale(sale: ExternalSale): boolean {
  * vender, igual que con `sales`). Los dos son correctos, pero no se mezclan.
  */
 export function externalSaleCashIn(sale: ExternalSale): number {
+  // Cancelada: lo que entró de contado = lo devuelto + lo retenido − los abonos
+  // (que ya suman por su lado). Una a pagos sin abonos aporta 0, no su precio.
+  if (sale.status === "cancelled") return Math.max(sale.refunded + sale.retained - sale.total_paid, 0);
   return isInstallmentExternalSale(sale) ? 0 : sale.sale_price;
+}
+
+/** Lo que el cliente pagó: los abonos, o el precio completo si fue de contado. */
+export function externalSalePaid(sale: ExternalSale): number {
+  if (sale.total_paid > 0) return sale.total_paid;
+  return sale.status === "completed" ? sale.sale_price : 0;
 }
 
 // ── Mutations ──────────────────────────────────────────────────────────────

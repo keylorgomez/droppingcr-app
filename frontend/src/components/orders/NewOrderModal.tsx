@@ -17,7 +17,7 @@ import { ShippingFields } from "../shipping/ShippingFields";
 import { useShippingForm } from "../shipping/useShippingForm";
 import { recordManualOrder } from "../../services/ordersService";
 import { lookupCustomerByPhone } from "../../services/customerService";
-import { discountedPrice } from "../../lib/formatters";
+import { discountedPrice, localPhone } from "../../lib/formatters";
 import {
   getProductsWithVariants,
   type ProductWithVariants,
@@ -77,7 +77,7 @@ export default function NewOrderModal({ onClose }: NewOrderModalProps) {
       try {
         const draft = JSON.parse(draftJson);
         if (draft.guest_name)  setGuestName(draft.guest_name);
-        if (draft.guest_phone) setGuestPhone(draft.guest_phone);
+        if (draft.guest_phone) setGuestPhone(localPhone(draft.guest_phone).slice(-8));
       } catch {}
       sessionStorage.removeItem("order_draft");
     }

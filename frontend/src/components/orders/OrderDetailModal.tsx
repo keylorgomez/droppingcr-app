@@ -19,8 +19,9 @@ import {
 } from "../../services/ordersService";
 import { QUERY_KEYS } from "../../constants/queryKeys";
 import { preloadLabelPdf, printLabel } from "../../lib/printLabel";
+import CancelSaleDialog from "./CancelSaleDialog";
 import { cn } from "../../lib/utils";
-import { formatDate, formatTime } from "../../lib/formatters";
+import { formatDate, formatTime, displayPhone } from "../../lib/formatters";
 
 const inputCls =
   "w-full rounded-xl border border-ink-200 px-4 py-2.5 text-sm text-brand-dark " +
@@ -41,6 +42,7 @@ function PaymentHistoryRow({
   onConfirm,
   onCancel,
   isDeleting,
+  readOnly = false,
 }: {
   payment:      Payment;
   confirmingId: string | null;
@@ -48,6 +50,7 @@ function PaymentHistoryRow({
   onConfirm:    () => void;
   onCancel:     () => void;
   isDeleting:   boolean;
+  readOnly?:    boolean;
 }) {
   const isConfirming = confirmingId === payment.id;
   return (
@@ -83,7 +86,7 @@ function PaymentHistoryRow({
             No
           </button>
         </div>
-      ) : (
+      ) : readOnly ? null : (
         <button
           onClick={() => onDelete(payment.id)}
           className="p-1.5 rounded-lg text-ink-300 hover:text-red-400 hover:bg-red-50
@@ -176,7 +179,17 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
     onError: (err: Error) => showToast(err.message, "error"),
   });
 
+  const [showCancel, setShowCancel] = useState(false);
+  // Cancelada = deshecha: no se reactiva, no recibe abonos y sus pagos no se
+  // borran (la devolución ya se registró contra ellos).
+  const locked = order.delivery_status === "cancelled";
+
   function handleSave() {
+    // Cancelar no es un cambio de estado más: deshace la venta. Se confirma aparte.
+    if (deliveryStatus === "cancelled" && order.delivery_status !== "cancelled") {
+      setShowCancel(true);
+      return;
+    }
     if (isShipped && isCorreos && !trackingNumber.trim()) {
       setTrackingError("El número de guía es requerido cuando el envío es por Correos CR.");
       return;
@@ -260,7 +273,7 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
             </div>
             {order.guest_phone && (
               <p className="text-xs text-ink-400 mt-0.5">
-                {order.guest_phone}
+                {displayPhone(order.guest_phone)}
               </p>
             )}
             <p className="text-xs text-ink-300 mt-0.5">
@@ -333,7 +346,7 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
                 "font-semibold text-sm",
                 remaining > 0 ? "text-red-500" : "text-green-600"
               )}>
-                {remaining > 0 ? `₡${remaining.toLocaleString("en-US")}` : "Pagado ✓"}
+                {locked ? "Cancelada" : remaining > 0 ? `₡${remaining.toLocaleString("en-US")}` : "Pagado ✓"}
               </p>
             </div>
           </div>
@@ -354,6 +367,7 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
                     onConfirm={() => deleteMutation.mutate(confirmingId!)}
                     onCancel={() => setConfirmingId(null)}
                     isDeleting={deleteMutation.isPending}
+                    readOnly={locked}
                   />
                 ))}
               </div>
@@ -364,7 +378,7 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
           )}
 
           {/* Abono panel */}
-          {remaining > 0 && (
+          {remaining > 0 && !locked && (
             <div>
               {!showAbono ? (
                 <button
@@ -422,11 +436,16 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
             <label className="text-xs font-medium text-ink-500 uppercase tracking-wider">
               Estado de entrega
             </label>
+            {locked && (
+              <p className="text-xs rounded-xl bg-red-50 text-red-600 px-3 py-2">
+                Esta venta está cancelada: ya no cuenta en ventas ni ganancias y no se puede reactivar. Si se vuelve a vender, registrala como venta nueva.
+              </p>
+            )}
             <div className="grid grid-cols-1 gap-1.5">
               {DELIVERY_STATUSES.map((statusOption) => (
                 <label
                   key={statusOption.value}
-                  onClick={() => setDeliveryStatus(statusOption.value as DeliveryStatus)}
+                  onClick={() => !locked && setDeliveryStatus(statusOption.value as DeliveryStatus)}
                   className={cn(
                     "flex items-center gap-3 rounded-xl border px-3.5 py-2.5 cursor-pointer transition-all",
                     deliveryStatus === statusOption.value
@@ -530,7 +549,7 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
           <button
             type="button"
             onClick={handleSave}
-            disabled={saveMutation.isPending}
+            disabled={saveMutation.isPending || locked}
             className="flex-1 py-2.5 rounded-xl bg-brand-primary text-white text-sm
                        font-medium flex items-center justify-center gap-2
                        hover:bg-[#2e2e2e] transition-colors disabled:opacity-60"
@@ -543,6 +562,17 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
           </button>
         </div>
       </motion.div>
+      {showCancel && (
+        <CancelSaleDialog
+          kind="order"
+          id={order.id}
+          label={`Pedido de ${order.items.length} ${order.items.length === 1 ? "producto" : "productos"}${order.guest_name ? ` · ${order.guest_name}` : ""}`}
+          paid={totalPaid}
+          owed={remaining}
+          onClose={() => setShowCancel(false)}
+          onDone={onClose}
+        />
+      )}
     </motion.div>
   );
 }

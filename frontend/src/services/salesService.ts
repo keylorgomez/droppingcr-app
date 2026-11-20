@@ -136,6 +136,16 @@ interface RawRefundRow {
     description: string;
     size:        string | null;
   } | null;
+  orders: {
+    guest_name:  string | null;
+    guest_phone: string | null;
+    order_items: Array<{ product_variants: { size: string; products: { name: string } | null } | null }> | null;
+  } | null;
+  external_sales: {
+    guest_name:   string | null;
+    guest_phone:  string | null;
+    product_name: string;
+  } | null;
 }
 
 interface RawSalePaymentLogRow {
@@ -530,9 +540,19 @@ export async function addPayment(saleId: string, amount: number, note: string | 
   await recordPayment("sale", saleId, amount, note);
 }
 
-/** Cancela venta o pedido: stock de vuelta, apartado liberado y reembolso, todo o nada. */
-export async function cancelSale(kind: "sale" | "order", id: string, note: string | null): Promise<number> {
-  const { data, error } = await supabase.rpc("cancel_sale", { p_kind: kind, p_id: id, p_note: note });
+/**
+ * Cancela una venta como si nunca se hubiera hecho: deja de contar su ingreso
+ * y su costo, el stock del catálogo vuelve y, si `refund`, se registra la
+ * devolución de lo pagado. Todo o nada, en la base.
+ */
+export async function cancelSale(
+  kind:   "sale" | "order" | "external",
+  id:     string,
+  note:   string | null,
+  /** Cuánto se le devolvió al cliente. null = todo lo pagado. */
+  refundAmount: number | null = null,
+): Promise<number> {
+  const { data, error } = await supabase.rpc("cancel_sale", { p_kind: kind, p_id: id, p_note: note, p_refund_amount: refundAmount });
   if (error) throw new Error(error.message);
   return Number(data) || 0;
 }
@@ -675,9 +695,10 @@ export async function getUserOrders(userId: string): Promise<UserOrder[]> {
     sale_price:      sale.sale_price,
     shipping_cost:   0,
     shipping_method: SHIPPING_METHOD.PERSONAL_GRECIA,
-    delivery_status: DELIVERY_STATUS.DELIVERED,
+    delivery_status: sale.status === "cancelled" ? DELIVERY_STATUS.CANCELLED : DELIVERY_STATUS.DELIVERED,
     tracking_number: null,
-    status:          sale.status,
+    // Cancelada: no debe nada; el chip de entrega ya dice "Cancelado".
+    status:          sale.status === "cancelled" ? "completed" : sale.status,
     sold_at:         sale.sold_at,
     note:            sale.note,
     product_name:    sale.product_name,
@@ -761,24 +782,37 @@ export async function getRefundsLog(): Promise<RefundLog[]> {
         guest_name, guest_phone,
         product_variants ( size, products ( name ) )
       ),
-      special_orders ( guest_name, guest_phone, description, size )
+      special_orders ( guest_name, guest_phone, description, size ),
+      orders ( guest_name, guest_phone, order_items ( product_variants ( size, products ( name ) ) ) ),
+      external_sales ( guest_name, guest_phone, product_name )
     `)
     .order("created_at", { ascending: false }));
 
   if (error) throw new Error(error.message);
 
-  return (data as unknown as RawRefundRow[]).map((refundRow) => ({
+  return (data as unknown as RawRefundRow[]).map((refundRow) => {
+    const orderItems = refundRow.orders?.order_items ?? [];
+    const orderName  = orderItems.length > 1
+      ? `${orderItems.length} productos (Pedido)`
+      : orderItems[0]?.product_variants?.products?.name;
+    const parent     = refundRow.sales ?? refundRow.orders ?? refundRow.external_sales ?? refundRow.special_orders;
+    return {
     id:           refundRow.id,
     sale_id:      refundRow.sale_id,
-    guest_name:   refundRow.sales?.guest_name  ?? refundRow.special_orders?.guest_name  ?? null,
-    guest_phone:  refundRow.sales?.guest_phone ?? refundRow.special_orders?.guest_phone ?? null,
+    guest_name:   parent?.guest_name  ?? null,
+    guest_phone:  parent?.guest_phone ?? null,
     product_name: refundRow.sales?.product_variants?.products?.name
+      ?? orderName
+      ?? (refundRow.external_sales ? `${refundRow.external_sales.product_name} (Externa)` : undefined)
       ?? (refundRow.special_orders ? `${refundRow.special_orders.description} (Encargo cancelado)` : "—"),
-    variant_size: refundRow.sales?.product_variants?.size ?? refundRow.special_orders?.size ?? "—",
+    variant_size: refundRow.sales?.product_variants?.size
+      ?? (orderItems.length === 1 ? orderItems[0]?.product_variants?.size : undefined)
+      ?? refundRow.special_orders?.size ?? "—",
     amount:       refundRow.amount,
     reason:       refundRow.reason     ?? null,
     created_at:   refundRow.created_at,
-  }));
+    };
+  });
 }
 
 // ── Payment log (sales + orders merged) ───────────────────────────────────

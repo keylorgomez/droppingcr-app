@@ -73,6 +73,10 @@ export async function getGroupedDebts(): Promise<ClientDebt[]> {
     getPendingExternalSales(),
   ]);
 
+  // Sin esto, si fallaba la consulta de pedidos la lista salía incompleta sin
+  // avisar y los totales de Cobros pendientes quedaban cortos.
+  if (ordersResult.error) throw new Error(ordersResult.error.message);
+
   const clientMap = new Map<string, ClientDebt>();
 
   /** Crea o recupera el grupo del cliente. Se agrupa por los últimos 8 dígitos

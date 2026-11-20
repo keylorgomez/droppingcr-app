@@ -14,7 +14,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../components/ui/Toast";
 import Header from "../../components/ui/Header";
 import { cn } from "../../lib/utils";
-import { fmt, formatPhone, normalizeText } from "../../lib/formatters";
+import { fmt, formatPhone, normalizeText, displayPhone } from "../../lib/formatters";
 import { QUERY_KEYS } from "../../constants/queryKeys";
 import { MS_PER_DAY } from "../../constants/app";
 import { SINPE_MOVIL } from "../../config/payments";
@@ -228,7 +228,7 @@ function ClientCard({ client }: { client: ClientDebt }) {
         <div>
           <p className="font-semibold text-sm text-brand-dark">{name}</p>
           {client.guest_phone && (
-            <p className="text-xs text-ink-400 mt-0.5">{client.guest_phone}</p>
+            <p className="text-xs text-ink-400 mt-0.5">{displayPhone(client.guest_phone)}</p>
           )}
           <p className="text-[11px] text-ink-300 mt-0.5">
             {client.sales.length} {client.sales.length === 1 ? "venta pendiente" : "ventas pendientes"}

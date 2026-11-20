@@ -35,12 +35,17 @@ export function formatPhone(raw: string | null): string | null {
   return digits.length === 8 ? `506${digits}` : digits;
 }
 
-/** Para mostrar: 88364879 / +506 8836-4879 → "8836 - 4879". Otros largos quedan como vinieron. */
-export function displayPhone(raw: string | null): string | null {
+/** Los 8 dígitos locales: "+50688364879" / "8836-4879" → "88364879". Otros largos quedan solo en dígitos. */
+export function localPhone(raw: string | null | undefined): string {
+  const digits = (raw ?? "").replace(/\D/g, "");
+  return digits.length === 11 && digits.startsWith("506") ? digits.slice(3) : digits;
+}
+
+/** Para mostrar: 88364879 / +506 8836-4879 → "+506 8836 - 4879". Otros largos quedan como vinieron. */
+export function displayPhone(raw: string | null | undefined): string | null {
   if (!raw) return null;
-  const digits = raw.replace(/\D/g, "");
-  const local  = digits.length === 11 && digits.startsWith("506") ? digits.slice(3) : digits;
-  return local.length === 8 ? `${local.slice(0, 4)} - ${local.slice(4)}` : raw.trim() || null;
+  const local = localPhone(raw);
+  return local.length === 8 ? `+506 ${local.slice(0, 4)} - ${local.slice(4)}` : raw.trim() || null;
 }
 
 /**
