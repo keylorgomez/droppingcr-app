@@ -1,4 +1,7 @@
 import { useState, useEffect } from "react";
+import { AnimatePresence } from "motion/react";
+import FitTypePicker from "../../components/products/FitTypePicker";
+import { fitFromName, FOOTBALL_CATEGORY_SLUG, type FitType } from "../../lib/fitType";
 import MoneyInput from "../../components/ui/MoneyInput";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -239,6 +242,8 @@ export default function ProductFormPage() {
   const [isFeatured,    setIsFeatured]    = useState(false);
   const [newSince,      setNewSince]      = useState<string | null>(null);
   const [categoryIds,   setCategoryIds]   = useState<string[]>([]);
+  const [fitType,       setFitType]       = useState<FitType | null>(null);
+  const [fitTouched,    setFitTouched]    = useState(false);
   const [variants,      setVariants]      = useState<VariantRow[]>([]);
   const [images,        setImages]        = useState<ImageRow[]>([]);
   const [errors,        setErrors]        = useState<Record<string, string>>({});
@@ -258,6 +263,8 @@ export default function ProductFormPage() {
     setIsNew(p.is_new);
     setNewSince(p.new_since);
     setCategoryIds(p.categories.map((c) => c.id));
+    setFitType(p.fit_type ?? null);
+    setFitTouched(true);
     setVariants(p.variants.map((v) => ({
       _key: newKey(), size: v.size, stock: String(v.stock),
     })));
@@ -265,6 +272,21 @@ export default function ProductFormPage() {
       _key: newKey(), image_url: img.image_url, is_primary: img.is_primary,
     })));
   }, [existingProduct]);
+
+  // ── Versión (Player / Fan / Retro), solo en fútbol ─────────────────────
+  const isFootball = categories.some(
+    (category) => category.slug === FOOTBALL_CATEGORY_SLUG && categoryIds.includes(category.id),
+  );
+  const nameFit = fitFromName(name);
+  // Producto nuevo: si el nombre ya dice la versión, se marca sola (se puede
+  // quitar). Al editar se respeta lo guardado.
+  useEffect(() => {
+    if (!fitTouched && isFootball) setFitType(nameFit);
+  }, [fitTouched, isFootball, nameFit]);
+  function chooseFit(value: FitType | null) {
+    setFitTouched(true);
+    setFitType(value);
+  }
 
   // ── Auto-slug from name ────────────────────────────────────────────────
   function handleNameChange(v: string) {
@@ -346,6 +368,7 @@ export default function ProductFormPage() {
       is_active:           isActive,
       is_new:              isNew,
       is_featured:         isFeatured,
+      fit_type:            isFootball ? fitType : null,
       new_since:           newSince,
       category_ids:        categoryIds,
       images: images.map((img, i) => ({
@@ -632,6 +655,11 @@ export default function ProductFormPage() {
                     error={errors.categories}
                   />
                 )}
+                <AnimatePresence initial={false}>
+                  {isFootball && (
+                    <FitTypePicker key="fit" value={fitType} onChange={chooseFit} suggested={nameFit} />
+                  )}
+                </AnimatePresence>
                 <button
                   type="button"
                   onClick={() => navigate("/admin/categories")}

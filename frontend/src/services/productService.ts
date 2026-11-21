@@ -1,5 +1,6 @@
 import { supabase } from "../lib/supabaseClient";
 import { NEW_BADGE_DAYS } from "../constants/domain";
+import type { FitType } from "../lib/fitType";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -34,6 +35,8 @@ export interface ProductDetail {
   is_active: boolean;
   is_new: boolean;
   is_featured: boolean;
+  /** Versión de una camiseta de fútbol (opcional). */
+  fit_type: FitType | null;
   new_since: string | null;
   created_at: string;
   categories: Category[];
@@ -87,6 +90,7 @@ export interface ProductInput {
   is_active: boolean;
   is_new: boolean;
   is_featured: boolean;
+  fit_type: FitType | null;
   new_since: string | null;
   category_ids: string[];
   images: { image_url: string; is_primary: boolean; display_order: number }[];
@@ -222,7 +226,7 @@ export async function getProductBySlug(slug: string): Promise<ProductDetail> {
     .select(`
       id, name, slug, description,
       price_purchase, price_sale, discount_percentage,
-      is_active, is_new, is_featured, new_since, created_at,
+      is_active, is_new, is_featured, fit_type, new_since, created_at,
       images: product_images ( id, image_url, is_primary, display_order ),
       variants: product_variants ( id, size, stock, is_reserved ),
       product_categories ( categories ( id, name, slug ) )
@@ -252,7 +256,7 @@ export async function getProductById(id: string): Promise<ProductDetail> {
     .select(`
       id, name, slug, description,
       price_purchase, price_sale, discount_percentage,
-      is_active, is_new, is_featured, new_since, created_at,
+      is_active, is_new, is_featured, fit_type, new_since, created_at,
       images: product_images ( id, image_url, is_primary, display_order ),
       variants: product_variants ( id, size, stock, is_reserved ),
       product_categories ( categories ( id, name, slug ) )
@@ -286,6 +290,7 @@ export interface InventoryUpdate {
   is_active:           boolean;
   is_new:              boolean;
   is_featured:         boolean;
+  fit_type:            FitType | null;
   new_since:           string | null;
   category_ids: string[];
   /** `loaded_stock`: el stock que había cuando se abrió el formulario. */
@@ -310,6 +315,7 @@ export async function updateProductInventory(
       is_active:           data.is_active,
       is_new:              data.is_new,
       is_featured:         data.is_featured,
+      fit_type:            data.fit_type,
       new_since:           data.new_since,
     })
     .eq("id", productId);
@@ -457,6 +463,7 @@ export async function createProduct(input: ProductInput): Promise<string> {
       is_active:           input.is_active,
       is_new:              input.is_new,
       is_featured:         input.is_featured,
+      fit_type:            input.fit_type,
       new_since:           input.new_since,
     })
     .select("id")
@@ -504,6 +511,7 @@ export async function updateProduct(id: string, input: ProductInput): Promise<vo
       is_active:           input.is_active,
       is_new:              input.is_new,
       is_featured:         input.is_featured,
+      fit_type:            input.fit_type,
       new_since:           input.new_since,
     })
     .eq("id", id);

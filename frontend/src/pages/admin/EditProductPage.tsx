@@ -1,4 +1,7 @@
 import { useState, useEffect, useRef } from "react";
+import { AnimatePresence } from "motion/react";
+import FitTypePicker from "../../components/products/FitTypePicker";
+import { fitFromName, FOOTBALL_CATEGORY_SLUG, type FitType } from "../../lib/fitType";
 import MoneyInput from "../../components/ui/MoneyInput";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -127,6 +130,7 @@ export default function EditProductPage() {
   const [isFeatured,   setIsFeatured]   = useState(false);
   const [newSince,     setNewSince]     = useState<string | null>(null);
   const [categoryIds,  setCategoryIds]  = useState<string[]>([]);
+  const [fitType,      setFitType]      = useState<FitType | null>(null);
   const [variants,     setVariants]     = useState<VariantRowState[]>([]);
   const [images,            setImages]            = useState<ImageRow[]>([]);
   const [saleOpen,          setSaleOpen]          = useState(false);
@@ -159,6 +163,7 @@ export default function EditProductPage() {
     setIsFeatured(product.is_featured ?? false);
     setNewSince(product.new_since);
     setCategoryIds(product.categories.map((category) => category.id));
+    setFitType(product.fit_type ?? null);
     setVariants(
       product.variants.map((productVariant) => ({
         _key: newKey(), id: productVariant.id, size: productVariant.size, stock: String(productVariant.stock),
@@ -226,6 +231,10 @@ export default function EditProductPage() {
     onError: (err: Error) => showToast(err.message, "error"),
   });
 
+  const isFootball = allCategories.some(
+    (category) => category.slug === FOOTBALL_CATEGORY_SLUG && categoryIds.includes(category.id),
+  );
+
   function handleSave(event: React.FormEvent) {
     event.preventDefault();
     if (!name.trim())                                  { showToast("El nombre es requerido.", "error"); return; }
@@ -242,6 +251,7 @@ export default function EditProductPage() {
       is_active:           isActive,
       is_new:              isNew,
       is_featured:         isFeatured,
+      fit_type:            isFootball ? fitType : null,
       new_since:           newSince,
       category_ids:        categoryIds,
       variants: variants.map((variantRow) => ({
@@ -518,6 +528,11 @@ export default function EditProductPage() {
               onChange={setCategoryIds}
               placeholder="Selecciona una o más categorías…"
             />
+            <AnimatePresence initial={false}>
+              {isFootball && (
+                <FitTypePicker key="fit" value={fitType} onChange={setFitType} suggested={fitFromName(name)} />
+              )}
+            </AnimatePresence>
           </SectionCard>
 
           {/* Sizes and stock */}

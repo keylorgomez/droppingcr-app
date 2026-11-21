@@ -15,6 +15,8 @@ import WhatsAppIcon from "../components/ui/WhatsAppIcon";
 import FloatingWhatsApp from "../components/ui/FloatingWhatsApp";
 import ProductCard from "../components/catalog/ProductCard";
 import SizeGuide from "../components/catalog/SizeGuide";
+import FitNote from "../components/catalog/FitNote";
+import { FIT_INFO, FOOTBALL_CATEGORY_SLUG } from "../lib/fitType";
 import { sizeKind } from "../lib/sizes";
 import Reveal from "../components/ui/Reveal";
 import SectionHeading from "../components/home/SectionHeading";
@@ -301,6 +303,11 @@ function ProductContent({ product }: { product: ProductDetail }) {
   };
   const sizes = Object.keys(stockBySize).sort(sortSizes);
 
+  // Versión de la camiseta (Player / Fan / Retro): solo en fútbol.
+  const fit = product.fit_type && product.categories.some((category) => category.slug === FOOTBALL_CATEGORY_SLUG)
+    ? product.fit_type
+    : null;
+
   const isSoldOut = product.variants.every((v) => v.stock === 0);
   const lowStock  = selectedSize ? stockBySize[selectedSize] : 0;
 
@@ -544,12 +551,20 @@ function ProductContent({ product }: { product: ProductDetail }) {
         <div className="lg:sticky lg:top-24 lg:self-start flex flex-col">
 
           {product.categories[0] && (
-            <Link
-              to={ROUTES.catalogFilter(product.categories[0].slug)}
-              className="link-underline self-start type-eyebrow text-ink-400 hover:text-ink-900 transition-colors"
-            >
-              {product.categories[0].name}
-            </Link>
+            <div className="flex items-center gap-2.5 self-start">
+              <Link
+                to={ROUTES.catalogFilter(product.categories[0].slug)}
+                className="link-underline type-eyebrow text-ink-400 hover:text-ink-900 transition-colors"
+              >
+                {product.categories[0].name}
+              </Link>
+              {fit && (
+                <>
+                  <span className="h-3 w-px bg-ink-200" aria-hidden="true" />
+                  <span className="type-eyebrow text-ink-900">{FIT_INFO[fit].label}</span>
+                </>
+              )}
+            </div>
           )}
 
           <h1 className="type-display text-[clamp(1.9rem,4.4vw,3.25rem)] text-ink-900 mt-4">
@@ -643,6 +658,15 @@ function ProductContent({ product }: { product: ProductDetail }) {
                     ? `Queda solo 1 en talla ${selectedSize}`
                     : `Quedan solo ${lowStock} en talla ${selectedSize}`}
                 </p>
+              )}
+
+              {fit && (
+                <FitNote
+                  fit={fit}
+                  availableSizes={sizes.filter((size) => stockBySize[size] > 0)}
+                  selectedSize={selectedSize}
+                  onPickSize={(size) => { setSelectedSize(size); setSizeError(false); }}
+                />
               )}
             </div>
           )}
