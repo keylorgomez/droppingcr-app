@@ -53,7 +53,7 @@ export default function HomePage() {
   // Misma query key que el catálogo y el sidebar: se sirve de caché.
   const { data: products = [], isLoading } = useCatalogProducts();
 
-  const visible = useMemo(() => products.filter((p) => p.is_active), [products]);
+  const visible = useMemo(() => products.filter((p) => p.is_active && p.is_listed), [products]);
 
   const maxDiscountPercent = useMemo(
     () => visible.reduce((max, p) => (p.discount_percentage > max ? p.discount_percentage : max), 0),
@@ -165,6 +165,7 @@ export default function HomePage() {
                 is_sold_out={product.is_sold_out}
                 is_reserved={product.is_reserved}
                 sizes={product.sizes}
+                fit={product.fit_type}
                 href={ROUTES.PRODUCT(product.slug)}
               />
             ))}

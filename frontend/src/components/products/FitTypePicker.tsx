@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Shirt } from "lucide-react";
 import { FIT_INFO, FIT_TYPES, type FitType } from "../../lib/fitType";
@@ -15,6 +16,7 @@ export default function FitTypePicker({
   /** Lo que dice el nombre del producto, para sugerirlo si no hay nada elegido. */
   suggested?: FitType | null;
 }) {
+  const pillId = useId();
   return (
     <motion.div
       initial={{ opacity: 0, height: 0 }}
@@ -47,7 +49,7 @@ export default function FitTypePicker({
               >
                 {active && (
                   <motion.span
-                    layoutId="fit-type-pill"
+                    layoutId={`fit-type-${pillId}`}
                     className="absolute inset-0 rounded-lg bg-brand-dark shadow-sm"
                     transition={{ type: "spring", stiffness: 420, damping: 34 }}
                   />

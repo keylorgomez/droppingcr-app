@@ -33,8 +33,9 @@ export default function DeleteConfirmModal({
             </p>
             <p className="text-sm text-ink-500 mt-1 leading-snug">
               Vas a eliminar{" "}
-              <span className="font-semibold text-brand-dark">"{productName}"</span>{" "}
-              permanentemente. Esta acción no se puede deshacer.
+              <span className="font-semibold text-brand-dark">"{productName}"</span>.
+              Si nunca se vendió se borra para siempre. Si tiene ventas, se archiva:
+              sale del catálogo, sus ventas quedan en el historial y se puede restaurar.
             </p>
           </div>
         </div>

@@ -5,6 +5,7 @@ import { Pencil, EyeOff, ArrowUpRight } from "lucide-react";
 import { cloudinaryUrl } from "../../lib/cloudinary";
 import { cn } from "../../lib/utils";
 import { discountedPrice } from "../../lib/formatters";
+import { FIT_INFO, type FitType } from "../../lib/fitType";
 
 interface ProductCardProps {
   name: string;
@@ -16,8 +17,12 @@ interface ProductCardProps {
   is_sold_out?: boolean;
   is_reserved?: boolean;
   isHidden?: boolean;
+  /** Texto del sello cuando está oculta (admin): "Oculto", "Archivado"… */
+  hiddenLabel?: string;
   /** Tallas con stock, en el orden en que se muestran. */
   sizes?: string[];
+  /** Versión de la camiseta de fútbol (Player / Fan / Retro). */
+  fit?: FitType | null;
   /** Índice en la grilla — escalona la entrada. */
   index?: number;
   /**
@@ -42,7 +47,9 @@ export default function ProductCard({
   is_sold_out = false,
   is_reserved = false,
   isHidden = false,
+  hiddenLabel = "Oculto",
   sizes = [],
+  fit = null,
   index = 0,
   href,
   onClick,
@@ -211,7 +218,7 @@ export default function ProductCard({
                              font-display uppercase text-[9px] tracking-widest2
                              px-3 py-2 backdrop-blur-sm">
               <EyeOff size={10} strokeWidth={2.5} />
-              Oculto
+              {hiddenLabel}
             </span>
           </div>
         )}
@@ -254,9 +261,23 @@ export default function ProductCard({
 
         {/* Tallas con stock: ahorra entrar a cada pieza para ver si hay la tuya.
             Alto fijo para que la grilla no quede escalonada. */}
-        <p className="h-4 mt-1.5 text-[11px] text-ink-400 tracking-wide truncate">
-          {!unavailable && sizes.length > 0 ? `Tallas: ${sizes.join(" · ")}` : ""}
-        </p>
+        <div className="h-4 mt-1.5 flex items-center gap-1.5 min-w-0">
+          {/* Versión de la camiseta: guía discreta, el corte cambia la talla. */}
+          {fit && (
+            <span
+              title={`${FIT_INFO[fit].label} · ${FIT_INFO[fit].cut}`}
+              className={cn(
+                "shrink-0 rounded-[4px] border px-[5px] font-display uppercase text-[9px] tracking-widest2 leading-[14px]",
+                unavailable ? "border-ink-200 text-ink-400" : "border-ink-300 text-ink-700",
+              )}
+            >
+              {FIT_INFO[fit].label}
+            </span>
+          )}
+          <p className="text-[11px] text-ink-400 tracking-wide truncate">
+            {!unavailable && sizes.length > 0 ? `Tallas: ${sizes.join(" · ")}` : ""}
+          </p>
+        </div>
       </div>
     </>
   );

@@ -826,6 +826,7 @@ function RelatedProducts({ product }: { product: ProductDetail }) {
             is_sold_out={p.is_sold_out}
             is_reserved={p.is_reserved}
             sizes={p.sizes}
+                fit={p.fit_type}
             href={ROUTES.PRODUCT(p.slug)}
           />
         ))}

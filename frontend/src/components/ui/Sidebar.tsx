@@ -37,14 +37,17 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
   // Reuse the cached products query — no extra network request
   const { data: products = [], isLoading } = useCatalogProducts();
 
-  const hasNew       = products.some((p) => p.is_new);
-  const hasDiscounts = products.some((p) => p.discount_percentage > 0);
-  const hasHidden    = products.some((p) => !p.is_active);
+  // Categorías y accesos según lo que se ve en el catálogo (sin archivo).
+  const listed       = useMemo(() => products.filter((p) => p.is_listed), [products]);
+  const hasNew       = listed.some((p) => p.is_new);
+  const hasDiscounts = listed.some((p) => p.discount_percentage > 0);
+  const hasHidden    = products.some((p) => !p.is_active && !p.is_archived);
+  const hasArchive   = products.some((p) => p.is_archived || p.is_stale);
 
   // Unique categories present in at least one product, sorted alphabetically
   const categories = useMemo(() => {
     const seen = new Map<string, string>(); // slug → name
-    for (const product of products) {
+    for (const product of listed) {
       for (const cat of product.categories) {
         if (!seen.has(cat.slug)) seen.set(cat.slug, cat.name);
       }
@@ -52,7 +55,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
     return [...seen.entries()]
       .map(([slug, name]) => ({ slug, name }))
       .sort((a, b) => a.name.localeCompare(b.name, "es"));
-  }, [products]);
+  }, [listed]);
 
   function handleNav(href: string) {
     onClose();
@@ -128,6 +131,17 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
                     label="Ocultos"
                     active={activeFilter === "oculto"}
                     onClick={() => handleNav(ROUTES.catalogFilter("oculto"))}
+                    loading={isLoading}
+                    large
+                    muted
+                  />
+                )}
+
+                {isAdmin && (isLoading || hasArchive) && (
+                  <NavLink
+                    label="Archivo"
+                    active={activeFilter === "archivo"}
+                    onClick={() => handleNav(ROUTES.catalogFilter("archivo"))}
                     loading={isLoading}
                     large
                     muted

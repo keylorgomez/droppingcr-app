@@ -92,7 +92,9 @@ describe("envío en el carrito", () => {
 
 describe("guía de tallas", () => {
   it("detecta calzado, ropa y talla única", () => {
-    expect(sizeKind(["9", "9.5", "10"])).toBe("shoes");
+    // Números sueltos chicos no son calzado (un balón es talla 5); el calzado
+    // se guarda siempre con EUR.
+    expect(sizeKind(["5"])).toBeNull();
     expect(sizeKind(["S", "M", "XL"])).toBe("clothing");
     expect(sizeKind(["Única"])).toBeNull();
     expect(sizeKind(["30", "32", "34"])).toBeNull(); // pantalones, no calzado

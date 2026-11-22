@@ -23,8 +23,8 @@ function getInitials(firstName: string | null, lastName: string | null) {
 /** `show` decide si el link aparece: un filtro sin resultados es una página vacía. */
 const navLinks = [
   { label: "Catálogo",   href: ROUTES.CATALOG,                       show: () => true },
-  { label: "Nuevo",      href: ROUTES.catalogFilter("nuevo"),        show: (p: CatalogProduct[]) => p.some((x) => x.is_new) },
-  { label: "Descuentos", href: ROUTES.catalogFilter("descuentos"),   show: (p: CatalogProduct[]) => p.some((x) => x.discount_percentage > 0) },
+  { label: "Nuevo",      href: ROUTES.catalogFilter("nuevo"),        show: (p: CatalogProduct[]) => p.some((x) => x.is_listed && x.is_new) },
+  { label: "Descuentos", href: ROUTES.catalogFilter("descuentos"),   show: (p: CatalogProduct[]) => p.some((x) => x.is_listed && x.discount_percentage > 0) },
 ];
 
 interface HeaderProps {

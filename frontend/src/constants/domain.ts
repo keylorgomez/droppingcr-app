@@ -50,6 +50,9 @@ export type ShippingMethodValue = typeof SHIPPING_METHOD[keyof typeof SHIPPING_M
 /** Days the "NUEVO" badge stays visible after being activated, before it auto-expires. */
 export const NEW_BADGE_DAYS = 30;
 
+/** Lo agotado hace más de esto sale del catálogo (sigue abriendo por link). */
+export const STALE_SOLD_OUT_DAYS = 90;
+
 // ── Clothing sizes ─────────────────────────────────────────────────────────
 
 export const CLOTHING_SIZES = {

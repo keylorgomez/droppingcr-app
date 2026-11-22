@@ -1,5 +1,5 @@
 import { supabase } from "../lib/supabaseClient";
-import { NEW_BADGE_DAYS } from "../constants/domain";
+import { NEW_BADGE_DAYS, STALE_SOLD_OUT_DAYS } from "../constants/domain";
 import type { FitType } from "../lib/fitType";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -37,6 +37,8 @@ export interface ProductDetail {
   is_featured: boolean;
   /** Versión de una camiseta de fútbol (opcional). */
   fit_type: FitType | null;
+  /** Archivado: tenía ventas y se "eliminó". No sale en el catálogo. */
+  archived_at: string | null;
   new_since: string | null;
   created_at: string;
   categories: Category[];
@@ -57,7 +59,14 @@ export interface CatalogProduct {
   sizes: string[];
   is_new: boolean;
   is_featured: boolean;
+  fit_type: FitType | null;
   is_sold_out: boolean;
+  /** Archivado (tenía ventas y se eliminó). Solo lo ve el admin. */
+  is_archived: boolean;
+  /** Agotado hace más de STALE_SOLD_OUT_DAYS. Solo lo ve el admin. */
+  is_stale: boolean;
+  /** Sale en el catálogo: ni archivado ni agotado hace mucho. */
+  is_listed: boolean;
   is_reserved: boolean;
   is_active: boolean;
 }
@@ -115,6 +124,9 @@ interface RawProductRow {
   new_since:           string | null;
   is_active:           boolean;
   is_featured:         boolean;
+  fit_type:            FitType | null;
+  archived_at:         string | null;
+  sold_out_at:         string | null;
   product_images:      RawImageRow[];
   product_variants:    Array<{ stock: number; size: string; is_reserved: boolean }>;
   product_categories:  Array<{ categories: { name: string; slug: string } | null }>;
@@ -153,14 +165,23 @@ export async function getProducts(includeHidden = false): Promise<CatalogProduct
   let query = supabase
     .from("products")
     .select(`
-      id, name, slug, price_sale, discount_percentage, is_new, new_since, is_active, is_featured,
+      id, name, slug, price_sale, discount_percentage, is_new, new_since, is_active, is_featured, fit_type,
+      archived_at, sold_out_at,
       product_images ( image_url, is_primary, display_order ),
       product_variants ( stock, size, is_reserved ),
       product_categories ( categories ( name, slug ) )
     `)
     .order("created_at", { ascending: false });
 
-  if (!includeHidden) query = query.eq("is_active", true);
+  // El visitante no recibe lo archivado ni lo agotado hace más de 3 meses: así
+  // el catálogo no se llena de páginas de agotados. El admin recibe todo.
+  const staleCutoff = new Date(Date.now() - STALE_SOLD_OUT_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  if (!includeHidden) {
+    query = query
+      .eq("is_active", true)
+      .is("archived_at", null)
+      .or(`sold_out_at.is.null,sold_out_at.gt.${staleCutoff}`);
+  }
 
   const { data, error } = await query;
 
@@ -190,6 +211,9 @@ export async function getProducts(includeHidden = false): Promise<CatalogProduct
       .filter(Boolean)
       .map((cat) => ({ name: cat!.name, slug: cat!.slug }));
 
+    const isArchived = p.archived_at !== null;
+    const isStale    = totalStock === 0 && !anyReserved && p.sold_out_at !== null && p.sold_out_at < staleCutoff;
+
     return {
       id:                  p.id,
       name:                p.name,
@@ -203,8 +227,13 @@ export async function getProducts(includeHidden = false): Promise<CatalogProduct
       sizes,
       is_new:              isWithinNewBadgeWindow(p.is_new ?? false, p.new_since),
       is_featured:         p.is_featured ?? false,
+      // La versión solo aplica a fútbol.
+      fit_type:            productCategories.some((cat) => cat.slug === "futbol") ? p.fit_type ?? null : null,
       is_sold_out:         totalStock === 0,
       is_reserved:         totalStock === 0 && anyReserved,
+      is_archived:         isArchived,
+      is_stale:            isStale,
+      is_listed:           !isArchived && !isStale,
       is_active:           p.is_active ?? true,
     };
   });
@@ -226,7 +255,7 @@ export async function getProductBySlug(slug: string): Promise<ProductDetail> {
     .select(`
       id, name, slug, description,
       price_purchase, price_sale, discount_percentage,
-      is_active, is_new, is_featured, fit_type, new_since, created_at,
+      is_active, is_new, is_featured, fit_type, archived_at, new_since, created_at,
       images: product_images ( id, image_url, is_primary, display_order ),
       variants: product_variants ( id, size, stock, is_reserved ),
       product_categories ( categories ( id, name, slug ) )
@@ -256,7 +285,7 @@ export async function getProductById(id: string): Promise<ProductDetail> {
     .select(`
       id, name, slug, description,
       price_purchase, price_sale, discount_percentage,
-      is_active, is_new, is_featured, fit_type, new_since, created_at,
+      is_active, is_new, is_featured, fit_type, archived_at, new_since, created_at,
       images: product_images ( id, image_url, is_primary, display_order ),
       variants: product_variants ( id, size, stock, is_reserved ),
       product_categories ( categories ( id, name, slug ) )
@@ -371,11 +400,19 @@ export async function updateProductInventory(
   }
 }
 
-export async function deleteProduct(productId: string): Promise<void> {
-  const { error } = await supabase
-    .from("products")
-    .delete()
-    .eq("id", productId);
+/**
+ * "Eliminar": si el producto nunca se vendió se borra; si tiene ventas se
+ * archiva (sale del catálogo y el historial de ventas queda intacto).
+ */
+export async function deleteProduct(productId: string): Promise<"deleted" | "archived"> {
+  const { data, error } = await supabase.rpc("delete_or_archive_product", { p_id: productId });
+  if (error) throw new Error(error.message);
+  return data === "archived" ? "archived" : "deleted";
+}
+
+/** Vuelve a poner en el catálogo un producto archivado. */
+export async function restoreProduct(productId: string): Promise<void> {
+  const { error } = await supabase.rpc("restore_product", { p_id: productId });
   if (error) throw new Error(error.message);
 }
 

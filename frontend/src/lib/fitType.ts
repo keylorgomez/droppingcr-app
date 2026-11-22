@@ -1,3 +1,6 @@
+import { LETTER_SIZES as FIT_SIZE_LADDER, normalizeSize } from "./sizes";
+export { normalizeSize };
+
 /**
  * Versión de una camiseta de fútbol. Define el corte y, con eso, qué talla
  * conviene pedir. Es opcional: null = no se indica y no se muestra nada.
@@ -65,17 +68,6 @@ export function fitFromName(name: string): FitType | null {
   if (/\bretro\b/i.test(name))  return "retro";
   if (/\bfan\b/i.test(name))    return "fan";
   return null;
-}
-
-/** Tallas en el orden de la guía, de menor a mayor. */
-export const FIT_SIZE_LADDER = ["XS", "S", "M", "L", "XL", "XXL", "3XL", "4XL"] as const;
-
-/** "XLL" y "2XL" son la misma talla que "XXL"; "XXXL" es "3XL". */
-export function normalizeSize(size: string): string {
-  const s = size.trim().toUpperCase();
-  if (s === "XLL" || s === "2XL") return "XXL";
-  if (s === "XXXL") return "3XL";
-  return s;
 }
 
 /**

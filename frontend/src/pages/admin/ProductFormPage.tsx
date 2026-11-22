@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { AnimatePresence } from "motion/react";
 import FitTypePicker from "../../components/products/FitTypePicker";
+import SizeQuickAdd from "../../components/products/SizeQuickAdd";
+import { duplicateSizes, normalizeSizeInput, productSizeKind, type ProductSizeKind } from "../../lib/sizes";
 import { fitFromName, FOOTBALL_CATEGORY_SLUG, type FitType } from "../../lib/fitType";
 import MoneyInput from "../../components/ui/MoneyInput";
 import { useNavigate, useParams } from "react-router-dom";
@@ -102,16 +104,17 @@ function inputCls(hasError = false) {
   );
 }
 
-import { CLOTHING_SIZES } from "../../constants/domain";
 
 // ── Variants section ───────────────────────────────────────────────────────
 
 function VariantsSection({
-  rows, onChange, error,
+  rows, onChange, error, sizeKind,
 }: {
   rows: VariantRow[];
   onChange: (rows: VariantRow[]) => void;
   error?: string;
+  /** Tipo de tallas según la categoría (ropa, calzado, talla única). */
+  sizeKind: ProductSizeKind;
 }) {
   function addRow(size = "") {
     onChange([...rows, { _key: newKey(), size, stock: "1" }]);
@@ -127,21 +130,12 @@ function VariantsSection({
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Quick-add size chips */}
-      <div className="flex flex-wrap gap-1.5">
-        {CLOTHING_SIZES.QUICK_ADD.map((s) => (
-          <button
-            key={s}
-            type="button"
-            onClick={() => addRow(s)}
-            className="px-3 py-1 rounded-full text-xs border border-ink-200
-                       text-ink-500 hover:border-brand-primary hover:text-brand-primary
-                       transition-colors"
-          >
-            + {s}
-          </button>
-        ))}
-      </div>
+      {/* Tallas listas para agregar, según el tipo de producto */}
+      <SizeQuickAdd
+        suggestedKind={sizeKind}
+        existing={rows.map((r) => r.size)}
+        onAdd={(size) => addRow(size)}
+      />
 
       {/* Rows */}
       {rows.length > 0 && (
@@ -157,7 +151,9 @@ function VariantsSection({
                 type="text"
                 value={row.size}
                 onChange={(e) => updateRow(row._key, "size", e.target.value)}
-                placeholder="Ej: M, XL, Talla Única"
+                // Al salir del campo queda en el formato de la tienda: "2xl" → "XXL".
+                onBlur={(e) => updateRow(row._key, "size", normalizeSizeInput(e.target.value, sizeKind === "calzado"))}
+                placeholder={sizeKind === "calzado" ? "Ej: 42 EUR / 9 US" : "Ej: M, XL, Talla Única"}
                 className={inputCls()}
               />
               <input
@@ -278,6 +274,9 @@ export default function ProductFormPage() {
     (category) => category.slug === FOOTBALL_CATEGORY_SLUG && categoryIds.includes(category.id),
   );
   const nameFit = fitFromName(name);
+  const isShoeProduct = productSizeKind(
+    categories.filter((c) => categoryIds.includes(c.id)).map((c) => c.slug),
+  ) === "calzado";
   // Producto nuevo: si el nombre ya dice la versión, se marca sola (se puede
   // quitar). Al editar se respeta lo guardado.
   useEffect(() => {
@@ -307,6 +306,8 @@ export default function ProductFormPage() {
                                      e.priceSale     = "Ingresa un precio de venta válido.";
     if (categoryIds.length === 0)    e.categories    = "Selecciona al menos una categoría.";
     if (variants.length === 0)       e.variants      = "Agrega al menos una talla.";
+    const repeated = duplicateSizes(variants.map((v) => v.size));
+    if (repeated.length)             e.variants      = `Talla repetida: ${repeated.join(", ")}. Dejá una sola y sumá el stock.`;
     variants.forEach((v, i) => {
       if (!v.size.trim())            e[`variant_size_${i}`]  = "La talla es requerida.";
       if (Number(v.stock) < 0)       e[`variant_stock_${i}`] = "Stock no puede ser negativo.";
@@ -377,7 +378,7 @@ export default function ProductFormPage() {
         display_order: i,
       })),
       variants: variants.map((v) => ({
-        size:  v.size.trim(),
+        size:  normalizeSizeInput(v.size, isShoeProduct),
         stock: Number(v.stock),
       })),
     };
@@ -679,6 +680,7 @@ export default function ProductFormPage() {
               rows={variants}
               onChange={setVariants}
               error={errors.variants}
+              sizeKind={productSizeKind(categories.filter((c) => categoryIds.includes(c.id)).map((c) => c.slug))}
             />
           </SectionCard>
 

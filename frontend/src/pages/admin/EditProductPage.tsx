@@ -1,13 +1,15 @@
 import { useState, useEffect, useRef } from "react";
 import { AnimatePresence } from "motion/react";
 import FitTypePicker from "../../components/products/FitTypePicker";
+import SizeQuickAdd from "../../components/products/SizeQuickAdd";
+import { duplicateSizes, normalizeSizeInput, productSizeKind } from "../../lib/sizes";
 import { fitFromName, FOOTBALL_CATEGORY_SLUG, type FitType } from "../../lib/fitType";
 import MoneyInput from "../../components/ui/MoneyInput";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Loader2, Plus, Trash2, ShoppingCart, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Loader2, Plus, Trash2, ShoppingCart, AlertTriangle, Archive, RotateCcw } from "lucide-react";
 import {
-  getProductById, getCategories, updateProductInventory, deleteVariant, deleteProduct,
+  getProductById, getCategories, updateProductInventory, deleteVariant, deleteProduct, restoreProduct,
 } from "../../services/productService";
 import ImageUpload, { type ImageRow } from "../../components/ui/ImageUpload";
 import MultiSelect from "../../components/ui/MultiSelect";
@@ -194,11 +196,15 @@ export default function EditProductPage() {
   });
 
   function removeVariantRow(rowKey: string, dbId?: string) {
+    const dropRow = () => setVariants((prev) => prev.filter((variantRow) => variantRow._key !== rowKey));
     if (dbId) {
       if (!window.confirm("¿Eliminar esta talla del producto?")) return;
-      deleteVariantMutation.mutate(dbId);
+      // La fila se quita solo si se borró: una talla con ventas no se puede
+      // borrar y antes desaparecía de la pantalla igual.
+      deleteVariantMutation.mutate(dbId, { onSuccess: dropRow });
+      return;
     }
-    setVariants((prev) => prev.filter((variantRow) => variantRow._key !== rowKey));
+    dropRow();
   }
 
   function updateVariantField(rowKey: string, field: "size" | "stock", value: string) {
@@ -222,14 +228,35 @@ export default function EditProductPage() {
 
   const deleteProductMutation = useMutation({
     mutationFn: () => deleteProduct(id!),
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PRODUCTS });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PRODUCTS_WITH_VARIANTS });
-      showToast("Producto eliminado.", "success");
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PRODUCT(id!) });
+      showToast(
+        result === "archived"
+          ? "Producto archivado: ya no sale en el catálogo y sus ventas quedan en el historial."
+          : "Producto eliminado.",
+        "success",
+      );
       navigate("/");
     },
     onError: (err: Error) => showToast(err.message, "error"),
   });
+
+  const restoreMutation = useMutation({
+    mutationFn: () => restoreProduct(id!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PRODUCTS });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PRODUCT(id!) });
+      setIsActive(true);
+      showToast("Producto restaurado: vuelve a salir en el catálogo.", "success");
+    },
+    onError: (err: Error) => showToast(err.message, "error"),
+  });
+
+  const sizeKind = productSizeKind(
+    allCategories.filter((category) => categoryIds.includes(category.id)).map((category) => category.slug),
+  );
 
   const isFootball = allCategories.some(
     (category) => category.slug === FOOTBALL_CATEGORY_SLUG && categoryIds.includes(category.id),
@@ -242,6 +269,11 @@ export default function EditProductPage() {
     if (!priceSale     || Number(priceSale)     <= 0)  { showToast("Ingresa un precio de venta válido.", "error"); return; }
     if (images.length === 0)      { showToast("Agrega al menos una imagen.", "error"); return; }
     if (categoryIds.length === 0) { showToast("Selecciona al menos una categoría.", "error"); return; }
+    const repeated = duplicateSizes(variants.map((v) => v.size));
+    if (repeated.length) {
+      showToast(`Talla repetida: ${repeated.join(", ")}. Dejá una sola y sumá el stock.`, "error");
+      return;
+    }
     saveProductMutation.mutate({
       name:                name.trim(),
       description:         description.trim() || null,
@@ -256,7 +288,7 @@ export default function EditProductPage() {
       category_ids:        categoryIds,
       variants: variants.map((variantRow) => ({
         id:    variantRow.id,
-        size:  variantRow.size.trim(),
+        size:  normalizeSizeInput(variantRow.size, sizeKind === "calzado"),
         stock: Number(variantRow.stock),
         loaded_stock: variantRow.loadedStock,
       })),
@@ -369,6 +401,30 @@ export default function EditProductPage() {
             </button>
           </div>
         </div>
+
+        {product.archived_at && (
+          <div className="mb-6 rounded-2xl border border-ink-200 bg-ink-50 p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex items-start gap-3 flex-1 min-w-0">
+              <Archive size={18} className="text-ink-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-brand-dark">Producto archivado</p>
+                <p className="text-[11px] text-ink-400 mt-0.5">
+                  No sale en el catálogo. Sus ventas siguen en el historial. Si lo restaurás vuelve a mostrarse.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => restoreMutation.mutate()}
+              disabled={restoreMutation.isPending}
+              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-brand-dark text-white
+                         text-sm font-medium hover:bg-black transition-colors disabled:opacity-60 shrink-0"
+            >
+              {restoreMutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
+              Restaurar
+            </button>
+          </div>
+        )}
 
         <form onSubmit={handleSave} className="flex flex-col gap-5">
 
@@ -537,6 +593,11 @@ export default function EditProductPage() {
 
           {/* Sizes and stock */}
           <SectionCard title="Tallas y stock">
+            <SizeQuickAdd
+              suggestedKind={sizeKind}
+              existing={variants.map((row) => row.size)}
+              onAdd={(size) => setVariants((prev) => [...prev, { _key: newKey(), size, stock: "1" }])}
+            />
 
             {variants.length > 0 && (
               <div className="flex flex-col gap-2">
@@ -555,7 +616,8 @@ export default function EditProductPage() {
                       type="text"
                       value={row.size}
                       onChange={(e) => updateVariantField(row._key, "size", e.target.value)}
-                      placeholder="Talla"
+                      onBlur={(e) => updateVariantField(row._key, "size", normalizeSizeInput(e.target.value, sizeKind === "calzado"))}
+                      placeholder={sizeKind === "calzado" ? "Ej: 42 EUR / 9 US" : "Talla"}
                       className={inputCls}
                     />
                     <div className="relative">
@@ -635,11 +697,12 @@ export default function EditProductPage() {
           </div>
 
           {/* Danger zone */}
+          {!product.archived_at && (
           <div className="rounded-2xl border border-red-100 p-5 flex items-center justify-between gap-4">
             <div>
               <p className="text-sm font-medium text-red-500">Eliminar producto</p>
               <p className="text-[11px] text-ink-400 mt-0.5">
-                Acción permanente. No se puede deshacer.
+                Si nunca se vendió, se borra. Si tiene ventas, se archiva: sale del catálogo y el historial queda.
               </p>
             </div>
             <button
@@ -657,6 +720,7 @@ export default function EditProductPage() {
               Eliminar
             </button>
           </div>
+          )}
 
         </form>
       </main>
