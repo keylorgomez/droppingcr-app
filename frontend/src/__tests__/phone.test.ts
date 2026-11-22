@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { displayPhone as rawDisplay, localPhone } from "../lib/formatters";
+import { displayPhone as rawDisplay, localPhone, productInitials } from "../lib/formatters";
 
 const displayPhone = (raw: string | null) => rawDisplay(raw)?.replace(/\u00a0/g, " ") ?? null;
 
@@ -47,5 +47,13 @@ describe("cleanPhoneInput (pegar teléfonos)", () => {
   });
   it("nunca pasa de 8 dígitos", () => {
     expect(cleanPhoneInput("883648791234")).toBe("88364879");
+  });
+});
+
+describe("productInitials", () => {
+  it("toma las dos primeras palabras sin la talla", () => {
+    expect(productInitials("Salomón XT6 · Talla 43")).toBe("SX");
+    expect(productInitials("barca cactus jack")).toBe("BC");
+    expect(productInitials("   ")).toBe("D");
   });
 });

@@ -1,4 +1,5 @@
 import { usePaged } from "../../lib/usePaged";
+import ProductThumb from "../../components/ui/ProductThumb";
 import ShowMore from "../../components/ui/ShowMore";
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -71,9 +72,7 @@ function ExternalRow({ sale, onClick }: { sale: ExternalSale; onClick: () => voi
       className="w-full flex items-center gap-3 px-4 py-3.5 border-b border-ink-50
                  text-left transition-colors last:border-b-0"
     >
-      <div className="w-12 h-12 rounded-xl bg-ink-50 border border-ink-100 shrink-0 flex items-center justify-center">
-        <Package size={18} className="text-ink-200" />
-      </div>
+      <ProductThumb name={sale.product_name} size="sm" className="w-12 h-12 rounded-xl shrink-0" />
 
       <div className="flex-1 min-w-0">
         <p className="font-semibold text-sm italic text-brand-primary truncate">
@@ -123,12 +122,8 @@ function SaleRow({ sale, onClick }: { sale: AdminSale; onClick: () => void }) {
       className="w-full flex items-center gap-3 px-4 py-3.5 border-b border-ink-50
                  text-left transition-colors last:border-b-0"
     >
-      <div className="w-12 h-12 rounded-xl overflow-hidden bg-ink-50 border border-ink-100 shrink-0">
-        {sale.image_url
-          ? <img src={sale.image_url} alt={sale.product_name} className="w-full h-full object-cover" />
-          : <Package size={18} className="m-auto mt-3 text-ink-200" />
-        }
-      </div>
+      <ProductThumb src={sale.image_url} name={sale.product_name} size="sm"
+                    className="w-12 h-12 rounded-xl border border-ink-100 shrink-0" />
 
       <div className="flex-1 min-w-0">
         <p className="font-semibold text-sm italic text-brand-primary truncate">
@@ -191,21 +186,13 @@ function OrderRow({ order, onClick }: { order: AdminOrder; onClick: () => void }
       {isMulti ? (
         <div className="grid grid-cols-2 gap-0.5 w-12 h-12 shrink-0">
           {order.items.slice(0, 4).map((item, index) => (
-            <div key={index} className="rounded-md overflow-hidden bg-ink-50 border border-ink-100">
-              {item.image_url
-                ? <img src={item.image_url} alt={item.product_name} className="w-full h-full object-cover" />
-                : <Package size={8} className="m-auto text-ink-200" />
-              }
-            </div>
+            <ProductThumb key={index} src={item.image_url} name={item.product_name} size="xs"
+                          className="rounded-md border border-ink-100" />
           ))}
         </div>
       ) : (
-        <div className="w-12 h-12 rounded-xl overflow-hidden bg-ink-50 border border-ink-100 shrink-0">
-          {firstItem?.image_url
-            ? <img src={firstItem.image_url} alt={label} className="w-full h-full object-cover" />
-            : <Package size={18} className="m-auto mt-3 text-ink-200" />
-          }
-        </div>
+        <ProductThumb src={firstItem?.image_url} name={label} size="sm"
+                      className="w-12 h-12 rounded-xl border border-ink-100 shrink-0" />
       )}
 
       <div className="flex-1 min-w-0">

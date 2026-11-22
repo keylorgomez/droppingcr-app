@@ -1,10 +1,11 @@
 import { useState, useMemo, useEffect, useRef } from "react";
+import ProductThumb from "../ui/ProductThumb";
 import MoneyInput from "../ui/MoneyInput";
 import StockAlert from "../ui/StockAlert";
 import { isStockError } from "../../lib/stockErrors";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  X, Package, Loader2, ShoppingBag,
+  X, Loader2, ShoppingBag,
   Search, Plus, Minus, ArrowLeft, ChevronRight,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
@@ -377,12 +378,8 @@ export default function NewOrderModal({ onClose }: NewOrderModalProps) {
                 {cartItems.map((item) => (
                   <div key={item.tempId} className="flex flex-col px-3 py-2.5 gap-1">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-lg overflow-hidden bg-ink-50 border border-ink-100 shrink-0">
-                        {item.image_url
-                          ? <img src={item.image_url} alt={item.product_name} className="w-full h-full object-cover" />
-                          : <Package size={12} className="m-auto mt-1.5 text-ink-200" />
-                        }
-                      </div>
+                      <ProductThumb src={item.image_url} name={item.product_name} size="xs"
+                                    className="w-8 h-8 rounded-lg border border-ink-100 shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-medium text-brand-dark truncate">
                           {item.product_name}
@@ -525,12 +522,8 @@ export default function NewOrderModal({ onClose }: NewOrderModalProps) {
                             className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left
                                        hover:bg-ink-50 transition-colors"
                           >
-                            <div className="w-8 h-8 rounded-lg overflow-hidden bg-ink-50 border border-ink-100 shrink-0">
-                              {product.image_url
-                                ? <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
-                                : <Package size={12} className="m-auto mt-1.5 text-ink-200" />
-                              }
-                            </div>
+                            <ProductThumb src={product.image_url} name={product.name} size="xs"
+                                          className="w-8 h-8 rounded-lg border border-ink-100 shrink-0" />
                             <div className="flex-1 min-w-0">
                               <p className="text-xs font-medium text-brand-dark truncate">
                                 {product.name}

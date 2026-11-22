@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { X, Package, Undo2 } from "lucide-react";
+import ProductThumb from "../ui/ProductThumb";
+import { X, Undo2 } from "lucide-react";
 import { motion } from "motion/react";
 import { externalSalePaid, type ExternalSale } from "../../services/externalSalesService";
 import { formatDate, displayPhone } from "../../lib/formatters";
@@ -43,9 +44,7 @@ export default function ExternalSaleDetailModal({ sale, onClose }: { sale: Exter
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start gap-3 px-5 py-4 border-b border-ink-100">
-          <div className="w-12 h-12 rounded-xl bg-ink-50 border border-ink-100 shrink-0 flex items-center justify-center">
-            <Package size={18} className="text-ink-200" />
-          </div>
+          <ProductThumb name={sale.product_name} size="sm" className="w-12 h-12 rounded-xl shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="font-semibold italic text-brand-primary leading-snug">{sale.product_name}</p>
             <p className="text-xs text-ink-400 mt-0.5">{kindLabel} · {formatDate(sale.sold_at)}</p>

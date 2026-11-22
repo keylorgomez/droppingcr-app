@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
+import ProductThumb from "../ui/ProductThumb";
 import MoneyInput from "../ui/MoneyInput";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { X, Package, Check, Loader2, MessageCircle, Plus, Trash2, Printer } from "lucide-react";
+import { X, Check, Loader2, MessageCircle, Plus, Trash2, Printer } from "lucide-react";
 import { motion } from "motion/react";
 import { useToast } from "../ui/Toast";
-import { cloudinaryUrl } from "../../lib/cloudinary";
 import {
   DELIVERY_STATUSES,
   getPaymentsForOrder,
@@ -296,12 +296,8 @@ export default function OrderDetailModal({ order, onClose }: OrderDetailModalPro
             <div className="rounded-xl border border-ink-100 overflow-hidden divide-y divide-ink-50">
               {order.items.map((item) => (
                 <div key={item.id} className="flex items-center gap-3 px-3 py-2.5">
-                  <div className="w-8 h-8 rounded-lg overflow-hidden bg-ink-50 border border-ink-100 shrink-0">
-                    {item.image_url
-                      ? <img src={cloudinaryUrl(item.image_url, "thumb")} alt={item.product_name} className="w-full h-full object-cover" />
-                      : <Package size={12} className="m-auto mt-1.5 text-ink-200" />
-                    }
-                  </div>
+                  <ProductThumb src={item.image_url} name={item.product_name} size="xs"
+                                className="w-8 h-8 rounded-lg border border-ink-100 shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium text-brand-dark truncate">
                       {item.product_name}

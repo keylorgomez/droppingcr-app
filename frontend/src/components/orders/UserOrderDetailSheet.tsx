@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
+import ProductThumb from "../ui/ProductThumb";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Truck, MapPin, Package, ExternalLink } from "lucide-react";
+import { X, Truck, MapPin, ExternalLink } from "lucide-react";
 import { deliveryStatusMeta, type UserOrder } from "../../services/salesService";
 import { fmt, formatDate } from "../../lib/formatters";
 import { shippingLabel, CORREOS_METHODS } from "./UserOrderCard";
-import { cloudinaryUrl } from "../../lib/cloudinary";
 
 // ── Image Lightbox ─────────────────────────────────────────────────────────
 
@@ -114,17 +114,17 @@ export function OrderDetailSheet({ order, onClose }: { order: UserOrder; onClose
           {/* Single-item: large image */}
           {!isMulti && (
             <div
-              className="mx-5 rounded-btn overflow-hidden bg-ink-50 mb-4
-                         aspect-square max-h-[60vw] md:max-h-64 cursor-zoom-in"
+              className={`mx-5 mb-4 ${order.image_url ? "cursor-zoom-in" : ""}`}
               onClick={() => order.image_url && setLightbox({ src: order.image_url, alt: order.product_name })}
             >
-              {order.image_url
-                ? <img src={cloudinaryUrl(order.image_url, "full")} alt={order.product_name}
-                       className="w-full h-full object-cover" />
-                : <div className="w-full h-full flex items-center justify-center">
-                    <Package size={48} className="text-ink-200" strokeWidth={1.2} />
-                  </div>
-              }
+              <ProductThumb
+                src={order.image_url}
+                name={order.product_name}
+                size="lg"
+                variant="full"
+                label={order.fromSpecialOrder ? "Pieza por encargo" : "Dropping"}
+                className="rounded-btn aspect-square max-h-[60vw] md:max-h-64 w-full"
+              />
             </div>
           )}
 
@@ -134,9 +134,11 @@ export function OrderDetailSheet({ order, onClose }: { order: UserOrder; onClose
               <p className="type-display text-xl text-ink-900 leading-none">
                 {order.product_name}
               </p>
-              <p className="text-sm text-ink-400 mt-1">
-                Talla {order.variant_size}
-              </p>
+              {order.variant_size !== "—" && (
+                <p className="text-sm text-ink-400 mt-1">
+                  Talla {order.variant_size}
+                </p>
+              )}
               <p className="text-lg font-bold text-brand-dark mt-2">
                 {fmt(order.sale_price)}
               </p>
@@ -154,17 +156,16 @@ export function OrderDetailSheet({ order, onClose }: { order: UserOrder; onClose
                 {order.items!.map((item, i) => (
                   <div key={i} className="flex gap-3 items-center">
                     <div
-                      className="w-36 h-36 sm:w-28 sm:h-28 md:w-24 md:h-24 rounded-btn overflow-hidden bg-ink-50
-                                 border border-ink-100 shrink-0 cursor-zoom-in"
+                      className={`shrink-0 ${item.image_url ? "cursor-zoom-in" : ""}`}
                       onClick={() => item.image_url && setLightbox({ src: item.image_url, alt: item.product_name })}
                     >
-                      {item.image_url
-                        ? <img src={cloudinaryUrl(item.image_url, "medium")} alt={item.product_name}
-                               className="w-full h-full object-cover" loading="lazy" />
-                        : <div className="w-full h-full flex items-center justify-center">
-                            <Package size={22} className="text-ink-200" strokeWidth={1.3} />
-                          </div>
-                      }
+                      <ProductThumb
+                        src={item.image_url}
+                        name={item.product_name}
+                        size="md"
+                        variant="medium"
+                        className="w-36 h-36 sm:w-28 sm:h-28 md:w-24 md:h-24 rounded-btn border border-ink-100"
+                      />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-[13px] text-ink-900
@@ -185,7 +186,8 @@ export function OrderDetailSheet({ order, onClose }: { order: UserOrder; onClose
             </div>
           )}
 
-          {/* Shipping info */}
+          {/* Shipping info: externas y encargos no tienen envío registrado */}
+          {!order.isExternal && (
           <div className="mx-5 mb-4 rounded-btn bg-ink-50 px-4 py-3 flex items-center gap-2">
             {isPersonal
               ? <MapPin size={14} className="text-ink-400 shrink-0" />
@@ -202,6 +204,7 @@ export function OrderDetailSheet({ order, onClose }: { order: UserOrder; onClose
               )}
             </div>
           </div>
+          )}
 
           {/* Payment summary */}
           <div className="mx-5 mb-4 rounded-btn border border-ink-100 overflow-hidden">

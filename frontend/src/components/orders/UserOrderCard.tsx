@@ -1,8 +1,8 @@
 import { motion } from "motion/react";
-import { Truck, MapPin, Package, ChevronRight } from "lucide-react";
+import ProductThumb from "../ui/ProductThumb";
+import { Truck, MapPin, ChevronRight } from "lucide-react";
 import { deliveryStatusMeta, SHIPPING_OPTIONS, type UserOrder } from "../../services/salesService";
 import { fmt, formatDate } from "../../lib/formatters";
-import { cloudinaryUrl } from "../../lib/cloudinary";
 
 // ── Shared helpers (also used by UserOrderDetailSheet) ─────────────────────
 
@@ -75,14 +75,8 @@ export function OrderCard({ order, onClick }: { order: UserOrder; onClick: () =>
           {/* Items preview */}
           <div className="flex gap-2 px-4 pb-3 border-t border-ink-50 pt-3">
             {order.items!.slice(0, 4).map((item, i) => (
-              <div key={i} className="w-12 h-12 rounded-btn overflow-hidden bg-ink-50 border border-ink-100 shrink-0">
-                {item.image_url
-                  ? <img src={cloudinaryUrl(item.image_url, "thumb")} alt={item.product_name} className="w-full h-full object-cover" loading="lazy" />
-                  : <div className="w-full h-full flex items-center justify-center">
-                      <Package size={14} className="text-ink-200" strokeWidth={1.4} />
-                    </div>
-                }
-              </div>
+              <ProductThumb key={i} src={item.image_url} name={item.product_name} size="sm"
+                            className="w-12 h-12 rounded-btn border border-ink-100 shrink-0" />
             ))}
             {order.items!.length > 4 && (
               <div className="w-12 h-12 rounded-btn bg-ink-50 border border-ink-100 flex items-center justify-center shrink-0">
@@ -119,16 +113,13 @@ export function OrderCard({ order, onClick }: { order: UserOrder; onClick: () =>
         /* Single-item layout */
         <>
           <div className="flex gap-4 p-4">
-            <div className="w-20 h-20 rounded-btn overflow-hidden bg-ink-50 border border-ink-100 shrink-0">
-              {order.image_url ? (
-                <img src={cloudinaryUrl(order.image_url ?? "", "thumb")} alt={order.product_name}
-                     className="w-full h-full object-cover" loading="lazy" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <Package size={24} className="text-ink-200" strokeWidth={1.4} />
-                </div>
-              )}
-            </div>
+            <ProductThumb
+              src={order.image_url}
+              name={order.product_name}
+              size="md"
+              label={order.fromSpecialOrder ? "Encargo" : "Dropping"}
+              className="w-20 h-20 rounded-btn border border-ink-100 shrink-0"
+            />
 
             <div className="flex flex-col gap-1 flex-1 min-w-0">
               <div className="flex items-start justify-between gap-2">
@@ -138,7 +129,8 @@ export function OrderCard({ order, onClick }: { order: UserOrder; onClick: () =>
                     {order.product_name}
                   </p>
                   <p className="text-xs text-ink-400 mt-0.5">
-                    Talla {order.variant_size} · {formatDate(order.sold_at)}
+                    {/* En externas y encargos la talla ya viene en el nombre */}
+                    {order.variant_size !== "—" && `Talla ${order.variant_size} · `}{formatDate(order.sold_at)}
                   </p>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
@@ -149,15 +141,22 @@ export function OrderCard({ order, onClick }: { order: UserOrder; onClick: () =>
                   <ChevronRight size={14} className="text-ink-300" />
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                {isPersonal
-                  ? <MapPin size={11} className="text-ink-300 shrink-0" />
-                  : <Truck  size={11} className="text-ink-300 shrink-0" />
-                }
-                <span className="text-[11px] text-ink-400 truncate">
-                  {shippingLabel(order.shipping_method)}
-                </span>
-              </div>
+              {/* Externas y encargos no tienen envío registrado: no se inventa uno */}
+              {order.isExternal ? (
+                order.fromSpecialOrder && (
+                  <span className="text-[11px] text-ink-400 mt-0.5">Pieza conseguida por encargo</span>
+                )
+              ) : (
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  {isPersonal
+                    ? <MapPin size={11} className="text-ink-300 shrink-0" />
+                    : <Truck  size={11} className="text-ink-300 shrink-0" />
+                  }
+                  <span className="text-[11px] text-ink-400 truncate">
+                    {shippingLabel(order.shipping_method)}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 

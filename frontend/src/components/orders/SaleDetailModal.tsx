@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
+import ProductThumb from "../ui/ProductThumb";
 import MoneyInput from "../ui/MoneyInput";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { X, Package, Check, Loader2, MessageCircle, Plus, Trash2, Printer } from "lucide-react";
+import { X, Check, Loader2, MessageCircle, Plus, Trash2, Printer } from "lucide-react";
 import { motion } from "motion/react";
 import { useToast } from "../ui/Toast";
-import { cloudinaryUrl } from "../../lib/cloudinary";
 import {
   updateSaleAdmin,
   addPayment,
@@ -253,12 +253,8 @@ export default function SaleDetailModal({ sale, onClose }: SaleDetailModalProps)
       >
         {/* Header */}
         <div className="flex items-start gap-3 px-5 pt-5 pb-4 border-b border-ink-100">
-          <div className="w-12 h-12 rounded-xl overflow-hidden bg-ink-50 border border-ink-100 shrink-0">
-            {sale.image_url
-              ? <img src={cloudinaryUrl(sale.image_url, "thumb")} alt={sale.product_name} className="w-full h-full object-cover" />
-              : <Package size={18} className="m-auto mt-3 text-ink-200" />
-            }
-          </div>
+          <ProductThumb src={sale.image_url} name={sale.product_name} size="sm"
+                        className="w-12 h-12 rounded-xl border border-ink-100 shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-sm italic text-brand-primary leading-snug line-clamp-2">
               {sale.product_name}

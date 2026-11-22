@@ -267,6 +267,8 @@ export interface UserOrder {
   items?:          OrderItemDetail[];
   /** Venta de algo fuera del catálogo: no tiene foto, talla ni envío. */
   isExternal?:     boolean;
+  /** Venta externa que vino de un encargo. */
+  fromSpecialOrder?: boolean;
 }
 
 export interface AdminSale {
@@ -706,6 +708,7 @@ export async function getUserOrders(userId: string): Promise<UserOrder[]> {
     image_url:       "",
     total_paid:      sale.total_paid,
     isExternal:      true,
+    fromSpecialOrder: sale.from_special_order || /^Encargo/.test(sale.note ?? ""),
   }));
 
   return [...singleSales, ...multiOrders, ...externals].sort(

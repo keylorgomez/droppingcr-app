@@ -110,3 +110,13 @@ export function matchesSearch(text: string, query: string): boolean {
   const haystack = normalizeText(text);
   return terms.every((term) => haystack.includes(term));
 }
+
+/**
+ * Iniciales de la pieza: "Salomón XT6 · Talla 43" → "SX". Lo que va después
+ * del "·" (talla, versión) no cuenta.
+ */
+export function productInitials(name: string): string {
+  const words = name.split("·")[0].trim().split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w));
+  const letters = words.slice(0, 2).map((w) => (w.match(/[\p{L}\p{N}]/u)?.[0] ?? "").toUpperCase());
+  return letters.join("") || "D";
+}
