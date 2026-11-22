@@ -104,7 +104,10 @@ function NewOrderModal({ onClose, onSaved }: { onClose: () => void; onSaved: () 
   const { showToast } = useToast();
   const [phone, setPhone]             = useState("");
   const [name, setName]               = useState("");
-  const [customerId, setCustomerId]   = useState<string | null>(null);
+  // La cuenta encontrada y el número con el que se buscó: si el número cambió
+  // después, esa cuenta ya no vale (antes quedaba la del número viejo).
+  const [match, setMatch]             = useState<{ phone: string; customerId: string | null } | null>(null);
+  const customerId = match && match.phone === phone ? match.customerId : null;
   const [description, setDescription] = useState("");
   const [size, setSize]               = useState("");
   const [price, setPrice]             = useState("");
@@ -133,10 +136,11 @@ function NewOrderModal({ onClose, onSaved }: { onClose: () => void; onSaved: () 
   });
 
   async function autofillFromPhone() {
-    const match = await lookupCustomerProfileByPhone(phone);
-    if (!match) return;
-    setCustomerId(match.customer_id);
-    if (!name.trim() && match.name) setName(match.name);
+    const searched = phone;
+    const found = await lookupCustomerProfileByPhone(searched);
+    if (!found) return;
+    setMatch({ phone: searched, customerId: found.customer_id });
+    if (found.name) setName((current) => current.trim() || found.name!);
   }
 
   function submit(e: FormEvent) {
@@ -155,7 +159,7 @@ function NewOrderModal({ onClose, onSaved }: { onClose: () => void; onSaved: () 
           <Field label="WhatsApp">
             <input
               type="tel" inputMode="numeric" value={phone}
-              onChange={(e) => { setPhone(cleanPhoneInput(e.target.value)); setCustomerId(null); }}
+              onChange={(e) => setPhone(cleanPhoneInput(e.target.value))}
               onBlur={autofillFromPhone} placeholder="8888 8888" className={inputCls}
             />
           </Field>
